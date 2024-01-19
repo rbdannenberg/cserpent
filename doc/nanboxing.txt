@@ -1,0 +1,62 @@
+Notes on Nan-boxing
+
+Nan-boxing means using NaN (not-a-number) floating point values
+to encode other types along with type information. Fortunately,
+Serpent uses Nan-boxing and notes and implementation from
+Serpent provide a good start.
+
+Basically, doubles do not occur "naturally" with high order bits
+from FFF9 to FFFF, which gives 7 x 2^48 different values. We need
+only 2^48 values for pointers, leaving 6 x 2^48 for other types.
+
+In Serpent, we have only integers and short strings, but we used
+4 x 2^48 values for integers, making integers, including the sign,
+50 bits, not 48.
+
+In Serpent values are "biased" by adding 6*2^48 so that the
+high-order 16 bits of pointers are 0, and nullptr is represented
+as zero. This seems like a good idea. A consequence is that to
+decode a value to floating point, you must subtract 6 << 48 to
+get the proper high-order bits of the double.
+
+Another detail is that if values are represented as an unsigned
+int (uint64_t), you must store it to a union type and read it
+as a double. There is no in-line expression to do this, although
+I suppose you could make the union type a global or thread-local
+variable since you only need it temporarily.
+
+
+Note on short strings: these are strings packed into the
+remaining 48-bits and in particular includes single characters
+which are probably the most common string encountered. In string
+processing, this should save a lot of dynamic memory allocation,
+e.g. iterating over a string and returning mystring[i] for each
+character can avoid any memory allocation and just return nan-boxed
+short strings rather than allocating at least 32 bytes in the heap
+for each character.
+
+Keeping with 50 bit integers, and allowing for short strings, we
+have 2^48 unused values. I think it is useful to implement Symbol
+as a distinct nan-boxed type since Symbols are used in Serpent for
+keywords, function and method names, and for the generic truth value
+(true names a global variable whose value is the Symbol 'true').
+When compiling to C++, it might be advantageous to be able to
+declare variables to be of type Symbol and to have a quick check
+for Symbol-type values. On the other hand, the alternative is to
+make Symbol act like a built-in class, in which case it might be
+easier to implement methods on Symbols.
+
+Object Representation
+
+In CSerpent, objects should compile to ordinary instances of C++
+classes, but we still need a super-class of all CSerpent classes
+to support the more dynamic typing of CSerpent and garbage
+collection.
+
+Every CSerpent object needs these fields (member variables):
+- gray_list -- a link to the next object on the gray list, which
+    is list of reachable objects whose references have not yet
+    been marked in the mark phase of garbage collection.
+- class_symbol -- a pointer to a Symbol that names the class.
+    Used mainly for dynamic type checking.
+

@@ -1,0 +1,84 @@
+Notes on garbage collection
+
+To implement GC similar to Serpent, we need to scan all
+objects. Options are scanning the C++ stack for pointers
+to a "magic token" that appears in all objects, or
+rather than allocating locals directly, place all
+potential references to objects in a struct which
+is a local on the stack, and link the structs to
+form a stack of their own.
+
+The second option adds some overhead, but seems safer
+and easier to debug since you know if a reference
+should point to an object.
+
+On entering a function with any dynamic types for
+parameters or locals or temporaries, you need a
+local struct that can hold them, and to write them
+to fields of the struct (and otherwise set the
+fields to null pointers), then link the field
+to the previous field and set the machine's
+stack pointer to the local struct.
+
+Before you return, you must unlink the struct from
+the machine's stack.
+
+These stack frame objects must have color
+(black/white/gray) but the only possible reference
+to a stack frame is the frame of a called function.
+As a consequence, the order of color in the stack
+goes from white (at the top or deepest frame) to
+gray to black (at the shallowest function, e.g.
+main()). Remember that the mark phase is trying to
+mark all reachable objects white. During the mark
+phase, new frames will be marked white and if the
+previous frame is black, the frame, now reachable
+from the top frame, will be marked gray.
+
+Stack frames are not on the gray list, so when
+the gray list is empty, we still have to mark
+the stack. We can do this incrementally. Make
+a note that we are in a new "stack marking"
+phase. Upon entering this phase, set the "stack
+mark pointer" to the stack pointer.
+
+To make progress in this phase, if the "stack
+mark pointer" points to a white frame, set the
+"stack mark pointer" to the next frame. If the
+"stack mark pointer" points to a gray frame,
+mark everything it points to that is not white,
+including the next frame, to gray. If anything
+but a stack frame is marked gray, change the
+mark phase to marking the gray list until the
+list is again empty and you can restart the
+"stack marking" phase. Note that you can
+pick up where you left off marking the stack
+because any new stack frames in the mark
+phase are white and do not need to be marked.
+
+When you return from a functions, this frees
+stack frames, which could be referenced by
+the "stack mark pointer". This is bad because
+resuming the stack marking phase would lead
+us to mark frames that have been popped and
+therefore do not exist. Therefore, when you
+return after the first stack marking phase
+has begun (even if you are now back marking
+the gray list), you must check: If the "stack
+mark pointer" is the frame pointer, then
+set the "stack mark pointer" to the frame of
+the caller you are returning to.
+
+The stack marking phase as described marks
+the whole stack frame at once and moves the
+"stack mark pointer" to the next frame in
+order to record its progress. It would be
+possible to scan less than a whole frame by
+treating the stack frame as an array and
+keeping an index to record how far you got
+and where to resume marking. Since stack
+frames are usually small, this probably
+just adds needless overhead and we can
+expect the garbage collector to mark
+multiple frames in one quantum of garbage
+collection.

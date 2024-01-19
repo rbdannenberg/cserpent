@@ -1,0 +1,67 @@
+Toward a simple Serpent parser ...
+
+For incremental compilation, compiler will keep a database
+of declarations and dependencies. The main requirement is
+to detect when dependencies have changed, leading to the
+recompilation of dependents. The granularity of dependency
+tracking (by symbol, by file, etc.) should be flexible to
+allow experimentation and optimization of speed, space, etc.
+
+Redeclaring classes or functions or symbols is not allowed.
+
+Conditional compilation using #ifdef and related directives
+relies on the current compilation and not on the database
+of forward declarations. E.g. #ifndef x can be used to
+conditionally define x if it is not already defined by
+some required source file. 
+
+Assume input is line-by-line.
+Expand this to an array of descriptors:
+    source line number
+    indentation
+    source text
+    additional properties, including:
+        symbol has been encountered in the current compilation
+        symbol values when initialized to number, string or
+            symbol.
+        (global) symbol (might be) redefined by assignment
+        category: e.g. #if, #ifdef, ..., other
+        skip flag: indicates the line should not be processed
+            due to #if directive or it is blank or
+            just a comment or a continuation line
+Step 1: Preprocessing Directives and Sole Comment Removal
+    Read line-by-line, removing blank and comment lines
+    Allow #if and #elif expressions to contain symbols that
+        have values already encountered in the compilation
+        and defined to be a number, string or symbol, and
+        not ever reassigned (according to the database).
+    Do not implement #yesop because we will consider
+        symbols to be consistently noop or not across
+        entire programs.
+    Preprocessing directives are used to filter out some
+        source lines, which need not be added to the
+        line array.
+    Sole comments (optional whitespace followed by // and #)
+        have no source to compile and are removed.
+
+Step 2: Line-by-line Processing in 2nd Pass Over Array
+    Most lines begin with a keyword, e.g. for, print, if, ...
+        These lines are processed with recursive descent for
+        expressions and statement blocks (statements indented
+        below def, for, if, etc.) Blocks may occur after ":"
+        on the same line and continue on the next. Statements
+        may occur after ";" on the same line.
+    Expressions, where expected, invoke recursive descent.
+        The token stream can continue on following lines,
+        causing those lines to be marked as "skip". The
+        expression parser may encounter a comment (// or #)
+        which is skipped.
+    The display command is tricky because it prints the
+        expression source as well as expression value.
+        Compilation of display is greatly simplified because
+        we have line-by-line source code, so we only need to
+        know the start and end of expressions as they are
+        parsed to find the source expression. (In contrast,
+        the Serpent compiler has a complex token parser that
+        retains input text in a special buffer to support
+        display compilation.)

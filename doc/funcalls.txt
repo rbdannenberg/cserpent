@@ -1,0 +1,95 @@
+Notes on Function and Method Calls
+
+Serpent function calls have a number of features:
+- functions can be called directly using their name,
+    or apply() or funcall() can be used, passing in
+    a variable to name the function. Functions are
+    named by symbols, a primitive type.
+- when called directly, functions can have keyword
+    parameters, optional parameters. Extra keyword
+    parameters can be received through a dictionary
+    parameter and extra positional parameters can
+    be received through an array parameter. (See
+    "dict" and "rest" parameter specifications.)
+
+There are some built-in functions that translate
+directly to virtual machine instructions. To make
+this possible, the compiler must know the number of
+parameters at compile time. In CSerpent, we can take
+this further by specifying the types. E.g. the
+pow(x, y) function can be compiled directly to
+pow(x, y) in C++, where x and y must be coerced to
+doubles.
+
+For global functions and methods (member functions),
+we can assume we know the declaration at compile
+time because we know all the globals and we know
+the class of any object. Is that true? That means
+we cannot write a[i].foo(x) because a[i] is dynamically
+typed. We have two options:
+
+1. Introduce a required coercion to a known class that
+declares method foo. E.g., syntax might be
+a[i].My_class.foo(x) or maybe a[i]::My_class.foo(x) or
+a[i].as(My_clasS).foo(x)
+
+2. Allow calls to resolve at runtime. This is more
+consistent with Serpent and Python, so even if the
+previous option is supported, we should support
+dynamic function calls.
+
+How can we implement this in C++?  In my prototype,
+I defined methods named call() on class Any. There
+was a call() for 0, 1, 2, 3, ... parameters. (I only
+had to go up to 3.) I think a better way is to make
+call take 2 parameters consisting of positional
+parameters in an array and keyword parameters in a
+dictionary:: Any Any::call(Array pparms, Dict kparms);
+
+Calls are compiled to build the array and dict (but
+either could be nullptr if not needed). The actual
+parameters can be globals (or thread local) if we
+do not allow nested function calls (and it seems that
+nested function calls are not going to be easy to
+express in C++ if we have work to do to prepare
+parameters.) So a call like this in Serpent:
+    foo(x, y, kw1 = true, kw2 = false)
+would compile to something like this in C++:
+    pparms.clear().append(x).append(y);
+    kparms.clear();
+    kparms[kw1_sym] = true;
+    kparms[kw2_sym] = false;
+    call(foo_sym);
+Whether foo is a function or method, it has to
+have some code to check the parameters and
+invoke the compiled C++ function corresponding to foo_sym:
+    assert(pparms.size() == 2);  // no extra parameters
+    double x = pparms[0];  // assume x declared double
+    int64_t y = pparms[1];  // assume y declared int
+    Any kw1 = kparms[kw1_sym];
+     Any kw2 = kparms[kw2_sym];
+    // in this implementation, extra keyword parameters
+    // are permitted and ignored
+    foo(x, y, kw1, kw2);
+If foo is declared so that y is an optional parameter,
+then y must be of type Any or type Obj. If it is an Obj,
+the code could look like this:
+    assert(pparms.size() >= 1 && pparms.size() < 3);
+    double x = pparms[0];  // assume x declared double
+    Any y = nullptr; 
+    if (pparms.size() >= 2) {
+        Any &tmp = &pparms[1];
+        assert(is_object(tmp));
+        y = tmp;
+    }
+    Any kw1 = kparms[kw1_sym];
+    Any kw2 = kparms[kw2_sym];
+    // in this implementation, extra keyword parameters
+    // are permitted and ignored
+    foo(x, y, kw1, kw2);
+Note: maybe the check that y is an object should happen
+in the function foo. Otherwise, every call to foo must
+do the check. On the other hand, some of these could be
+at compile time, so in those cases checking inside foo
+at runtime adds overhead.
+
