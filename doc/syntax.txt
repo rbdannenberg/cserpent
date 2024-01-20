@@ -1,0 +1,127 @@
+CSerpent Syntax
+
+
+Here's my initial proposal for syntax.
+
+First, any occurrence of "var" in Serpent (used for local variables in
+functions and methods and for instance variables (member variables) in
+classes) can be replaced by any of the following type specifiers. We
+call these <typespec>s:
+
+        int
+        real
+        string
+        symbol
+        <classname>
+
+where <classname> is the name of any class. Somewhere in the Serpent
+program, there must be a class declaration of the form
+
+        class <classname> ...
+
+with a matching <classname>.
+
+Notice also that "real" is used rather than "float" or
+"double". Serpent has only the "double" type, so it seems odd as well
+as verbose to call the floating point type "double", and also since
+C's "float" means 32-bit float, it would be confusing to use "float". Of
+course, these are not truly "reals" in the math sense, but neither are
+int's really integers.
+
+A string has two possible run-time representations: a short string (up
+to 5 bytes plus a zero end-of-string byte) is nan-boxed and takes 64
+bits. A longer string uses 64 bits as a nan-boxed pointer to a heap
+object that holds the string and inherits from the class of all
+CSerpent objects (Any_obj in my prototype).
+
+Aside: Both arrays and dictionaries are untyped (subclasses of Any) so
+they do not require any declaration. Probably the next level of
+speedup would come from declaring arrays to be homogeneous,
+e.g. int_array, but that requires type constructors (can we say array
+of array of int?) and more complex syntax, and I think we can get a
+lot of speedup without this. The compiler may keep track of arrays and
+eliminate some checks, e.g. in something like
+        x = []
+        x.append(1)
+        x.append(2)
+Here, it is known that x is an array, so we should be able to cast x
+to an Array and call the append() method directly instead of doing a
+dymamic method call as if x is an Any.
+
+For now, there is no way to declare something as a dynamic type other
+than to declare it with "var".
+
+However, we will use type Any in C++ to denote these dynamic type
+values and may refer to CSerpent variables as type "Any".
+
+Aside: Functions will always return type Any and so there is no type
+declaration in function and method signatures. This is partly because
+the compiler cannot always derive the function or method being called
+and thus it cannot know the return type unless we make everything
+return an Any.
+
+Parameters to functions have two forms:
+        <id>  -- a simple identifier (indicates type Any)
+        <typespec> <id> -- parameter has a specific type
+If <typespec> is given, it means the function is called with type Any,
+and the Any is checked for the proper type, which is then coerced to
+the given type and stored into a correspondingly typed C++
+variable. All parameter passing is copy-by-value for non-classes and
+copy-by-reference for objects and strings, so copying to a typed C++
+variable does not cause any problems.
+
+Subexpressions can be annotated with a typespec or checked to enforce
+a specific type (leading to a run-time exception if a different type
+is obtained). Theh syntax for indicating the type of x.m() in the
+expression x.m() + 3 is:
+        x.m().as_int + 3
+This is called type coercion and you can think of type coercion
+operations as being built-in methods for type Any. In addition, the
+compiler can check some types at compile time, e.g.
+        pow(x, y).as_int + 3
+will produce a compilation error because the built-in function pow()
+always returns a real. To truncate the result to an integer, you would
+use the built-in int() function:
+        int(pow(x, y)) + 3
+Incidentally, the compiler should compile this to something like
+        ((int) (pow(x, y))) + 3 // C++ code
+since the compiler knows pow() returns a double, and knows what int()
+does.
+
+To coerce a value to an object of class Foo, use the method
+"as_Foo". The compiler automatically constructs a coercion method with
+the name "as_" preceding the class name.
+
+Aside: The capitalization of the class name is a convention and not a
+requirement. It is unconventional to use an identifier that mixes
+underscores and capitalization (other than the first letter) in
+Serpent, but this naming convention seems very clear and readable.
+
+Another aside: The compiler can omit coercion in cases where the type
+will be checked without the coercion operation. In particular, if the
+compiler knows x is an Array, then x[y.as_int] can be simplified to
+x[y] because the compiler can cast x as an Array, cast y to an int,
+and perform the subscript operation directly. In casting y to an int,
+the runtime system will have to check that y is an int, so the
+"as_int" method is redundant.
+
+On the other hand, if we do not know x is an Array, it could be a
+dictionary, so x[y] is not necessarily a subscripting operation (it
+could be a dictionary lookup operation that allows for any type). In
+that case x[y.as_int] must be compiled to check that y is an int, then
+pass y as type Any to an array_or_dictionary_lookup
+method. Alternatively, the compiler could coerce y to an int then
+convert back to an Any and pass it to the array_or_dictionary_lookup.
+
+SUMMARY
+
+Syntax changes are minimal.
+
+1. Any use of the keyword "var" in Serpent can be substituted with a
+<typespec> in CSerpent, where <typespec> is int, real, string, symbol,
+or a class name.
+
+2. Any formal parameter id can be *optionally* preceded by a
+<typespec>.
+
+That's it!
