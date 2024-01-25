@@ -1,0 +1,49 @@
+require "strparse"
+
+class Parsing_ctx:
+
+    var lineno
+    var linecol
+    var indentation
+    var lexer
+    var error
+
+    def init(file_text):
+        this.lineno = 1
+        this.linecol = 1
+        this.indentation = 0
+        this.lexer = String_parse(file_text)
+
+    def get_ptr():
+        return this.lexer.pos
+
+    def at_eof():
+        return this.lexer.pos == this.lexer
+
+    def backtrack(last_ptr):
+        this.lexer.pos = last_ptr
+
+    def set_err(msg):
+        this.error = Parse_result(msg, (lineno, linecol))
+
+    def set_eof_err():
+        this.set_err("unexpected end of file")
+
+
+class Parse_error:
+
+    var text
+    var pos
+
+    def init(text, pos):
+        this.text = text
+        this.pos = pos
+
+
+# tokenizers
+def assert_no_leading_whitespace(ctx):
+    if not ctx.at_eof() and ctx.lexer.isspace(ctx.peek()):
+        ctx.set_err("unexpected space")
+        return false
+
+    return true
