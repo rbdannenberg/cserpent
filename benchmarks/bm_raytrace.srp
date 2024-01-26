@@ -1,0 +1,392 @@
+require "debug"
+
+# Note: I'm not doing the proper mustBeVector() checks
+class Vector:
+    var x, y, z
+
+    def init(x_, y_, z_):
+        x = x_
+        y = y_
+        z = z_
+
+    def dot(other):
+        return (x*other.x) + (y*other.y) + (z*other.z)
+
+    def magnitude():
+        sqrt(dot(this))
+
+    def scale(factor):
+        return Vector(factor * x, factor * y, factor * z)
+
+    def normalized():
+        return scale(1.0 / magnitude())
+
+    def negated():
+        return scale(-1)
+
+    def cross(other):
+        return Vector(y * other.z - z * other.y,
+                      z * other.x - x * other.z,
+                      x * other.y - y * other.x)
+
+    def eq(other):
+        if not isinstance(other, Vector):
+            return false
+        return x == other.x and y == other.y and z == other.z
+
+    def add(other):
+        if other.isPoint():
+            return Point(x + other.x, y + other.y, z + other.z)
+        else:
+            return Vector(x + other.x, y + other.y, z + other.z)
+
+    def sub(other):
+        return Vector(x - other.x, y - other.y, z - other.z)
+        
+    def isVector():
+        return true
+
+    def isPoint():
+        return false
+
+    def reflectThrough(normal):
+        d = normal.scale(dot(normal))
+        return this.sub(d.scale(2))
+
+Vector_ZERO = Vector(0, 0, 0)
+Vector_RIGHT = Vector(1, 0, 0)
+Vector_UP = Vector(0, 1, 0)
+Vector_OUT = Vector(0, 0, 1)
+
+# missing asserts
+
+class Point:
+    var x, y, z
+
+    def init(x_, y_, z_):
+        x = x_
+        y = y_
+        z = z_
+
+    def isVector():
+        return false
+    
+    def isPoint():
+        return true
+
+    def sub(other):
+        if isinstance(other, Point):
+            return Vector(x - other.x, y - other.y, z - other.z)
+        else:
+            return Point(x - other.x, y - other.y, z - other.z)
+
+    def add(other):
+        return Point(x + other.x, y + other.y, z + other.z)
+        
+class Object:
+    def intersectionTime(ray):
+        print "not implemented"
+
+    def normalAt(p):
+        print "not implemented"
+
+class Sphere(Object):
+    var centre
+    var radius
+    
+    def init(centre_, radius_):
+        centre = centre_
+        radius = radius_
+
+    def intersectionTime(ray):
+        cp = centre.sub(ray.point)
+        v = cp.dot(ray.vector)
+        discriminant = (radius * radius) - (cp.dot(cp) - v * v)
+        if discriminant < 0:
+            # print radius*radius
+            # print cp.dot(cp)
+            # return v - sqrt(abs(discriminant))
+            return nil
+        else:
+            return v - sqrt(discriminant)
+
+    def normalAt(p):
+        # NOTE: (p-center).normalized() doesn't work??
+        v = p.sub(centre)
+        return v.normalized()
+
+class Halfspace(Object):
+    var point
+    var normal
+
+    def init(point_, normal_):
+        point = point_
+        normal = normal_.normalized()
+
+    def intersectionTime(ray):
+        v = ray.vector.dot(normal)
+        if v:
+            return 1 / (-v)
+        else:
+            # print "returning nil from Halfspace"
+            return nil # bad use of nil?
+
+    def normalAt(p):
+        return normal
+
+class Ray:
+    var point
+    var vector
+    
+    def init(point_, vector_):
+        point = point_
+        vector = vector_.normalized()    
+
+    def pointAtTime(t):
+        if t != nil:
+            return point.add(vector.scale(t))
+        # print "t nil :("
+        
+
+    
+Point_ZERO = Point(0, 0, 0)
+
+class Canvas:
+    var bytes
+    var width
+    var height
+
+    def init(width_, height_):
+        # FIXME: this is probably wildly different
+        bytes = array(width_*height_*3)
+        for i = 0 to width_*height_:
+            bytes[i * 3 + 2] = 255
+        width = width_
+        height = height_
+
+    def plot(x, y, r, g, b):
+        i = ((height - y - 1) * width + x) * 3
+        bytes[i] = max(0, min(255, int(r * 255)))
+        bytes[i + 1] = max(0, min(255, int(g * 255)))
+        bytes[i + 2] = max(0, min(255, int(b * 255)))
+
+    def write_ppm(filename): 
+        # NOTE: not the same, no fmt strings in Serpent?
+        header = "P6 "+str(width)+" "+str(height)+" 255\n"        
+        f = open(filename, "w")
+        f.write(header)
+        # # print bytes
+        # # TODO no serpent equivalent
+
+        # print width
+        # print height
+        # print width*height*3
+        bound = width*height*3
+
+        stringy = ""
+ 
+        # stringy = [str(i) for i in bytes]
+        for i = 0 to bound:
+            if i % 10000 == 0:
+                print i 
+            f.write(strcat(str(bytes[i]), " "))
+            
+        
+        f.write(stringy)
+        f.close()
+        
+
+def firstIntersection(intersections):
+    result = nil
+    for i in intersections:
+        candidateT = i[1]
+        if candidateT != nil and candidateT > -0.00001:
+            if result == nil or candidateT < result[1]:
+                # NOTE: no tuples in Serpent?
+                result = [i[0], candidateT, i[2]]
+    return result
+
+class Scene:
+    var objects
+    var lightPoints
+    var position
+    var lookingAt
+    var fieldOfView
+    var recursionDepth
+
+    def init():
+        objects = []
+        lightPoints = []
+        position = Point(0, 1.8, 10)
+        lookingAt = Point_ZERO
+        fieldOfView = 45.0
+        recursionDepth = 0
+
+    def moveTo(p):
+        position = p
+
+    def lookAt(p):
+        lookingAt = p
+
+    def addObject(object, surface):
+        # TODO no tuples...
+        objects.append([object, surface])
+
+    def addLight(p):
+        lightPoints.append(p)
+
+    def render(canvas):
+        pi = 3.14159
+        fovRadians = pi * (fieldOfView / 2.0) / 180.0
+        halfWidth = tan(fovRadians)
+        halfHeight = 0.75 * halfWidth
+        width = halfWidth * 2
+        height = halfHeight * 2
+        pixelWidth = width / (canvas.width - 1)
+        pixelHeight = height / (canvas.height - 1)
+
+        eye = Ray(position, lookingAt.sub(position))
+        vpRight = eye.vector.cross(Vector_UP).normalized()
+        vpUp = vpRight.cross(eye.vector).normalized()
+
+        for y = 0 to canvas.height:
+            for x = 0 to canvas.width:
+                xcomp = vpRight.scale(x * pixelWidth - halfWidth)
+                ycomp = vpUp.scale(y * pixelHeight - halfHeight)
+                ray = Ray(eye.point, eye.vector.add(xcomp).add(ycomp))
+                colour = rayColour(ray)
+                canvas.plot(x, y, colour[0], colour[1], colour[2])
+
+    def rayColour(ray):
+        if recursionDepth > 3:
+            return [0, 0, 0]
+        # print(recursionDepth)        
+        recursionDepth = recursionDepth + 1
+        intersections = [[x[0], x[0].intersectionTime(ray), x[1]]
+                         for x in objects]
+        # print intersections
+        i = firstIntersection(intersections)
+        if i == nil:
+            recursionDepth = recursionDepth - 1
+            return [0, 0, 0]  # the background colour
+        else:
+            # print i
+            o = i[0]
+            # print o
+            # print o.normalAt(o)
+            t = i[1]
+            s = i[2]
+            p = ray.pointAtTime(t)
+            recursionDepth = recursionDepth - 1
+            return s.colourAt(this, ray, p, o.normalAt(p))
+        
+    def _lightIsVisible(l, p):
+        for x in objects:
+            t = x[0].intersectionTime(Ray(p, l.sub(p)))
+            if t != nil and t > 0.00001:
+                return false
+        return true
+
+    def visibleLights(p):
+        result = []
+        for l in lightPoints:
+            if _lightIsVisible(l, p):
+                result.append(l)
+        return result
+
+
+def addColours(a, scale, b):
+    return [a[0] + scale * b[0],
+            a[1] + scale * b[1],
+            a[2] + scale * b[2]]
+
+
+class Surface:
+    def colourAt(scene, ray, p, normal):
+        print "not implemented"
+
+
+class SimpleSurface(Surface):
+    var baseColour
+    var specularCoefficient
+    var lambertCoefficient
+    var ambientCoefficient
+    
+    def init(baseColour_):
+        baseColour = baseColour_
+        specularCoefficient = 0.2
+        lambertCoefficient = 0.6
+        ambientCoefficient = 0.2
+        
+
+    def baseColourAt(p):
+        return baseColour
+
+    def colourAt(scene, ray, p, normal):
+        b = baseColourAt(p)
+
+        c = [0, 0, 0]
+        if specularCoefficient > 0:
+            reflectedRay = Ray(p, ray.vector.reflectThrough(normal))
+            reflectedColour = scene.rayColour(reflectedRay)
+            c = addColours(c, specularCoefficient, reflectedColour)
+
+        if lambertCoefficient > 0:
+            lambertAmount = 0.0
+            for lightPoint in scene.visibleLights(p):
+                tmp = (lightPoint.sub(p))
+                contribution = tmp.normalized().dot(normal)
+                if contribution > 0:
+                    lambertAmount = lambertAmount + contribution
+            lambertAmount = min(1, lambertAmount)
+            c = addColours(c, lambertCoefficient * lambertAmount, b)
+
+        # print "ambient"
+        # print ambientCoefficient
+        if ambientCoefficient > 0:
+            c = addColours(c, ambientCoefficient, b)
+
+        return c
+
+
+class CheckerboardSurface(SimpleSurface):    
+    var otherColor
+    var checkSize    
+    
+    def init():        
+        baseColour = [1, 1, 1]
+        specularCoefficient = 0.2
+        lambertCoefficient = 0.6
+        ambientCoefficient = 0.2
+        otherColor = [0, 0, 0]
+        checkSize = 1        
+
+    def baseColourAt(p):
+        v = p.sub(Point_ZERO)
+        v.scale(1.0 / checkSize)
+        if ((int(abs(v.x) + 0.5) + int(abs(v.y) + 0.5) + int(abs(v.z) + 0.5)) % 2):
+            return otherColor
+        else:
+            return baseColour
+
+
+def bench_raytrace(loops, width, height, filename):
+    for i = 0 to loops:        
+        canvas = Canvas(width, height)
+        s = Scene()
+        s.addLight(Point(30, 30, 10))
+        s.addLight(Point(-10, 100, 30))
+        s.lookAt(Point(0, 3, 0))
+        s.addObject(Sphere(Point(1, 3, -10), 2),
+                    SimpleSurface([1, 1, 0]))
+        for y = 0 to 6:
+            s.addObject(Sphere(Point(-3 - y * 0.4, 2.3, -5), 0.4),
+                        SimpleSurface([y / 6.0, 1 - y / 6.0, 0.5]))
+        s.addObject(Halfspace(Point(0, 0, 0), Vector_UP),
+                    SimpleSurface([1,1,1]))
+        s.render(canvas)
+
+    if filename != nil:
+        canvas.write_ppm(filename)
+
+bench_raytrace(1, 512, 512, "testing.ppm")
