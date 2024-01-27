@@ -1,0 +1,42 @@
+Here are some policy and style guides:
+
+GIT
+
+PLEASE resist the urge to create forks and branches. Students are drawn to create branches out of fear of breaking something. I get it. But students almost never face the consequences:
+
+    their changes are not shared by others
+    their changes are not merged (and eventually become very difficult to merge), so half the work is left undone
+    their changes do not get exercised or tested by others
+    by working without merging, the changes grow to a large disconnected set. If it breaks something after merging, it will be hard to sort out what change is responsible or how to get back to a working configuration (without throwing away all the work).
+    soon, the knowledge of what was done and why is lost
+
+So here's the procedure unless you have strong reasons to do something different:
+
+    pull the HEAD to your local working copy
+    fix a bug, add a feature, write documentation, whatever
+    while tests fail:
+        debug your changes locally
+        pull any changes from others while you were working (loop to repeat tests)
+    push your changes with a short description of what you added or fixed
+
+NAMING, CASE, ETC.
+
+I've tried a lot of conventions and ended up with the approach that's a close match to
+https://peps.python.org/pep-0008/. After rejecting the popular "CamelCase" conventions,
+I was really happy to see at least Python agrees with me (except their C naming is not
+consistent with Python naming!).
+
+Basically, keep it simple: variables and functions are all lower case, with underscores:
+   name_len, string_to_int()
+In general, prefer noun_verb over verb_noun for function names, e.g. json_read instead of
+read_json. Maybe verb_noun is a little easier to read, but noun_verb help to organize
+your thinking in terms of modules managing different abstract types. I.e. noun_verb form
+is also module_operation form.
+
+Classes use *one* capital letter:
+    Symbol, Hash_table
+
+Defined constants and macros are all upper case (it's ugly but a strong convention
+from C and helpful to know clearly when you are using a macro vs calling a function:
+    TABLE_MAX_LEN, IS_INT(x), MEMFREELISTS (or MEM_FREE_LISTS -- either is OK)
+

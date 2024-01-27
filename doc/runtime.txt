@@ -1,0 +1,124 @@
+runtime.txt -- notes on cserpent runtime.
+
+Here's an initial implementation of Nan-boxing, adapted from my
+proof-of-concept implementation:
+
+The high order 16 bits are the "tag" that stores type information.
+A "natural" representation keep doubles unaltered and use tags
+from FFF9 to FFFF, which would be unused Nan values of doubles,
+to represent integers, pointers, etc.
+
+However, we're going to offset the tags so that pointers can
+be used as is (high order bits will be zero). This means the
+offset must be from 1 to 7 so that one of FFF9 to FFFF becomes
+0000.
+
+It is also slightly advantageous to give all integers the same
+high-order 14 bits. If we set the bias to 1, then we can use
+NaN values with high bits FFFB, FFFC, FFFD and FFFE, after the
+bias become FFFC, FFFD, FFFE, FFFF. Note that all 4
+of these have high-order bits equal to FFFC, making integer
+checks simple. With bias of 1, pointers correspond to NaN
+values with FFFF, which after the bias become 0000, which we
+want for pointers.
+
+Tags on stored bit representations are:
+0000 - object pointers (Symbols are objects)
+FFFC-FFFF - 50-bit signed integer values with high-order
+            bits 00, 01, 10, 11 
+FFFB - reserved
+FFFA - reserved
+0001-FFF9 - double precision floats (with offset). To get
+            the corresponding bits of the double, subtract
+            the bias to get high-order bits from 0000 to FFF8.
+
+// basic representation for Nan-boxed values:
+typedef uint64_t Any;
+
+// to extract the tag, mask the value with TAG_MASK:
+#define TAG_MASK 0xFFFF000000000000uLL
+
+// to convert to/from double or int, you need the bias:
+#define BIAS 0x1000000000000uLL 
+
+// ints have FFFC in high-order bits:
+#define INT_TAG  0xFFFC000000000000uLL
+
+// pointers are stored with high-order zero:
+#define PTR_TAG  0x0000000000000000uLL
+
+
+// type tests, encoding and decoding:
+#define IS_PTR(p) (((p) & TAG_MASK) == PTR_TAG)
+#define ANY2PTR(a) ((Obj *) ((a) & ~TAG_MASK))
+#define PTR2ANY(p) ((uint64_t) (p))
+
+// for non-null, just test p != 0:
+#define NON_NULL(p) (p)
+
+// note that p is evaluated twice. Probably, we're
+// testing a pointer already, so IS_PTR(p) 
+#define NON_NULL_PTR(p) (ANY2PTR(p) && IS_PTR(p))
+
+// define a global so that we can reinterpret unsigned int 
+// bits as double bits. A local would be better, but we 
+// want to write ANY2REAL and REAL2ANY as expressions and 
+// C++ expressionso are not scopes where you can declare 
+// new variables: 
+union Any_real_union union { uint64_t i; double d } u; 
+
+extern Any_real_union any_real_union; 
+
+// Conversion of doubles (type real in Serpent):
+#define IS_REAL(a) (((a) - BIAS) < 0xFFF9000000000000uLL)
+#define ANY2REAL(a) (any_real_union.i = (a) - BIAS, any_real_union.d)
+#define REAL2ANY(r) (any_real_union.d = (r), any_real_union.i + BIAS)
+
+// Conversion of 50-bit integers (type int in Serpent):
+#define IS_INT(p) (((p) & INT_TAG) == INT_TAG)
+#define ANY2INT(p) ((((int64_t) p) << 14) >> 14)
+#define INT2ANY(p) (INT_TAG | ((~INT_TAG) & (p)))
+
+// Superclass of all objects that are garbage collected:
+class Obj {
+public:
+  uint64_t header;  // contains type info, GC color, size
+  Obj *next;  // gray-list for GC
+  Symbol_ptr type_symbol;  // symbol denoting type or class
+};
+
+
+HEAP MEMORY
+
+Goals:
+  - real-time allocation/deallocation based on multiple
+    sizes of free lists
+  - memory objects and holes must be enumerable for GC
+
+Design:
+  The heap is a list of large chunks from malloc. When you
+run out of memory, you allocate another chunk.
+  The first word of each chunk is a pointer serving to form
+a linked list of all chunks so we can find all of them.
+  A "linear" array of freelists representing sizes 8, 16, 24,
+32 ... 1016, then an "exponential" array of freelists
+representing sizes 1024, 1024+256, 1024+512, 1024+768, 
+2048, 2048+512, 2048+1024, 2048+1792, ... 256KB.
+  To allocate memory, find the freelist, pop from the list.
+If list is empty, allocate from the current chunk. If the
+current chunk is too small, allocate a new chunk. (This could
+leave behind an almost arbitrary amount of unused space in a
+chunk. A trick is: if the needed memory is above some threshold,
+just allocate a new chunk (with malloc) specifically sized to the
+request, and keep the pre-existing chunk for future smaller
+allocations. There's a little extra per-chunk overhead for the
+new chunk, but if we only do this for larger allocations, the
+fraction of wasted memory is small.
+    To free memory, every object (class Obj) has a size
+in its header. Use that to identify the right free list, and
+link the object to the list.
+
+Example:
+  This is based on Serpent's memory management, but not the
+same. See serpent/64bit/src/srpmem.{h,cpp} on Sourceforge.
+
