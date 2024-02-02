@@ -1,4 +1,5 @@
 require "debug"
+require "../util"
 
 # Note: I'm not doing the proper mustBeVector() checks
 class Vector:
@@ -187,8 +188,6 @@ class Canvas:
  
         # stringy = [str(i) for i in bytes]
         for i = 0 to bound:
-            if i % 10000 == 0:
-                print i 
             f.write(strcat(str(bytes[i]), " "))
             
         
@@ -369,7 +368,6 @@ class CheckerboardSurface(SimpleSurface):
         else:
             return baseColour
 
-
 def bench_raytrace(loops, width, height, filename):
     for i = 0 to loops:        
         canvas = Canvas(width, height)
@@ -389,4 +387,6 @@ def bench_raytrace(loops, width, height, filename):
     if filename != nil:
         canvas.write_ppm(filename)
 
-bench_raytrace(1, 512, 512, "testing.ppm")
+benchmark('bench_raytrace', [1, 100, 100, nil], "raytrace", 5, 20)
+
+

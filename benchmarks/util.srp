@@ -1,0 +1,32 @@
+def benchmark(func, args, name, warmup, runs):
+    vals = []
+    
+    for i = 0 to warmup:
+        apply(func, args) 
+
+    for i = 0 to runs:
+        start = time_get()
+        apply(func, args)
+        end = time_get()
+        vals.append(end-start)    
+
+    avg = 0
+    for run in vals:
+        avg = avg + run
+    avg = avg / len(vals)
+
+    report = repr({
+        "metadata": {
+            "warmups": warmup,
+            "runs": runs
+        },
+        "stats" : {
+            "avg" : avg
+        },
+        "runs" : vals
+    })
+
+    f = open(strcat(name, "_srp.json"), "w")
+    f.write(report)
+    f.write("\n")
+    f.close()
