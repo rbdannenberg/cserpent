@@ -40,3 +40,28 @@ Defined constants and macros are all upper case (it's ugly but a strong conventi
 from C and helpful to know clearly when you are using a macro vs calling a function:
     TABLE_MAX_LEN, IS_INT(x), MEMFREELISTS (or MEM_FREE_LISTS -- either is OK)
 
+Put spaces around operators, e.g. x * y, not x*y.
+
+Put spaces after for, while, etc., e.g.
+    for (int i = 0; i < 10; i++) {
+, not
+    for(int i = 0; ...
+(Don't make for() look like a function call.)
+
+Do NOT put spaces inside parentheses or brackets, e.g. (x * y),
+not ( x * y ).  (See any math textbook.)
+
+Indent 4 spaces.
+
+Never use tab characters. Tell your editor to convert tabs to spaces.
+
+Put open braces at the end of the line, even for "else if", e.g.
+    if (x == 1) {
+        foo();
+    } else if (x == 2) {
+        bar();
+    } else {
+        baz();
+    }
+
+
