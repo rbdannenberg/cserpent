@@ -11,6 +11,21 @@ uint64_t DOUBLE_MASK  = 0x7FFF000000000000uLL;
 uint64_t DOUBLE_UP    = 0x7FF0000000000000uLL;
 uint64_t DOUBLE_LW    = 0x0001000000000000uLL;
 uint64_t PTR_TAG      = 0x0000000000000000uLL;
+uint64_t SHORTSTR_TAG = 0xFFFA000000000000uLL;
+size_t num_chars = 5; // 8 bytes - 2 (tag) - 1 (nul terminator)
+
+/*
+Hexadecimal to Binary Conversion Table:
+
+Hex | Binary   | Hex | Binary   | Hex | Binary   | Hex | Binary
+----|----------|-----|----------|-----|----------|-----|--------
+ 0  | 0000     | 4   | 0100     | 8   | 1000     | C   | 1100
+ 1  | 0001     | 5   | 0101     | 9   | 1001     | D   | 1101
+ 2  | 0010     | 6   | 0110     | A   | 1010     | E   | 1110
+ 3  | 0011     | 7   | 0111     | B   | 1011     | F   | 1111
+*/
+
+// Note: integer promotion rules - int64_t & uint64_t, int64_t gets cast to uint64_t
 
 AnyC constructor(int64_t x) {
     #ifdef DEBUG
@@ -39,6 +54,8 @@ AnyC constructor(double x) {
 
 AnyC constructor(void* x) {
     AnyC result;
+    // not result.integer = reinterpret_cast<uint64_t>(x);?
+    // also shouldn't it be int64_t*
     result.integer = *reinterpret_cast<uint64_t*>(&x);
     #ifdef DEBUG
     if (result.integer & TAG_MASK) {
@@ -50,26 +67,41 @@ AnyC constructor(void* x) {
 }
 
 AnyC constructor(std::string x) {
-    std::cerr << "Not implemented" << std::endl;
-    return {};
+    // 2 possible ways:
+    // 1: get 8 bytes starting from x, discard the last 2 bytes, shift right and add tag
+    // 2: insert tag bytes in front of string, get 8 bytes starting from front.
+    // The following is way no. 1:
+#ifdef DEBUG
+    if (x.length() > num_chars) {
+        std::cerr << "Precondition failed: string too long" << std::endl;
+        return {};
+    }
+#endif
+    AnyC result;
+    // reads 8 bytes
+    uint64_t tmp = *((uint64_t *) (x.c_str()));
+    result.integer = (tmp >> 16) | SHORTSTR_TAG;
+    // warning: this copies a lot of garbage after the nul terminator into the AnyC
+    return result;
 }
 
 bool is_int(AnyC x) {
+    // x.integer gets converted to uint64_t
     return (x.integer & INT_TAG) == INT_TAG;
 }
 
 bool is_double(AnyC x) {
-    uint64_t tmp = x.integer & DOUBLE_MASK;
-    return tmp >= DOUBLE_LW && tmp <= DOUBLE_UP;
+    return x.integer - BIAS < 0xFFF9000000000000uLL;
+//    uint64_t tmp = x.integer & DOUBLE_MASK;
+//    return tmp >= DOUBLE_LW && tmp <= DOUBLE_UP;
 }
 
 bool is_ptr(AnyC x) {
     return (x.integer & TAG_MASK) == PTR_TAG;
 }
 
-bool is_string(AnyC x) {
-    std::cerr << "Not implemented" << std::endl;
-    return {};
+bool is_shortstr(AnyC x) {
+    return (x.integer & TAG_MASK) == SHORTSTR_TAG;
 }
 
 int64_t to_int(AnyC x) {
@@ -85,8 +117,8 @@ void* to_ptr(AnyC x) {
     return reinterpret_cast<void*>(x.integer);
 }
 
-std::string to_string(AnyC x) {
-    std::cerr << "Not implemented" << std::endl;
-    return {};
+std::string to_shortstr(AnyC x) {
+    // copies from 3rd byte onwards (skips tag) until nul terminator is encountered
+    return std::string {&((char *) &(x.integer))[2]};
 }
 

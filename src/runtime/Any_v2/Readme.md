@@ -1,5 +1,7 @@
+The tag of an AnyC refers to the first 16 bits. We will use the tag to identify the underlying type of an AnyC.
+
 ### Int
-Precondition: 50-bit two's complement; in 64-bit ensures top 15 bits are are 1's or 0's
+Precondition: 50-bit two's complement; in 64-bit ensure top 15 bits are 1's or 0's
 
 Tags (after bias): FFFC - FFFF
 

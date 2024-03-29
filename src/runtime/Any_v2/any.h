@@ -2,6 +2,7 @@
 #pragma once
 
 union AnyC{
+    // why int64_t? for any2int? should we explicitly cast to uint64_t
     int64_t integer;
     double doub;
 };
@@ -23,11 +24,13 @@ AnyC constructor(std::string x);
 bool is_int(AnyC x);
 bool is_double(AnyC x);
 bool is_ptr(AnyC x);
-bool is_string(AnyC x);
+bool is_shortstr(AnyC x);
+bool is_symbol(AnyC x);
 
 int64_t to_int(AnyC x);
 double to_double(AnyC x);
 void* to_ptr(AnyC x);
-std::string to_string(AnyC x);
+std::string to_shortstr(AnyC x);
+// to_symbol
 
 // Operator overload
