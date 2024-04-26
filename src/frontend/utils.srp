@@ -1,0 +1,12 @@
+// Hack: uses class initialization to bind a variable to a scope.
+class CurryTwo:
+
+    var func
+    var fst
+
+    def init(func, fst):
+        thus.func = func
+        this.fst = fst
+
+    def build(snd):
+        return func(fst, snd)

@@ -1,3 +1,8 @@
+require "utils"
+
+// TODO: ask prof what is the equivalent of NULL in Serpent.
+NULL_PLACEHOLDER = 0
+
 class Pos:
 
     // Source of the program (string).
@@ -29,13 +34,12 @@ class ParseResult:
 
 
 // Out-of-class static instantiator for `ParseResult`.
-// TODO: ask prof what is the equivalent of NULL in Serpent.
 def presult(res):
-    return ParseResult(true, res, 0)
+    return ParseResult(true, res, NULL_PLACEHOLDER)
 
 
 def perror(err):
-    return ParseResult(false, 0, err)
+    return ParseResult(false, NULL_PLACEHOLDER, err)
 
 
 // Mutable context object passed along when `Parser` is ran on an input.
@@ -56,9 +60,24 @@ class ParseContext:
         this.file = file
 
 
+// Parser class.
 class Parser:
 
     var parse
 
     def init(parse_func):
         this.parse = parse_func
+
+    def run_parse(parse_ctx):
+        return parse(parse_ctx)
+
+// Internal helper functions.
+
+def __char(ctx):
+    return 0
+
+// Lexical atoms.
+
+// Creates a parser that parses a character.
+def char(c):
+    return Parser(__char)
