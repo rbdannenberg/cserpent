@@ -1,49 +1,64 @@
-require "strparse"
+class Pos:
 
-class Parsing_ctx:
+    // Source of the program (string).
+    var file
 
-    var lineno
-    var linecol
-    var indentation
-    var lexer
+    // Line and column of a token/event position.
+    var line
+    var col
+
+    def init(file, line, col):
+        this.file = file
+        this.line = line
+        this.col = col
+
+
+class ParseResult:
+
+    // Whether the parse was successful.
+    var succ
+    // If `succ` is true, `result` is populated.
+    var result
+    // If `succ` is false, `error` is populated
     var error
 
-    def init(file_text):
-        this.lineno = 1
-        this.linecol = 1
-        this.indentation = 0
-        this.lexer = String_parse(file_text)
-
-    def get_ptr():
-        return this.lexer.pos
-
-    def at_eof():
-        return this.lexer.pos == this.lexer
-
-    def backtrack(last_ptr):
-        this.lexer.pos = last_ptr
-
-    def set_err(msg):
-        this.error = Parse_result(msg, (lineno, linecol))
-
-    def set_eof_err():
-        this.set_err("unexpected end of file")
+    def init(succ, result, error):
+        this.succ = succ
+        this.result = result
+        this.error = error
 
 
-class Parse_error:
-
-    var text
-    var pos
-
-    def init(text, pos):
-        this.text = text
-        this.pos = pos
+// Out-of-class static instantiator for `ParseResult`.
+// TODO: ask prof what is the equivalent of NULL in Serpent.
+def presult(res):
+    return ParseResult(true, res, 0)
 
 
-# tokenizers
-def assert_no_leading_whitespace(ctx):
-    if not ctx.at_eof() and ctx.lexer.isspace(ctx.peek()):
-        ctx.set_err("unexpected space")
-        return false
+def perror(err):
+    return ParseResult(false, 0, err)
 
-    return true
+
+// Mutable context object passed along when `Parser` is ran on an input.
+class ParseContext:
+
+    // Name of the source of the input code (string).
+    var file
+    // Input code to be parsed.
+    var input
+    // Contextual information: current position within the input.
+    var line
+    var col
+
+    def init(input, file):
+        this.line = 0
+        this.col = 0
+        this.input = input
+        this.file = file
+
+
+class Parser:
+
+    var parse
+
+    def init(parse_func):
+        this.parse = parse_func
