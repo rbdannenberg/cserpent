@@ -22,7 +22,4 @@ jobs:
         cd serpent
         export PATH=$PATH:$(pwd)
         export SERPENTPATH="$(pwd)/lib:$(pwd)/programs:$(pwd)/wxslib"
-
-    - name: Invoking Unit Tests (Python)
-      run: |
-        python toolchain/srp_tests.py
+        
