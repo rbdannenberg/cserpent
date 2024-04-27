@@ -5,8 +5,8 @@ class CurryTwo:
     var fst
 
     def init(func, fst):
-        thus.func = func
+        this.func = func
         this.fst = fst
 
     def build(snd):
-        return func(fst, snd)
+        return funcall(func, fst, snd)

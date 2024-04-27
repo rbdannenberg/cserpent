@@ -1,8 +1,5 @@
 require "utils"
 
-// TODO: ask prof what is the equivalent of NULL in Serpent.
-NULL_PLACEHOLDER = 0
-
 class Pos:
 
     // Source of the program (string).
@@ -32,14 +29,17 @@ class ParseResult:
         this.result = result
         this.error = error
 
+    def good():
+        return this.succ
+
 
 // Out-of-class static instantiator for `ParseResult`.
 def presult(res):
-    return ParseResult(true, res, NULL_PLACEHOLDER)
+    return ParseResult(true, res, nil)
 
 
 def perror(err):
-    return ParseResult(false, NULL_PLACEHOLDER, err)
+    return ParseResult(false, nil, err)
 
 
 // Mutable context object passed along when `Parser` is ran on an input.
@@ -49,15 +49,48 @@ class ParseContext:
     var file
     // Input code to be parsed.
     var input
+    // Length of the input.
+    var length
     // Contextual information: current position within the input.
     var line
     var col
+    // 1-D position of the context, i.e., the current character pointer.
+    var pos
 
     def init(input, file):
         this.line = 0
         this.col = 0
+        this.pos = 0
         this.input = input
         this.file = file
+        this.length = len(input)
+
+    def at_eof():
+        return this.pos >= this.length
+
+    def peek(optional n = 1):
+        return subseq(this.input, 0, n)
+    
+    def skip(optional n = 1):
+        s = this.peek(n)
+        for i = 0 to n:
+            this.pos = this.pos + 1
+            if s[i] == "\n":
+                this.line = this.line + 1
+                this.col = 0
+            else:
+                this.col = this.col + 1
+        return s
+
+    // Saves a copy of all the file-position sensitive information of this
+    // context. Used for backtracing during parse.
+    def save():
+        return [this.line, this.col, this.pos]
+
+    def restore(backup):
+        this.line = backup[0]
+        this.col = backup[1]
+        this.pos = backup[2]
 
 
 // Parser class.
@@ -69,15 +102,41 @@ class Parser:
         this.parse = parse_func
 
     def run_parse(parse_ctx):
-        return parse(parse_ctx)
+        if issymbol(this.parse):
+            return funcall(this.parse, parse_ctx)
+        else:
+            return send(this.parse, 'build', parse_ctx)
+
+
+def try_eof(ctx):
+    if ctx.at_eof():
+        return perror("Unexpected end of file")
+    
+    return presult(nil)
+
 
 // Internal helper functions.
 
-def __char(ctx):
-    return 0
+def __char(c, ctx):
+    err = try_eof(ctx)
+    if not err.good():
+        return err
+    
+    curr = ctx.peek()
+    if curr != c:
+        return perror("Expected character '" + c + "', got '" + curr + "'")
+
+    return presult(ctx.skip())
+
 
 // Lexical atoms.
 
 // Creates a parser that parses a character.
 def char(c):
-    return Parser(__char)
+    return Parser(CurryTwo('__char', c))
+
+
+// Interface for interacting with parsers.
+def run_parser(parser, input, input_source):
+    ctx = ParseContext(input, input_source)
+    return parser.run_parse(ctx)
