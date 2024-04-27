@@ -2,9 +2,9 @@ name: Serpent Unit Testing
 
 on:
   push:
-    branches: [ "master" ]
+    branches: [ "main" ]
   pull_request:
-    branches: [ "master" ]
+    branches: [ "main" ]
 
 jobs:
   build:
@@ -22,4 +22,7 @@ jobs:
         cd serpent
         export PATH=$PATH:$(pwd)
         export SERPENTPATH="$(pwd)/lib:$(pwd)/programs:$(pwd)/wxslib"
-        
+
+    - name: Invoking Unit Tests
+      run: |
+        python toolchain/srp_tests.py
