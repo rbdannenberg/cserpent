@@ -1,0 +1,28 @@
+name: Serpent Unit Testing
+
+on:
+  push:
+    branches: [ "master" ]
+  pull_request:
+    branches: [ "master" ]
+
+jobs:
+  build:
+    runs-on: macos-latest
+
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        submodules: recursive
+
+    - name: Install Serpent
+      run: |
+        curl -L https://sourceforge.net/projects/serpent/files/418/serpent64-mac-418.zip/download --output serpent-mac.zip
+        unzip serpent-mac.zip
+        cd serpent
+        export PATH=$PATH:$(pwd)
+        export SERPENTPATH="$(pwd)/lib:$(pwd)/programs:$(pwd)/wxslib"
+
+    - name: Invoking Unit Tests (Python)
+      run: |
+        python toolchain/srp_tests.py
