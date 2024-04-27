@@ -19,10 +19,11 @@ jobs:
       run: |
         curl -L https://sourceforge.net/projects/serpent/files/418/serpent64-mac-418.zip/download --output serpent-mac.zip
         unzip serpent-mac.zip
+    
+    - name: Run Serpent Tests
+      run: |
         cd serpent
         export PATH=$PATH:$(pwd)
         export SERPENTPATH="$(pwd)/lib:$(pwd)/programs:$(pwd)/wxslib"
-
-    - name: Invoking Unit Tests
-      run: |
+        cd ..
         python toolchain/srp_tests.py
