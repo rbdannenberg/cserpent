@@ -1,3 +1,6 @@
+# Serpent Debug Logs
+*.log
+
 # Prerequisites
 *.d
 
