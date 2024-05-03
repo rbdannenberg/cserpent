@@ -31,7 +31,9 @@ for root, _, files in os.walk(SRP_TESTS):
                 self.fail(f'[{file_name}] Unexpected test stdout: {lines[-1]}')
 
             if int(ret_code) != 0:
-                self.fail(f"[{file_name}] {lines[0]}")
+                # using `lines[1]` because `lines[0]` captures the Serpent env
+                # output instead of the script output
+                self.fail(f"[{file_name}] {lines[1]}")
 
         setattr(TestExitCode, test_name, test_case)
 
