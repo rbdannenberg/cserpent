@@ -13,4 +13,28 @@ class TestExitCode(unittest.TestCase):
 for root, _, files in os.walk(SRP_TESTS):
     for file in files:
         file_name = os.path.join(root, file)
-        subprocess.run(["serpent64", file_name])
+        test_name = 'test_' + file.split('.')[0]
+
+        def test_case(self):
+            result = subprocess.run(
+                ["serpent64", file_name],
+                capture_output=True
+            )
+
+            # hack to get the exit code from the compiler (Serpent does not
+            # support non-zero exit code)
+            stdout = result.stdout.decode('utf-8').strip()
+            lines = stdout.split("\n")
+            ret_code = lines[-1]
+            
+            if not ret_code.isdigit():
+                self.fail(f'[{file_name}] Unexpected test stdout: {lines[-1]}')
+
+            if int(ret_code) != 0:
+                self.fail(f"[{file_name}] {lines[0]}")
+
+        setattr(TestExitCode, test_name, test_case)
+
+
+if __name__ == "__main__":
+    unittest.main()
