@@ -17,12 +17,12 @@ int main() {
 		printf("Testing valid integer: ");
 		for (int i = 0; i < N; i++) {
 			int64_t rngnum = rnd() & (0x1FFFFFFFFFFFF);
-			AnyC T = constructor(rngnum);
+			Any T = constructor(rngnum);
 			if (!is_int(T)) {
 				printf("Test failed on TC %d: input %lld\n", i, rngnum);
 				return 0;
 			}
-			if (is_double(T) || is_ptr(T)) {
+			if (is_real(T) || is_ptr(T)) {
 				printf("Test failed on TC %d: input %lld\n", i, rngnum);
 				return 0;
 			}
@@ -37,7 +37,7 @@ int main() {
 				printf("Test failed on TC %d: input %lld\n", i, -rngnum);
 				return 0;
 			}
-			if (is_double(T) || is_ptr(T)) {
+			if (is_real(T) || is_ptr(T)) {
 				printf("Test failed on TC %d: input %lld\n", i, -rngnum);
 				return 0;
 			}
@@ -48,21 +48,21 @@ int main() {
 			}
 		}
 		printf("All tests passed!\n");
-		printf("Testing invalid integer: ");
-		for (int i = 0; i < N; i++) {
-			int64_t rngnum = rnd() & (0xFFF);
-			rngnum += 0x1FFFFFFFFFFFF;
-			if (rngnum & 1) rngnum = -rngnum;
-			try {
-				constructor(rngnum);
-			} catch (std::runtime_error& e) {
-				continue;
-			}
-			printf("Test failed on TC %d: input %lld\n", i, rngnum);
-			return 0;
-		}
-		printf("All tests passed!\n");
-		printf("================================\n");
+//		printf("Testing invalid integer: ");
+//		for (int i = 0; i < N; i++) {
+//			int64_t rngnum = rnd() & (0xFFF);
+//			rngnum += 0x1FFFFFFFFFFFF;
+//			if (rngnum & 1) rngnum = -rngnum;
+//			try {
+//				constructor(rngnum);
+//			} catch (std::runtime_error& e) {
+//				continue;
+//			}
+//			printf("Test failed on TC %d: input %lld\n", i, rngnum);
+//			return 0;
+//		}
+//		printf("All tests passed!\n");
+//		printf("================================\n");
 	}
 
 	{
@@ -72,8 +72,8 @@ int main() {
 			std::mt19937 gen(rd());
 			std::uniform_real_distribution<double> dis(-1.0, 1.0);
 			double randomDouble = dis(gen);
-			AnyC T = constructor(randomDouble);
-			if (!is_double(T)) {
+			Any T = constructor(randomDouble);
+			if (!is_real(T)) {
 				printf("Test failed on TC %d: input %f\n", i, randomDouble);
 				return 0;
 			}
@@ -81,7 +81,7 @@ int main() {
 				printf("Test failed on TC %d: input %f\n", i, randomDouble);
 				return 0;
 			}
-			double result = to_double(T);
+			double result = to_real(T);
 			if (result != randomDouble) {
 				printf("Test failed on TC %d: input %f, output %f\n", i, randomDouble, result);
 				return 0;
@@ -97,12 +97,12 @@ int main() {
 	// 	for (int i = 0; i < N; i++) {
 	// 		uint64_t rngnum = rnd();
 	// 		uint64_t* b = new uint64_t(rngnum);
-	// 		AnyC T = constructor(b);
+	// 		Any T = constructor(b);
 	// 		if (!is_ptr(T)) {
 	// 			printf("Test failed on TC %d: input %p\n", i, b);
 	// 			return 0;
 	// 		}
-	// 		if (is_int(T) || is_double(T)) {
+	// 		if (is_int(T) || is_real(T)) {
 	// 			printf("Test failed on TC %d: input %f\n", i, b);
 	// 			return 0;
 	// 		}

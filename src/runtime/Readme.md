@@ -1,4 +1,4 @@
-The tag of an AnyC refers to the first 16 bits. We will use the tag to identify the underlying type of an AnyC.
+The tag of an Any refers to the first 16 bits. We will use the tag to identify the underlying type of an Any.
 
 ### Int
 Precondition: 50-bit two's complement; in 64-bit ensure top 15 bits are 1's or 0's
