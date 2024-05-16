@@ -3,11 +3,13 @@
 #include <random>
 #include <chrono>
 #include "any.h"
-const int N = 100;
+#include "op_overload.h"
+
+static constexpr int N = 100;
 
 std::mt19937_64 rnd(std::chrono::steady_clock::now().time_since_epoch().count());
 
-int main() {
+int run_tests() {
 	#ifdef DEBUG
     printf("Debug mode:\n");
     #endif
@@ -17,7 +19,7 @@ int main() {
 		printf("Testing valid integer: ");
 		for (int i = 0; i < N; i++) {
 			int64_t rngnum = rnd() & (0x1FFFFFFFFFFFF);
-			Any T = constructor(rngnum);
+			Any T {rngnum};
 			if (!is_int(T)) {
 				printf("Test failed on TC %d: input %lld\n", i, rngnum);
 				return 0;
@@ -32,7 +34,7 @@ int main() {
 				return 0;
 			}
 
-			T = constructor(-rngnum);
+			T = Any {-rngnum};
 			if (!is_int(T)) {
 				printf("Test failed on TC %d: input %lld\n", i, -rngnum);
 				return 0;
@@ -72,7 +74,7 @@ int main() {
 			std::mt19937 gen(rd());
 			std::uniform_real_distribution<double> dis(-1.0, 1.0);
 			double randomDouble = dis(gen);
-			Any T = constructor(randomDouble);
+			Any T {randomDouble};
 			if (!is_real(T)) {
 				printf("Test failed on TC %d: input %f\n", i, randomDouble);
 				return 0;
@@ -111,4 +113,38 @@ int main() {
 	// 	printf("All tests passed!\n");
 	// 	printf("================================\n");
     // }
+}
+
+Any add5(Any x) {
+    return x + 5;
+}
+
+int register_test() {
+    Any x {10};
+    Any y = add5(x);
+    Any z {&x};
+    if (!is_int(y)) {
+        printf("Test failed\n");
+        return 1;
+    }
+    if (to_int(y) != 15) {
+        printf("Test failed\n");
+        return 1;
+    }
+    if (!is_ptr(z)) {
+        printf("Test failed\n");
+        return 1;
+    }
+    if (to_ptr(z) != &x) {
+        printf("Test failed\n");
+        return 1;
+    }
+    printf("Test passed\n");
+    return 0;
+
+}
+
+int main() {
+    register_test();
+    return 0;
 }

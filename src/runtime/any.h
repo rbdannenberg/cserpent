@@ -1,27 +1,35 @@
 #include <string>
+#include <cstdint>
 #pragma once
 
+constexpr uint64_t BIAS         =    0x1000000000000uLL;
+constexpr uint64_t INT_TAG      = 0xFFFC000000000000uLL;
+
 union Any {
-    // why int64_t? for any2int? should we explicitly cast to uint64_t
-    int64_t integer;
+    uint64_t integer;
     double real;
+public:
+    /**@brief OCCUPY: 0xFFFC - 0xFFFF
+     * @pre x is in 50-bits complement (top 15 bits are all 0's or 1's)
+     */
+    Any (int64_t x);
+    Any (int x);
+
+    /**@brief OCCUPY: 0x0001 - 0xFFF9
+     * @pre x is a naturally occurring double
+     */
+    Any (double x);
+
+    /**@brief OCCUPY: 0x0000 */
+    Any (void* x);
+
+    /**@brief OCCUPY: 0xFFFA
+     * @pre x.length () <= 5
+     */
+    Any (std::string x);
 };
 
 // enum type?
-
-// PRECONDITION: 50-bits complement <=> Top 15 bits are all 0's or 1's
-// OCCUPY: 0xFFFC - 0xFFFF
-Any constructor(int64_t x);
-
-// PRECONDITION: Not NaN or Inf
-// OCCUPY: 0x0001 - 0x7FFF; 0x8001 - 0xFFF0
-Any constructor(double x);
-
-// PRECONDITION: Top 16 bits are 0
-Any constructor(void* x);
-
-// PRECONDITION: Length of string is at most 5
-Any constructor(std::string x);
 
 bool is_int(Any x);
 bool is_real(Any x);
@@ -113,3 +121,41 @@ std::string get_type(Any x);
 //    Symbol *type_symbol;  // symbol denoting class name
 //};
 
+
+//** --------- IMPLEMENTATION ---------------- */
+
+inline Any::Any(int64_t x) {
+#ifdef DEBUG
+    int64_t tmp = x & 0xFFFE000000000000;
+    if (tmp != 0 && tmp != 0xFFFE000000000000) {
+        throw std::runtime_error("Precondition failed: integer value corrupted:");
+    }
+#endif
+    integer = static_cast<uint64_t>(x) | INT_TAG;
+}
+
+inline Any::Any(int x) {
+    integer = static_cast<uint64_t>(x) | INT_TAG;
+}
+
+inline Any::Any(double x) {
+    real = x;
+#ifdef DEBUG
+    if ((integer & 0x7FF0000000000000) == DOUBLE_UP) {
+        throw std::runtime_error("Precondition failed: Nan or Inf value.");
+        return {};
+    }
+#endif
+    integer += BIAS;
+}
+
+inline Any::Any(void* x) {
+    // not result.integer = reinterpret_cast<uint64_t>(x);?
+    integer = *reinterpret_cast<uint64_t*>(&x);
+#ifdef DEBUG
+    if (integer & TAG_MASK) {
+        std::cerr << "Precondition failed: pointer corrupted" << std::endl;
+        return {};
+    }
+#endif
+}

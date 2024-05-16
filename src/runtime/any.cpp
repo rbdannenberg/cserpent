@@ -5,15 +5,10 @@
 #include <iostream>
 #include "any.h"
 
-uint64_t TAG_MASK     = 0xFFFF000000000000uLL;
-uint64_t BIAS         =    0x1000000000000uLL;
-uint64_t INT_TAG      = 0xFFFC000000000000uLL;
-uint64_t DOUBLE_MASK  = 0x7FFF000000000000uLL;
-uint64_t DOUBLE_UP    = 0x7FF0000000000000uLL;
-uint64_t DOUBLE_LW    = 0x0001000000000000uLL;
-uint64_t PTR_TAG      = 0x0000000000000000uLL;
-uint64_t SHORTSTR_TAG = 0xFFFA000000000000uLL;
-size_t num_chars = 5; // 8 bytes - 2 (tag) - 1 (nul terminator)
+constexpr uint64_t TAG_MASK     = 0xFFFF000000000000uLL;
+constexpr uint64_t PTR_TAG      = 0x0000000000000000uLL;
+constexpr uint64_t SHORTSTR_TAG = 0xFFFA000000000000uLL;
+constexpr size_t num_chars = 5; // 8 bytes - 2 (tag) - 1 (nul terminator)
 
 /*
 Hexadecimal to Binary Conversion Table:
@@ -28,46 +23,8 @@ Hex | Binary   | Hex | Binary   | Hex | Binary   | Hex | Binary
 
 // Note: integer promotion rules - int64_t & uint64_t, int64_t gets cast to uint64_t
 
-Any constructor(int64_t x) {
-    #ifdef DEBUG
-    int64_t tmp = x & 0xFFFE000000000000;
-    if (tmp != 0 && tmp != 0xFFFE000000000000) {
-        throw std::runtime_error("Precondition failed: integer value corrupted:");
-    }
-    #endif
-    Any result;
-    result.integer = x | INT_TAG;
-    return result;
-}
 
-Any constructor(double x) {
-    Any result;
-    result.real = x;
-    #ifdef DEBUG
-    if ((result.integer & 0x7FF0000000000000) == DOUBLE_UP) {
-        throw std::runtime_error("Precondition failed: Nan or Inf value.");
-        return {};
-    }
-    #endif
-    result.integer += BIAS;
-    return result;
-}
-
-Any constructor(void* x) {
-    Any result;
-    // not result.integer = reinterpret_cast<uint64_t>(x);?
-    // also shouldn't it be int64_t*
-    result.integer = *reinterpret_cast<uint64_t*>(&x);
-    #ifdef DEBUG
-    if (result.integer & TAG_MASK) {
-        std::cerr << "Precondition failed: pointer corrupted" << std::endl;
-        return {};
-    }
-    #endif
-    return result;
-}
-
-Any constructor(std::string x) {
+Any::Any(std::string x) {
     // 2 possible ways:
     // 1: get 8 bytes starting from x, discard the last 2 bytes, shift right and add tag
     // 2: insert tag bytes in front of string, get 8 bytes starting from front.
@@ -78,16 +35,13 @@ Any constructor(std::string x) {
         return {};
     }
 #endif
-    Any result;
     // reads 8 bytes
     uint64_t tmp = *((uint64_t *) (x.c_str()));
-    result.integer = (tmp >> 16) | SHORTSTR_TAG;
+    integer = (tmp >> 16) | SHORTSTR_TAG;
     // warning: this copies a lot of garbage after the nul terminator into the Any
-    return result;
 }
 
 bool is_int(Any x) {
-    // x.integer gets converted to uint64_t
     return (x.integer & INT_TAG) == INT_TAG;
 }
 
@@ -104,7 +58,7 @@ bool is_shortstr(Any x) {
 }
 
 int64_t to_int(Any x) {
-    return (x.integer << 14) >> 14;
+    return (static_cast<int64_t>(x.integer) << 14) >> 14;
 }
 
 double to_real(Any x) {
