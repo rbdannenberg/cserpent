@@ -29,32 +29,34 @@ return c
 #include <cstdint>
 #include <any.h>
 #include <data_structures/array.h>
+#include <op_overload.h>
 #include <builtin_functions/builtin_functions.h>
 #include <csmem.h>
 
+
 // a is a (Array *)
-Array matmul(Any a, Any b) {
+auto matmul(Any a, Any b) {
     int64_t n = len(a);
     int64_t m = len(b[0]);
     int64_t p = len(a[0]);
 
-    auto c = CSMALLOCT(Array); // initialize how??? overload new
-    // need to check if i is declared outside the loop
+    auto c = new Array {};
     for (int64_t i = 0; i < n; i++) {
         // list comprehension
-        Array ci = Array {};
+        auto ci = new Array {};
         for (int64_t z = 0; z < m; z++) {
-            ci.append(0.0);
+            ci->append(0.0);
         }
         for (int64_t k = 0; k < p; k++) {
             Any aik = a[i][k];
             Any bk = b[k];
             for (int64_t j = 0; j < m; j++) {
-                ci[j] = ci[j] + (aik * bk[j]);
-                c.append(ci);
+                (*ci)[j] = (*ci)[j] + (aik * bk[j]);
+                c->append(ci);
             }
         }
     }
     return c;
 }
+
 

@@ -58,6 +58,13 @@ class Sem():
         else:
             return "Any"
 
+    # converts a parsed serpent expression to a C++ expression
+    # probably recursive
+    def convert_expression(self, token_list):
+        if token_list[0] == "[" and token_list[-1] == "]":
+            return "new Array {}"
+        # the rest
+
     def declare_local(self, variable, type):
         line = type + " " + variable + ";\n"
         self.function_code_lines.append(line)
@@ -93,6 +100,22 @@ class Sem():
     def if_begin(self, boolean_expression):
         if self.current_scope == "function":
             line = "if (" + boolean_expression + ") {\n"
+            self.function_code_lines.append(line)
+            self.block_depth += 1
+        else:
+            raise Exception("Unimplemented")
+
+    def for_begin(self, variable, start, end, by="1"):
+        if self.current_scope == "function":
+            line = "for (int64_t " + variable + " = " + start + "; " + variable + " < " + end + "; " + variable + " += " + by + ") {\n"
+            self.function_code_lines.append(line)
+            self.block_depth += 1
+        else:
+            raise Exception("Unimplemented")
+
+    def for_each_begin(self, variable, iterable):
+        if self.current_scope == "function":
+            line = "for (auto " + variable + " : " + iterable + ") {\n"
             self.function_code_lines.append(line)
             self.block_depth += 1
         else:

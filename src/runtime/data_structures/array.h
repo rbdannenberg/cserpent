@@ -19,6 +19,8 @@ public:
     void append(double x);
 
     Any operator[](int64_t i);
+    void *operator new(size_t size);
+
 
     friend int64_t len(Array x);
 };

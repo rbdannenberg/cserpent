@@ -1,4 +1,5 @@
 #include "array.h"
+#include <csmem.h>
 
 Array::Array() : data {} {}
 
@@ -29,4 +30,5 @@ Any Array::operator[](int64_t i) {
 int64_t len(Array x) {
     return static_cast<int64_t>(x.data.size());
 }
+
 
