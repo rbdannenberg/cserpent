@@ -90,30 +90,25 @@ class Sem():
         self.function_code_lines = []
         self.function_variables = defaultdict(self.list_generator)
 
+    def if_begin(self, boolean_expression):
+        if self.current_scope == "function":
+            line = "if (" + boolean_expression + ") {\n"
+            self.function_code_lines.append(line)
+            self.block_depth += 1
+        else:
+            raise Exception("Unimplemented")
+
+    def block_end(self):
+        if self.current_scope == "function":
+            self.block_depth -= 1
+            self.function_code_lines.append("}\n")
+        else:
+            raise Exception("Unimplemented")
+
     def write_to_file(self, filename):
         with open(filename, "w") as file:
             file.write(self.file_code)
 
     def print_file(self):
         print(self.file_code)
-
-"""
-def add(int x):  // typespec ("int") is optional
-  int y = 6
-  var z = x + y
-  return z + 1.5
-"""
-
-def test():
-    sem = Sem()
-    sem.function_begin("add", [["int", "x"]])
-    sem.declare_and_assign_local("y", "int", "6")
-    sem.declare_and_assign_local("z", "Any", "x + y")
-    sem.return_statement("z + 1.5")
-    sem.function_end()
-    sem.print_file()
-
-if __name__ == "__main__":
-    test()
-
 

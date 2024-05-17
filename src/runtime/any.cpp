@@ -4,6 +4,8 @@
 #include <cstdio>
 #include <iostream>
 #include "any.h"
+#include "any_utils.h"
+#include <data_structures/array.h>
 
 constexpr uint64_t TAG_MASK     = 0xFFFF000000000000uLL;
 constexpr uint64_t PTR_TAG      = 0x0000000000000000uLL;
@@ -41,6 +43,7 @@ Any::Any(std::string x) {
     // warning: this copies a lot of garbage after the nul terminator into the Any
 }
 
+
 bool is_int(Any x) {
     return (x.integer & INT_TAG) == INT_TAG;
 }
@@ -66,8 +69,8 @@ double to_real(Any x) {
     return x.real;
 }
 
-void* to_ptr(Any x) {
-    return reinterpret_cast<void*>(x.integer);
+Basic_obj* to_ptr(Any x) {
+    return reinterpret_cast<Basic_obj*>(x.integer);
 }
 
 std::string to_shortstr(Any x) {
@@ -105,3 +108,24 @@ std::string get_type(Any x) {
     else return "unknown";
 }
 
+Any Any::operator[](int64_t i) {
+    if (is_ptr(*this)) {
+        Basic_obj *basic_ptr = to_ptr(*this);
+        if (basic_ptr->get_tag() == tag_array) {
+            // consider using dynamic_cast instead of static_cast
+            Array *array_ptr = static_cast<Array*>(basic_ptr);
+            return (*array_ptr)[i];
+        }
+    }
+    else if (is_shortstr(*this)) {
+        std::string str = to_shortstr(*this);
+        if (i < str.length()) {
+            // doesn't this defeat the purpose
+            // return a char?
+            return Any {str[i]};
+        }
+    }
+    else {
+        type_error(*this);
+    }
+}

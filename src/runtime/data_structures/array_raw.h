@@ -1,4 +1,6 @@
 // array.h -- interface for Array class
+#include <cstdint>
+#include <any.h>
 
 
 // Array_data contains the actual array elements. Arrays point to their
@@ -12,7 +14,7 @@ class Array_data : public Basic_obj {
 
 class Array : public Obj {
   public:
-    int64 len;    // array length
+    int64_t len;    // array length
     Array_data *data;
 
     // allocate an array and data:
@@ -36,3 +38,4 @@ class Array : public Obj {
     Any unappend();  // pop the last element
     Any uninsert(int64_t from, int64_t to);  // remove range
 };
+
