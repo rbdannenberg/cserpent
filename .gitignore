@@ -37,3 +37,5 @@
 # Mypyc files used for comparison
 benchmarks/mypyc-benchmarks
 
+
+/rbd-notes.txt
