@@ -22,6 +22,20 @@ extern Anyu anyu_temp;
 // kind of literal union constructor if you are declaring x:
 // #define INT2ANYU(a) { (int64_t) ((a) | INT_TAG) }
 
+// But in this version, we create a constructor for Anyu2 that can do the
+// work without a global anyu_temp:
+union Anyu2 {
+    int64_t si;
+    uint64_t ui;
+    double d;
+    Anyu2(int64_t a) : si(a | INT_TAG) { }
+};
+
+#define ANYU2_IS_INT(a) (((a).ui & INT_TAG) == INT_TAG)
+#define ANYU2_AS_INT(a) (((a).si << 14) >> 14)
+#define INT2ANYU2(a) Anyu2(a)
+
 int64_t addone_baseline(int64_t a);
 Any addone_uint(Any a);
 Anyu addone_union(Anyu a);
+Anyu2 addone_union2(Anyu2 a);

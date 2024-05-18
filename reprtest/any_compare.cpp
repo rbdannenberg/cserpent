@@ -73,4 +73,21 @@ int main()
     printf("Final value: %lld\n", ANYU_AS_INT(au));
     printf("Runtime with union: %g msec\n", usec / 1000.0);
 
+    // warmup
+    Anyu2 au1 = INT2ANYU2(0);
+    for (int64_t i = 0; i < 1000000; i++) {
+        au1 = addone_union2(au1);
+    }
+
+    clock_gettime(CLOCK_MONOTONIC_RAW, &t1);
+    Anyu2 au2 = INT2ANYU2(0);
+    for (int64_t i = 0; i < ITERATIONS; i++) {
+        au2 = addone_union2(au2);
+    }
+    clock_gettime(CLOCK_MONOTONIC_RAW, &t2);
+    usec = ((uint64_t) t2.tv_sec - (uint64_t) t1.tv_sec)* 1000000 +
+            ((uint64_t) t2.tv_nsec) * 0.001 - ((uint64_t) t1.tv_nsec) * 0.001;
+    printf("Final value: %lld\n", ANYU_AS_INT(au2));
+    printf("Runtime with union2: %g msec\n", usec / 1000.0);
+
 }

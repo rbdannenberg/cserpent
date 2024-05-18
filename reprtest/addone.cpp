@@ -29,3 +29,12 @@ Anyu addone_union(Anyu a)
         exit(1);
     }
 }
+
+Anyu2 addone_union2(Anyu2 a)
+{
+    if (ANYU2_IS_INT(a)) {
+        return INT2ANYU2(ANYU2_AS_INT(a) + 1);
+    } else {
+        exit(1);
+    }
+}
