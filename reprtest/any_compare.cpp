@@ -25,9 +25,15 @@ typedef union { int64_t si; uint64_t ui; double d; } Anyu;
 Anyu anyu_temp;
 #define ANYU_IS_INT(a) (((a).ui & INT_TAG) == INT_TAG)
 #define ANYU_AS_INT(a) (((a).si << 14) >> 14)
-#define INT2ANYU(a) (anyu_temp.si = (int64_t) ((a) | INT_TAG), anyu_temp)
+// This was my first try:
+//#define INT2ANYU(a) (anyu_temp.si = (int64_t) ((a) | INT_TAG), anyu_temp)
+
 // This would be better if we could treat integer a as an Anyu:
 // #define INT2ANYU(a) ((Anyu) ((a) | INT_TAG))
+
+// Final implementation uses inline constructor for union (a little faster):
+#define INT2ANYU(a) { (int64_t) ((a) | INT_TAG) }
+
 
 int64_t addone_baseline(int64_t a)
 {
