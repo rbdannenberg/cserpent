@@ -9,62 +9,28 @@
 #include <stdint.h>
 #define _POSIX_C_SOURCE 199309L
 #include <time.h>
+#include "any_compare.h"
+
+#define ITERATIONS 10000000000
 
 #ifndef CLOCK_MONOTONIC_RAW
 #define CLOCK_MONOTONIC_RAW CLOCK_MONOTONIC
 #endif
 
-typedef uint64_t Any;
-
-#define INT_TAG 0xFFFC000000000000uLL
-#define ANY_IS_INT(a) (((uint64_t) (a) & INT_TAG) == INT_TAG)
-#define ANY_AS_INT(a) ((int64_t) (((a) << 14) >> 14))
-#define INT2ANY(a) ((a) | INT_TAG)
-
-typedef union { int64_t si; uint64_t ui; double d; } Anyu;
-Anyu anyu_temp;
-#define ANYU_IS_INT(a) (((a).ui & INT_TAG) == INT_TAG)
-#define ANYU_AS_INT(a) (((a).si << 14) >> 14)
-// This was my first try:
-//#define INT2ANYU(a) (anyu_temp.si = (int64_t) ((a) | INT_TAG), anyu_temp)
-
-// This would be better if we could treat integer a as an Anyu:
-// #define INT2ANYU(a) ((Anyu) ((a) | INT_TAG))
-
-// Final implementation uses inline constructor for union (a little faster):
-#define INT2ANYU(a) { (int64_t) ((a) | INT_TAG) }
-
-
-int64_t addone_baseline(int64_t a)
-{
-    return a + 1;
-}
-
-Any addone_uint(Any a)
-{
-    if (ANY_IS_INT(a)) {
-        return INT2ANY(ANY_AS_INT(a) + 1);
-    } else {
-        exit(1);
-    }
-}
-
-Anyu addone_union(Anyu a)
-{
-    if (ANYU_IS_INT(a)) {
-        return INT2ANYU(ANYU_AS_INT(a) + 1);
-    } else {
-        exit(1);
-    }
-}
 
 int main()
 {
     struct timespec t1, t2;
 
-    clock_gettime(CLOCK_MONOTONIC_RAW, &t1);
+    // warmup
     int64_t ab = 0;
-    for (int64_t i = 0; i < 1000000000; i++) {
+    for (int64_t i = 0; i < 1000000; i++) {
+        ab = addone_baseline(ab);
+    }
+
+    clock_gettime(CLOCK_MONOTONIC_RAW, &t1);
+    ab = 0;
+    for (int64_t i = 0; i < ITERATIONS; i++) {
         ab = addone_baseline(ab);
     }
     clock_gettime(CLOCK_MONOTONIC_RAW, &t2);
@@ -73,9 +39,15 @@ int main()
     printf("Final value: %lld\n", ANY_AS_INT(ab));
     printf("Runtime baseline: %g msec\n", usec / 1000.0);
 
-    clock_gettime(CLOCK_MONOTONIC_RAW, &t1);
+    // warmup
     Any ai = INT2ANY(0);
-    for (int64_t i = 0; i < 1000000000; i++) {
+    for (int64_t i = 0; i < 1000000; i++) {
+        ai = addone_uint(ai);
+    }
+
+    clock_gettime(CLOCK_MONOTONIC_RAW, &t1);
+    ai = INT2ANY(0);
+    for (int64_t i = 0; i < ITERATIONS; i++) {
         ai = addone_uint(ai);
     }
     clock_gettime(CLOCK_MONOTONIC_RAW, &t2);
@@ -84,9 +56,15 @@ int main()
     printf("Final value: %lld\n", ANY_AS_INT(ai));
     printf("Runtime with uint64: %g msec\n", usec / 1000.0);
     
+    // warmup
+    Anyu au0 = INT2ANYU(0);
+    for (int64_t i = 0; i < 1000000; i++) {
+        au0 = addone_union(au0);
+    }
+
     clock_gettime(CLOCK_MONOTONIC_RAW, &t1);
     Anyu au = INT2ANYU(0);
-    for (int64_t i = 0; i < 1000000000; i++) {
+    for (int64_t i = 0; i < ITERATIONS; i++) {
         au = addone_union(au);
     }
     clock_gettime(CLOCK_MONOTONIC_RAW, &t2);
