@@ -36,17 +36,15 @@ return c
 
 // a is a (Array *)
 Any matmul(Any a, Any b) {
-    int64_t n = len(a);
-    int64_t m = len(b[0]);
-    int64_t p = len(a[0]);
+    Any n = len(a);
+    Any m = len(b[0]);
+    Any p = len(a[0]);
 
     Any c = Array {};
     for (int64_t i = 0; i < n; i++) {
         // list comprehension
-        Any ci = Array {};
-        for (int64_t z = 0; z < m; z++) {
-            ci.append(0.0);
-        }
+        Any ci = Array {.value = 0.0, .start = 0, .end = m};
+
         for (int64_t k = 0; k < p; k++) {
             Any aik = a[i][k];
             Any bk = b[k];
