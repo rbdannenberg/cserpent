@@ -1,22 +1,22 @@
 """
-auto matmul(Any a, Any b) {
+Any matmul(Any a, Any b) {
     int64_t n = len(a);
     int64_t m = len(b[0]);
     int64_t p = len(a[0]);
 
-    auto c = new Array {};
+    Any c = Array {};
     for (int64_t i = 0; i < n; i++) {
         // list comprehension
-        auto ci = new Array {};
+        Any ci = Array {};
         for (int64_t z = 0; z < m; z++) {
-            ci->append(0.0);
+            ci.append(0.0);
         }
         for (int64_t k = 0; k < p; k++) {
             Any aik = a[i][k];
             Any bk = b[k];
             for (int64_t j = 0; j < m; j++) {
-                (*ci)[j] = (*ci)[j] + (aik * bk[j]);
-                c->append(ci);
+                ci[j] = ci[j] + (aik * bk[j]);
+                c.append(ci);
             }
         }
     }
@@ -41,8 +41,6 @@ def matmul(a, b):
                     c.append(ci)
 
 """
-
-
 
 from semantic_routines import Sem
 

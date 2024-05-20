@@ -46,6 +46,7 @@ public:
     //Obj *get_next();
     //void set_next(Obj *ptr);
 };
+class Array;
 
 union Any {
     uint64_t integer;
@@ -69,8 +70,15 @@ public:
      * @pre x.length () <= 5
      */
     Any (std::string x);
+    // when initializing an array from its constructor
+    // I'm not sure if we should use Array x instead of Array&& x
+    Any (Array&& x);
 
     Any operator[] (int64_t i);
+
+    void append(Any x);
+    void append(int64_t x);
+    void append(double x);
 };
 
 // enum type?
@@ -157,7 +165,7 @@ inline Any::Any(double x) {
 }
 
 inline Any::Any(void* x) {
-    // not result.integer = reinterpret_cast<uint64_t>(x);?
+    // not integer = reinterpret_cast<uint64_t>(x);?
     integer = *reinterpret_cast<uint64_t*>(&x);
 #ifdef DEBUG
     if (integer & TAG_MASK) {

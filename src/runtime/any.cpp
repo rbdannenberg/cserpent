@@ -43,6 +43,10 @@ Any::Any(std::string x) {
     // warning: this copies a lot of garbage after the nul terminator into the Any
 }
 
+Any::Any(Array&& x) {
+    integer = reinterpret_cast<uint64_t>(x.ptr);
+}
+
 
 bool is_int(Any x) {
     return (x.integer & INT_TAG) == INT_TAG;
@@ -110,11 +114,11 @@ std::string get_type(Any x) {
 
 Any Any::operator[](int64_t i) {
     if (is_ptr(*this)) {
-        Basic_obj *basic_ptr = to_ptr(*this);
+        Basic_obj *basic_ptr= to_ptr(*this);
         if (basic_ptr->get_tag() == tag_array) {
             // consider using dynamic_cast instead of static_cast
-            Array *array_ptr = static_cast<Array*>(basic_ptr);
-            return (*array_ptr)[i];
+            Array arr {static_cast<Array_heap*>(basic_ptr)};
+            return arr[i];
         }
     }
     else if (is_shortstr(*this)) {
@@ -128,4 +132,25 @@ Any Any::operator[](int64_t i) {
     else {
         type_error(*this);
     }
+}
+
+void Any::append(Any x) {
+    if (is_ptr(*this)) {
+        Basic_obj *basic_ptr = to_ptr(*this);
+        if (basic_ptr->get_tag() == tag_array) {
+            Array arr {static_cast<Array_heap*>(basic_ptr)};
+            arr.append(x);
+        }
+    }
+    else {
+        type_error(*this);
+    }
+}
+
+void Any::append(int64_t x) {
+    append(Any {x});
+}
+
+void Any::append(double x) {
+    append(Any {x});
 }
