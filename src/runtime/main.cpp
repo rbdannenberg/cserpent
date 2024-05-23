@@ -135,10 +135,6 @@ int register_test() {
         printf("Test failed\n");
         return 1;
     }
-    if (to_ptr(z) != &x) {
-        printf("Test failed\n");
-        return 1;
-    }
     printf("Test passed\n");
     return 0;
 

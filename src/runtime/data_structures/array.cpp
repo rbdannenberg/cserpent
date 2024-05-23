@@ -13,6 +13,8 @@ Tag Array_heap::get_tag() {
 
 Array::Array() : ptr {new Array_heap {}} {}
 
+Array::Array(Array_heap *hptr) : ptr {hptr} {}
+
 Array::Array(std::initializer_list<Any> l) : ptr {new Array_heap {l}} {}
 
 Array::Array(int64_t size, Any value) : ptr {new Array_heap {size, value}} {}

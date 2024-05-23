@@ -87,3 +87,27 @@ Any operator* (int lhs, Any rhs) {
 Any operator* (double lhs, Any rhs) {
     return rhs * lhs;
 }
+
+// < operator
+bool operator< (int64_t lhs, Any rhs) {
+    if (is_int(rhs)) {
+        return lhs < to_int(rhs);
+    }
+    else if (is_real(rhs)) {
+        return static_cast<double>(lhs) < to_real(rhs);
+    }
+    else type_error(rhs);
+}
+
+double operator/ (double lhs, Any rhs) {
+    return lhs / force_real(rhs);
+}
+
+double operator/ (int64_t lhs, Any rhs) {
+    return static_cast<double>(lhs) / force_real(rhs);
+}
+
+double operator/ (Any lhs, Any rhs) {
+    return force_real(lhs) / force_real(rhs);
+}
+

@@ -2,8 +2,10 @@
 #include <any.h>
 #include <vector>
 
+class Array;
 
 class Array_heap : public Basic_obj {
+    friend class Array;
 private:
     std::vector<Any> data;
     /**@brief empty list [] */
@@ -21,8 +23,10 @@ class Array {
 public:
     Array_heap *ptr;
     Array();
+    explicit Array(Array_heap *hptr); // make this private?
     Array(std::initializer_list<Any> l);
     Array(int64_t size, Any value);
+    //Array( value_lambda, )
 
     void append(Any x);
     void append(int64_t x);

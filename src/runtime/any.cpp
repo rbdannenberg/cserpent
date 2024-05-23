@@ -82,6 +82,10 @@ std::string to_shortstr(Any x) {
     return std::string {&((char *) &(x.integer))[2]};
 }
 
+Array to_array(Any x) {
+    return Array {reinterpret_cast<Array_heap*>(x.integer)};
+}
+
 // check is like assert except it always executes, even in optimized code
 // since the expression could be int, bool, or a test for non-null pointer,
 // we use a macro:
@@ -132,6 +136,10 @@ Any Any::operator[](int64_t i) {
     else {
         type_error(*this);
     }
+}
+
+Any::operator int64_t() {
+    return as_int(*this);
 }
 
 void Any::append(Any x) {

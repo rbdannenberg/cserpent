@@ -6,7 +6,7 @@ def matmul(a, b):
         var c = []
         
         for i = 0 to n
-            var ci = [0.0 for z = 0 to m]
+            var ci = array(m, 0.0)
             for k = 0 to p
                 var aik = a[i][k]
                 var bk = b[k]
@@ -25,19 +25,23 @@ def main(n):
         var d = matmul(a, b)
 
 
-        #print(d[idiv(n, 2)][idiv(n, 2)])
+        print(d[idiv(n, 2)][idiv(n, 2)])
 
 
 # Input size: 10, 50, and 100 
-for i = 0 to 500:
-    start_time = time_get()
+# for i = 0 to 500:
+    # start_time = time_get()
 
-    main(100)
+    # main(100)
 
     #for iter = 0 to 100:
     #	main(10)
-    
-    end_time = time_get()
-    execution_time = end_time - start_time
 
-    print(str(execution_time*1000))
+    # end_time = time_get()
+    # execution_time = end_time - start_time
+
+    # print(str(execution_time*1000))
+
+main(10)
+main(50)
+main(100)

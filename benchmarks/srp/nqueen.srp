@@ -52,12 +52,12 @@ def main(arg):
 # BENCHMARKING:
 
 print("starting")
-start_time = time_get()
-main(15)    
-end_time = time_get()
+# start_time = time_get()
+main(5)
+# end_time = time_get()
 
-execution_time = end_time - start_time
+# execution_time = end_time - start_time
 
-print(execution_time)
+# print(execution_time)
 
 

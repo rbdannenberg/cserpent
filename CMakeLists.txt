@@ -13,10 +13,9 @@ add_executable(cserpent
         src/runtime/any_utils.h
         src/runtime/data_structures/array_raw.h
         src/runtime/csmem.h
-        src/runtime/main.cpp
         src/runtime/op_overload.cpp
         src/runtime/data_structures/string.h)
-add_executable(runtime
+add_library(runtime STATIC
         src/runtime/any.cpp
         src/runtime/any.h
         src/runtime/any_utils.cpp
@@ -36,3 +35,4 @@ add_executable(runtime_tests
         benchmarks/srp/matrix_mult.cpp)
 add_dependencies(runtime_tests runtime)
 target_include_directories(runtime_tests PUBLIC src/runtime)
+target_link_libraries(runtime_tests runtime)

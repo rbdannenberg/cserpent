@@ -27,19 +27,26 @@ class Sem():
     # Returns the expression with the numbers to C++ format
     # def substitute_numbers(self, expression):
 
-    def function_begin(self, name, parameters):
-        self.current_scope = "function"
-        if self.function_code_lines:
-            raise Exception("Function not ended")
-        self.function_code_lines.append("void ")
-        line = " " + name + "("
-        for parameter in parameters:
-            line += parameter[0] + " " + parameter[1] + ","
-            self.function_variables[parameter[1]][self.block_depth] = parameter[0]
-        line = line[:-1] + ") {\n"
+    def add_line(self, line):
+        line = "    " * self.block_depth + line
+        if self.current_scope == "function":
+            line = "    " + line
         self.function_code_lines.append(line)
 
+    def function_begin(self, name, parameters):
+        if self.function_code_lines:
+            raise Exception("Function not ended")
+        self.add_line("void ")
+        line = name + "("
+        for parameter in parameters:
+            line += parameter[0] + " " + parameter[1] + ", "
+            self.function_variables[parameter[1]][self.block_depth] = parameter[0]
+        line = line[:-2] + ") {\n"
+        self.add_line(line)
+        self.current_scope = "function"
+
     # this will be recursive
+    # currently type inference does nothing
     def infer_type(self, expression):
         # if expression is a literal, return its type
         if expression.isdigit():
@@ -61,42 +68,46 @@ class Sem():
 
     def declare_local(self, variable, type):
         line = type + " " + variable + ";\n"
-        self.function_code_lines.append(line)
+        self.add_line(line)
         self.function_variables[variable][self.block_depth] = type
 
     # precondition: expression is a valid C++ expression
-    def assign_local(self, variable, expression):
+    # optionally declares the type of the variable
+    def assign_local(self, variable, expression, type=""):
         if variable == "":
-            self.function_code_lines.append(expression + ";\n")
+            self.add_line(expression + ";\n")
         else:
-            if "." in variable:
-                variable_check = variable.split(".")[0]
-            elif "[" in variable:
-                variable_check = variable.split("[")[0]
+            if type != "":
+                line = type + " " + variable + " = " + expression + ";\n"
+                self.add_line(line)
+                self.function_variables[variable][self.block_depth] = type
             else:
-                variable_check = variable
-            if variable_check not in self.function_variables:
-                raise Exception("Variable " + variable + " not declared")
-            type = self.infer_type(expression)
-            line = variable + " = " + expression + ";\n"
-            self.function_code_lines.append(line)
-            self.function_variables[variable][self.block_depth] = type
+                if "." in variable:
+                    variable_check = variable.split(".")[0]
+                elif "[" in variable:
+                    variable_check = variable.split("[")[0]
+                else:
+                    variable_check = variable
+                if variable_check not in self.function_variables:
+                    raise Exception("Variable " + variable + " not declared")
+                line = variable + " = " + expression + ";\n"
+                self.add_line(line)
 
-    def declare_and_assign_local(self, variable, type, expression):
-        # if type == "Any":
-        #     type = self.infer_type(expression)
-        self.function_code_lines.append(type + " ")
-        self.function_variables[variable][self.block_depth] = type
-        self.assign_local(variable, expression)
+    # def declare_and_assign_local(self, variable, type, expression):
+    #     # if type == "Any":
+    #     #     type = self.infer_type(expression)
+    #     self.add_line(type + " ")
+    #     self.function_variables[variable][self.block_depth] = type
+    #     self.assign_local(variable, expression)
 
     def return_statement(self, expression):
         line = "return " + expression + ";\n"
-        self.function_code_lines.append(line)
-        self.function_code_lines[0] = self.infer_type(expression)
+        self.add_line(line)
+        self.function_code_lines[0] = "Any "
 
     def function_end(self):
         self.current_scope = "global"
-        self.function_code_lines.append("}\n")
+        self.add_line("}\n")
         self.file_code += "".join(self.function_code_lines)
         self.function_code_lines = []
         self.function_variables = defaultdict(self.list_generator)
@@ -104,7 +115,7 @@ class Sem():
     def if_begin(self, boolean_expression):
         if self.current_scope == "function":
             line = "if (" + boolean_expression + ") {\n"
-            self.function_code_lines.append(line)
+            self.add_line(line)
             self.block_depth += 1
         else:
             raise Exception("Unimplemented")
@@ -112,7 +123,7 @@ class Sem():
     def for_begin(self, variable, start, end, by="1"):
         if self.current_scope == "function":
             line = "for (int64_t " + variable + " = " + start + "; " + variable + " < " + end + "; " + variable + " += " + by + ") {\n"
-            self.function_code_lines.append(line)
+            self.add_line(line)
             self.block_depth += 1
         else:
             raise Exception("Unimplemented")
@@ -120,7 +131,7 @@ class Sem():
     def for_each_begin(self, variable, iterable):
         if self.current_scope == "function":
             line = "for (auto " + variable + " : " + iterable + ") {\n"
-            self.function_code_lines.append(line)
+            self.add_line(line)
             self.block_depth += 1
         else:
             raise Exception("Unimplemented")
@@ -128,7 +139,7 @@ class Sem():
     def block_end(self):
         if self.current_scope == "function":
             self.block_depth -= 1
-            self.function_code_lines.append("}\n")
+            self.add_line("}\n")
         else:
             raise Exception("Unimplemented")
 

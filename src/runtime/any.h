@@ -34,7 +34,7 @@ public:
      */
     uint64_t header;  // contains type info, GC color, size
 
-    Tag get_tag();
+    Tag get_tag() {return tag_array;}; // replace after implementation
     void set_tag(Tag t);
     bool has_tag(int tag);
 
@@ -75,6 +75,7 @@ public:
     Any (Array&& x);
 
     Any operator[] (int64_t i);
+    operator int64_t();
 
     void append(Any x);
     void append(int64_t x);
@@ -95,6 +96,7 @@ int64_t to_int(Any x);
 double to_real(Any x);
 Basic_obj *to_ptr(Any x);
 std::string to_shortstr(Any x);
+Array to_array(Any x);
 
 // as_* functions are used in compiled code to ensure that the type
 // matches the expected type. as_* calls are generated from source
