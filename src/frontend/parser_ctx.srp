@@ -1,0 +1,101 @@
+require "utils"
+
+
+class Span:
+
+    // Source of the program (string).
+    var file
+
+    // Line and column of a token/event position.
+    // Format: [line, col]
+    var start
+    var end
+
+    def init(file, start, end):
+        this.line = line
+        this.col = col
+
+    def join(other):
+        new_start = nil
+        new_end = nil
+
+        if list_cmp(this.start, other.start) <= 0:
+            new_start = this.start
+        else:
+            new_start = other.start
+
+        if list_cmp(this.end, other.end) <= 0:
+            new_end = other.end
+        else:
+            new_end = this.end
+
+        return Span(file, new_start, new_end)
+
+
+class Error:
+
+    var span
+    var msg
+
+    def init(span, msg):
+        this.span = span
+        this.msg = msg
+
+
+// Mutable context object passed along when `Parser` is ran on an input.
+class ParseContext:
+
+    // Name of the source of the input code (string).
+    var file
+    // Input code to be parsed.
+    var input
+    // Length of the input.
+    var length
+    // Contextual information: current position within the input.
+    var line
+    var col
+    // 1-D position of the context, i.e., the current character pointer.
+    var pos
+    // Error message
+    var err
+
+    // A heterogenous list of partial result values (used for return type)
+    var cache
+
+    def init(input, file):
+        this.line = 0
+        this.col = 0
+        this.pos = 0
+        this.input = input
+        this.file = file
+        this.length = len(input)
+
+    def at_eof():
+        return this.pos >= this.length
+
+    def peek(optional n = 1):
+        return subseq(this.input, 0, n)
+    
+    def skip(optional n = 1):
+        s = this.peek(n)
+        for i = 0 to n:
+            this.pos = this.pos + 1
+            if s[i] == "\n":
+                this.line = this.line + 1
+                this.col = 0
+            else:
+                this.col = this.col + 1
+        return s
+
+    // Saves a copy of all the file-position sensitive information of this
+    // context. Used for backtracing during parse.
+    def save():
+        return [this.line, this.col, this.pos]
+
+    def restore(backup):
+        this.line = backup[0]
+        this.col = backup[1]
+        this.pos = backup[2]
+
+    def err():
+        return this.err != nil
