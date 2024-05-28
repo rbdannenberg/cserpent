@@ -83,7 +83,7 @@ std::string to_shortstr(Any x) {
 }
 
 Array to_array(Any x) {
-    return Array {reinterpret_cast<Array_heap*>(x.integer)};
+    return Array (reinterpret_cast<Array_heap*>(x.integer));
 }
 
 // check is like assert except it always executes, even in optimized code
@@ -146,7 +146,7 @@ void Any::append(Any x) {
     if (is_ptr(*this)) {
         Basic_obj *basic_ptr = to_ptr(*this);
         if (basic_ptr->get_tag() == tag_array) {
-            Array arr {static_cast<Array_heap*>(basic_ptr)};
+            Array arr (static_cast<Array_heap*>(basic_ptr));
             arr.append(x);
         }
     }
