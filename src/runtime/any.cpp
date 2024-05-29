@@ -116,13 +116,36 @@ std::string get_type(Any x) {
     else return "unknown";
 }
 
-Any Any::operator[](int64_t i) {
+Any& Any::operator[](int64_t i) {
     if (is_ptr(*this)) {
         Basic_obj *basic_ptr= to_ptr(*this);
         if (basic_ptr->get_tag() == tag_array) {
             // consider using dynamic_cast instead of static_cast
-            Array arr {static_cast<Array_heap*>(basic_ptr)};
-            return arr[i];
+            return (static_cast<Array_heap*>(basic_ptr))->data.at(i);
+//            Array arr (static_cast<Array_heap*>(basic_ptr));
+//            return arr[i];
+        }
+    }
+//    else if (is_shortstr(*this)) {
+//        std::string str = to_shortstr(*this);
+//        if (i < str.length()) {
+//            // doesn't this defeat the purpose
+//            // return a char?
+//            return Any {str[i]};
+//        }
+//    }
+// Note: This is because strings should be immutable
+    else {
+        type_error(*this);
+    }
+}
+
+const Any& Any::operator[](int64_t i) const {
+    if (is_ptr(*this)) {
+        Basic_obj *basic_ptr= to_ptr(*this);
+        if (basic_ptr->get_tag() == tag_array) {
+            // consider using dynamic_cast instead of static_cast
+            return (static_cast<Array_heap*>(basic_ptr))->data.at(i);
         }
     }
     else if (is_shortstr(*this)) {
@@ -137,6 +160,7 @@ Any Any::operator[](int64_t i) {
         type_error(*this);
     }
 }
+
 
 Any::operator int64_t() {
     return as_int(*this);

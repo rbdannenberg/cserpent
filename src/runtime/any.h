@@ -74,7 +74,8 @@ public:
     // I'm not sure if we should use Array x instead of Array&& x
     Any (Array&& x);
 
-    Any operator[] (int64_t i);
+    Any& operator[] (int64_t i);
+    const Any& operator[] (int64_t i) const;
     operator int64_t();
 
     void append(Any x);

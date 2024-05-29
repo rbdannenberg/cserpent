@@ -11,7 +11,7 @@ def matmul(a, b):
 
             for j in range(m):
                 ci[j] += aik * bk[j]
-                c.append(ci)
+        c.append(ci)
 
     return c
 

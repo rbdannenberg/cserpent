@@ -42,9 +42,9 @@ Any matmul(Any a, Any b) {
             Any bk = b[k];
             for (int64_t j = 0; j < m; j++) {
                 ci[j] = ci[j] + (aik * bk[j]);
-                c.append(ci);
             }
         }
+        c.append(ci);
     }
     return c;
 }
@@ -64,7 +64,7 @@ void test(Any n) {
         b.append(_tmp_b);
     }
     Any d = matmul(a, b);
-    std::cout << d[static_cast<int64_t>(n) / 2][static_cast<int64_t>(n) / 2] << std::endl;
+    std::cout << to_real(d[static_cast<int64_t>(n) / 2][static_cast<int64_t>(n) / 2]) << std::endl;
 }
 
 int main() {

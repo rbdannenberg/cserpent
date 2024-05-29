@@ -7,7 +7,6 @@ class Array;
 class Array_heap : public Basic_obj {
     friend class Array;
 private:
-    std::vector<Any> data;
     /**@brief empty list [] */
     Array_heap();
     Array_heap(std::initializer_list<Any> l);
@@ -17,6 +16,7 @@ public:
 
     friend int64_t len(Array x);
 
+    std::vector<Any> data;
 };
 
 class Array {

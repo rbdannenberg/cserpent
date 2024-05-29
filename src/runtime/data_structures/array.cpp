@@ -17,7 +17,7 @@ Array::Array(Array_heap *hptr) : ptr {hptr} {}
 
 Array::Array(std::initializer_list<Any> l) : ptr {new Array_heap {l}} {}
 
-Array::Array(int64_t size, Any value) : ptr {new Array_heap {size, value}} {}
+Array::Array(int64_t size, Any value) : ptr {new Array_heap (size, value)} {}
 
 void Array::append(Any x) {
     ptr->data.push_back(x);
@@ -32,7 +32,7 @@ void Array::append(double x) {
 }
 
 Any Array::operator[](int64_t i) {
-    return ptr->data[i];
+    return ptr->data.at(i);
 }
 
 int64_t len(Array x) {
