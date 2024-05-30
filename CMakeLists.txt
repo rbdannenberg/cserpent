@@ -32,7 +32,11 @@ add_library(runtime STATIC
         src/runtime/csmem.cpp)
 target_include_directories(runtime PUBLIC src/runtime)
 add_executable(runtime_tests
-        benchmarks/srp/matrix_mult.cpp)
+        benchmarks/C++/matrix_mult.cpp
+        benchmarks/C++/nqueen.cpp
+        benchmarks/C++/main_benchmark.cpp
+)
+        # benchmarks/srp/nqueen.cpp
 add_dependencies(runtime_tests runtime)
 target_include_directories(runtime_tests PUBLIC src/runtime)
 target_link_libraries(runtime_tests runtime)

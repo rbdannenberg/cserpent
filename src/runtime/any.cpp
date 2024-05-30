@@ -47,6 +47,50 @@ Any::Any(Array&& x) {
     integer = reinterpret_cast<uint64_t>(x.ptr);
 }
 
+Any& Any::operator=(int64_t x) {
+#ifdef DEBUG
+    int64_t tmp = x & 0xFFFE000000000000;
+    if (tmp != 0 && tmp != 0xFFFE000000000000) {
+        throw std::runtime_error("Precondition failed: integer value corrupted:");
+    }
+#endif
+    integer = static_cast<uint64_t>(x) | INT_TAG;
+    return *this;
+}
+
+Any& Any::operator=(int x) {
+    integer = static_cast<uint64_t>(x) | INT_TAG;
+    return *this;
+}
+
+Any& Any::operator=(double x) {
+    real = x;
+#ifdef DEBUG
+    if ((integer & 0x7FF0000000000000) == DOUBLE_UP) {
+        throw std::runtime_error("Precondition failed: Nan or Inf value.");
+        return {};
+    }
+#endif
+    integer += BIAS;
+    return *this;
+}
+
+Any& Any::operator=(void* x) {
+    // not integer = reinterpret_cast<uint64_t>(x);?
+    integer = *reinterpret_cast<uint64_t*>(&x);
+#ifdef DEBUG
+    if (integer & TAG_MASK) {
+        std::cerr << "Precondition failed: pointer corrupted" << std::endl;
+        return {};
+    }
+#endif
+    return *this;
+}
+
+Any& Any::operator=(Array&& x) {
+    integer = reinterpret_cast<uint64_t>(x.ptr);
+    return *this;
+}
 
 bool is_int(Any x) {
     return (x.integer & INT_TAG) == INT_TAG;
@@ -116,50 +160,6 @@ std::string get_type(Any x) {
     else return "unknown";
 }
 
-Any& Any::operator[](int64_t i) {
-    if (is_ptr(*this)) {
-        Basic_obj *basic_ptr= to_ptr(*this);
-        if (basic_ptr->get_tag() == tag_array) {
-            // consider using dynamic_cast instead of static_cast
-            return (static_cast<Array_heap*>(basic_ptr))->data.at(i);
-//            Array arr (static_cast<Array_heap*>(basic_ptr));
-//            return arr[i];
-        }
-    }
-//    else if (is_shortstr(*this)) {
-//        std::string str = to_shortstr(*this);
-//        if (i < str.length()) {
-//            // doesn't this defeat the purpose
-//            // return a char?
-//            return Any {str[i]};
-//        }
-//    }
-// Note: This is because strings should be immutable
-    else {
-        type_error(*this);
-    }
-}
-
-const Any& Any::operator[](int64_t i) const {
-    if (is_ptr(*this)) {
-        Basic_obj *basic_ptr= to_ptr(*this);
-        if (basic_ptr->get_tag() == tag_array) {
-            // consider using dynamic_cast instead of static_cast
-            return (static_cast<Array_heap*>(basic_ptr))->data.at(i);
-        }
-    }
-    else if (is_shortstr(*this)) {
-        std::string str = to_shortstr(*this);
-        if (i < str.length()) {
-            // doesn't this defeat the purpose
-            // return a char?
-            return Any {str[i]};
-        }
-    }
-    else {
-        type_error(*this);
-    }
-}
 
 
 Any::operator int64_t() {

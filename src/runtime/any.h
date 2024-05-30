@@ -74,9 +74,19 @@ public:
     // I'm not sure if we should use Array x instead of Array&& x
     Any (Array&& x);
 
+    Any& operator=(int64_t x);
+    Any& operator=(int x);
+    Any& operator=(double x);
+    Any& operator=(void* x);
+    Any& operator=(std::string& x);
+    Any& operator=(Array&& x);
+
+    operator int64_t();
+
     Any& operator[] (int64_t i);
     const Any& operator[] (int64_t i) const;
-    operator int64_t();
+
+
 
     void append(Any x);
     void append(int64_t x);

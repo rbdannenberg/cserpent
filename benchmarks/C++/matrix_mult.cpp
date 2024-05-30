@@ -21,10 +21,10 @@ return c
  */
 
 #include <cstdint>
-#include <any.h>
-#include <data_structures/array.h>
-#include <op_overload.h>
-#include <builtin_functions/builtin_functions.h>
+#include "any.h"
+#include "data_structures/array.h"
+#include "op_overload.h"
+#include "builtin_functions/builtin_functions.h"
 #include <iostream>
 
 
@@ -49,7 +49,7 @@ Any matmul(Any a, Any b) {
     return c;
 }
 
-void test(Any n) {
+void test_matmul(Any n) {
     Any tmp = 1./n/n;
     Any a = Array {};
     Any b = Array {};
@@ -66,11 +66,3 @@ void test(Any n) {
     Any d = matmul(a, b);
     std::cout << to_real(d[static_cast<int64_t>(n) / 2][static_cast<int64_t>(n) / 2]) << std::endl;
 }
-
-int main() {
-    test(10);
-    test(50);
-    test(100);
-}
-
-
