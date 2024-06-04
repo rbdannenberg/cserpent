@@ -19,7 +19,7 @@ def make_tree(depth):
         return Tree()
     depth = depth - 1
 
-    new_tree = Tree()
+    var new_tree = Tree()
     new_tree.left = make_tree(depth)
     new_tree.right = make_tree(depth)
     
@@ -53,22 +53,22 @@ def main(arg):
             check = check + check_tree(make_tree(depth))
 
 
-    #    print(str(iterations) + " trees of depth " + str(depth) + " check: " + str(check))
+        print(str(iterations) + " trees of depth " + str(depth) + " check: " + str(check))
 
         iterations  = idiv(int(iterations), 4)
 
-    #print("long lived tree of depth " + str(max_depth) + " check:" + str(check_tree(long_lived_tree)))
+    print("long lived tree of depth " + str(max_depth) + " check:" + str(check_tree(long_lived_tree)))
 
 
 
 # BENCHMARKING:
 
-for i = 0 to 10:
-    start_time = time_get()
-    main(21)    
-    end_time = time_get()
+for i = 0 to 5:
+    //start_time = time_get()
+    main(15)
+    //end_time = time_get()
 
-    execution_time = end_time - start_time
+    //execution_time = end_time - start_time
 
-    print(execution_time)
+    //print(execution_time)
 

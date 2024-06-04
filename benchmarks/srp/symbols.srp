@@ -1,0 +1,18 @@
+def adder(x, y):
+    x + y
+
+print(apply('adder', [5, 7])) # if it is just adder it will throw a global variable unbound error
+print(funcall('adder', 5, 9))
+fn = 'adder'
+args = [7,9]
+def fn(x, y):
+    x - y
+print(apply(fn, args))
+print(apply('fn', args))
+
+
+require "strparse"
+s = String_parse("test string")
+meth = 'get_nonspace'
+print(send(s, meth))
+print(sendapply(s, meth, []))

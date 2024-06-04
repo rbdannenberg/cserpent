@@ -1,57 +1,23 @@
 #include <string>
 #include <cstdint>
+#include <functional>
+#include <utility>
+#include "obj.h"
+
 #pragma once
 
-constexpr uint64_t BIAS         =    0x1000000000000uLL;
-constexpr uint64_t INT_TAG      = 0xFFFC000000000000uLL;
+static constexpr uint64_t BIAS         =    0x1000000000000uLL;
+static constexpr uint64_t INT_TAG      = 0xFFFC000000000000uLL;
 
-enum Tag { tag_free,
-    tag_symbol,
-    tag_integer,
-    tag_string,
-    tag_array,
-    tag_arraydata,
-    tag_dict,
-    tag_object,
-    tag_file };
-
-enum Color { white, grey, black };
-
-// all garbage-collected objects inherit this base class
-//
-class Basic_obj {
-public:
-    /* fields in header:
-     *
-     * header format is:
-     *  +---------------------------------------------+
-     *  | TAG      | COLOR    | #SLOTS    | NEXT      |
-     *  | (5 bits) | (2 bits) | (12 bits) | (45 bits) |
-     *  +---------------------------------------------+
-     * The NEXT field is a pointer to 8-byte aligned data.
-     * It is shifted right 3 bits because the low-order bits
-     * are zero. To use the pointer, shift it left 3 bits.
-     */
-    uint64_t header;  // contains type info, GC color, size
-
-    Tag get_tag() {return tag_array;}; // replace after implementation
-    void set_tag(Tag t);
-    bool has_tag(int tag);
-
-    Color get_color();
-    void set_color(uint8_t c);
-    bool has_color(int tag);
-
-    // What do these do?
-    //Obj *get_next();
-    //void set_next(Obj *ptr);
-};
+// forward declaration of Array
 class Array;
 
 union Any {
     uint64_t integer;
     double real;
 public:
+    Any ();
+
     /**@brief OCCUPY: 0xFFFC - 0xFFFF
      * @pre x is in 50-bits complement (top 15 bits are all 0's or 1's)
      */
@@ -66,6 +32,8 @@ public:
     /**@brief OCCUPY: 0x0000 */
     Any (void* x);
 
+    Any (const Basic_obj& x);
+
     /**@brief OCCUPY: 0xFFFA
      * @pre x.length () <= 5
      */
@@ -78,15 +46,12 @@ public:
     Any& operator=(int x);
     Any& operator=(double x);
     Any& operator=(void* x);
-    Any& operator=(std::string& x);
     Any& operator=(Array&& x);
 
     operator int64_t();
 
     Any& operator[] (int64_t i);
     const Any& operator[] (int64_t i) const;
-
-
 
     void append(Any x);
     void append(int64_t x);
@@ -122,32 +87,9 @@ std::string get_type(Any x);
 
 
 
-// CSerpent string, with tag tag_string. For now, this is just
-// a C++ std:string "boxed" in a Basic_obj so it can be GC'd:
-//
-class CSString : public Basic_obj {
-  public:
-    std::string str;
-};
 
 
-class Symbol : public Basic_obj {
-  public:
-    // note: I removed the pointer here
-    CSString name;
-    Any value;
-    // probably need a function pointer here too
-};
 
-
-// all user-defined object inherit from this, which has a class
-// pointer
-//
-class Obj : public Basic_obj {
-  public:
-    // note: I removed the pointer here
-    Symbol name;  // symbol denoting class name
-};
 
 
 /** --------- IMPLEMENTATION ---------------- */

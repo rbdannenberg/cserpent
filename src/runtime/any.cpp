@@ -25,6 +25,7 @@ Hex | Binary   | Hex | Binary   | Hex | Binary   | Hex | Binary
 
 // Note: integer promotion rules - int64_t & uint64_t, int64_t gets cast to uint64_t
 
+Any::Any() : integer {0} {}
 
 Any::Any(std::string x) {
     // 2 possible ways:
@@ -186,3 +187,8 @@ void Any::append(int64_t x) {
 void Any::append(double x) {
     append(Any {x});
 }
+
+Any::Any(const Basic_obj &x) {
+    integer = reinterpret_cast<uint64_t>(&x);
+}
+

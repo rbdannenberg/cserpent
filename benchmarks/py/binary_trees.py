@@ -37,17 +37,17 @@ def main(arg):
         for i in range(1, iterations + 1):
             check += check_tree(make_tree(depth))
 
-    #    print("%d\t trees of depth %d\t check:" % (iterations, depth), check)
+        print("%d\t trees of depth %d\t check:" % (iterations, depth), check)
         iterations //= 4
 
-    #print("long lived tree of depth %d\t check:" % 
-    #  max_depth, check_tree(long_lived_tree))
+    print("long lived tree of depth %d\t check:" %
+     max_depth, check_tree(long_lived_tree))
 
 
 # BENCHMARKING:
 import time
 
-for i in range(10):
+for i in range(5):
     start_time = time.time()
     main(15)
     end_time = time.time()

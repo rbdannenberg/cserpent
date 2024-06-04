@@ -14,7 +14,7 @@ add_executable(cserpent
         src/runtime/data_structures/array_raw.h
         src/runtime/csmem.h
         src/runtime/op_overload.cpp
-        src/runtime/data_structures/string.h)
+)
 add_library(runtime STATIC
         src/runtime/any.cpp
         src/runtime/any.h
@@ -29,14 +29,29 @@ add_library(runtime STATIC
         src/runtime/builtin_functions/builtin_functions.h
         src/runtime/data_structures/array.cpp
         src/runtime/data_structures/array.h
-        src/runtime/csmem.cpp)
+        src/runtime/csmem.cpp
+        src/runtime/obj.h
+        #src/runtime/data_structures/string.cpp
+        src/runtime/data_structures/string.h
+        # src/runtime/data_structures/symbol.cpp
+        src/runtime/data_structures/symbol.h
+        src/runtime/data_structures/dictionary.cpp
+        src/runtime/data_structures/dictionary.h)
 target_include_directories(runtime PUBLIC src/runtime)
-add_executable(runtime_tests
+add_executable(runtime_benchmarks
         benchmarks/C++/matrix_mult.cpp
         benchmarks/C++/nqueen.cpp
         benchmarks/C++/main_benchmark.cpp
+        benchmarks/C++/dictionary.cpp
+        #benchmarks/C++/binary_trees.cpp
+        #benchmarks/C++/symbols.cpp
 )
-        # benchmarks/srp/nqueen.cpp
-add_dependencies(runtime_tests runtime)
-target_include_directories(runtime_tests PUBLIC src/runtime)
-target_link_libraries(runtime_tests runtime)
+add_dependencies(runtime_benchmarks runtime)
+target_include_directories(runtime_benchmarks PUBLIC src/runtime)
+target_link_libraries(runtime_benchmarks runtime)
+add_executable(runtime_test
+        benchmarks/C++/dictionary.cpp
+)
+add_dependencies(runtime_test runtime)
+target_include_directories(runtime_test PUBLIC src/runtime)
+target_link_libraries(runtime_test runtime)
