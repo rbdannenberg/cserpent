@@ -10,6 +10,13 @@
 // free an object
 #define CSFREE(x) csfree(x)
 
+void csmem_init();
 void *csmalloc(size_t len);
-void *csfree(void *x);
-
+void csfree(void *x);
+int64_t csheapsize();
+int64_t csallocated();
+int64_t cschunkmem();  // how much is remaining in current chunk
+#define SUMMARY 1
+#ifdef SUMMARY
+void cssummary();
+#endif

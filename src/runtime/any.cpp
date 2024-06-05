@@ -5,12 +5,66 @@
 #include <iostream>
 #include "any.h"
 #include "any_utils.h"
-#include <data_structures/array.h>
+#include "array.h"
+#include "csmem.h"
 
 constexpr uint64_t TAG_MASK     = 0xFFFF000000000000uLL;
 constexpr uint64_t PTR_TAG      = 0x0000000000000000uLL;
 constexpr uint64_t SHORTSTR_TAG = 0xFFFA000000000000uLL;
 constexpr size_t num_chars = 5; // 8 bytes - 2 (tag) - 1 (nul terminator)
+
+void *Basic_obj::operator new(size_t size) {
+   return csmalloc(size);
+}
+
+
+void Basic_obj::operator delete(void *p) noexcept {
+   csfree(p);
+}
+
+
+// get the object pointed to by this object's header
+Basic_obj *Basic_obj::get_next()
+{
+    return (Basic_obj *) ((header & ~0xFFFFE00000000000uLL) << 3);
+}
+
+
+void Basic_obj::set_next(Basic_obj *ptr)
+{
+    header = (header & ~0x00001FFFFFFFFFFFuLL) |
+             (((uint64_t) ptr) >> 3);
+}
+
+
+Tag Basic_obj::get_tag()
+{
+    return (Tag) ((header >> 59) & 0x1F);
+}
+
+
+void Basic_obj::set_tag(Tag tag)
+{
+    header = (header & ~0xF800000000000000uLL) |
+             (((uint64_t) tag) << 59);
+}
+
+
+int64_t Basic_obj::get_slot_count()
+{
+    int64_t nslots = (header >> 45) & 0xFFF;
+    // when slots is zero, size is big and stored in the first slot
+    // as unencoded integer
+    return (nslots == 0) ? slots[0] : nslots;
+}
+
+
+int64_t Basic_obj::get_size()
+{
+    return offsetof(Basic_obj, slots) + get_slot_count() * sizeof(Any);
+}
+
+
 
 /*
 Hexadecimal to Binary Conversion Table:
@@ -45,7 +99,7 @@ Any::Any(std::string x) {
 }
 
 Any::Any(Array&& x) {
-    integer = reinterpret_cast<uint64_t>(x.ptr);
+    integer = reinterpret_cast<uint64_t>(&(x.data));
 }
 
 Any& Any::operator=(int64_t x) {
@@ -89,7 +143,7 @@ Any& Any::operator=(void* x) {
 }
 
 Any& Any::operator=(Array&& x) {
-    integer = reinterpret_cast<uint64_t>(x.ptr);
+    integer = reinterpret_cast<uint64_t>(&(x.data));
     return *this;
 }
 
@@ -127,8 +181,8 @@ std::string to_shortstr(Any x) {
     return std::string {&((char *) &(x.integer))[2]};
 }
 
-Array to_array(Any x) {
-    return Array (reinterpret_cast<Array_heap*>(x.integer));
+Array *to_array(Any x) {
+    return reinterpret_cast<Array*>(x.integer);
 }
 
 // check is like assert except it always executes, even in optimized code
@@ -171,8 +225,8 @@ void Any::append(Any x) {
     if (is_ptr(*this)) {
         Basic_obj *basic_ptr = to_ptr(*this);
         if (basic_ptr->get_tag() == tag_array) {
-            Array arr (static_cast<Array_heap*>(basic_ptr));
-            arr.append(x);
+            Array *arr(static_cast<Array *>(basic_ptr));
+            arr->append(x);
         }
     }
     else {
@@ -188,7 +242,7 @@ void Any::append(double x) {
     append(Any {x});
 }
 
-Any::Any(const Basic_obj &x) {
-    integer = reinterpret_cast<uint64_t>(&x);
-}
+//Any::Any(const Basic_obj &x) {
+//    integer = reinterpret_cast<uint64_t>(&x);
+//}
 
