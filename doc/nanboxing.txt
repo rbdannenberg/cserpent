@@ -60,3 +60,65 @@ Every CSerpent object needs these fields (member variables):
 - class_symbol -- a pointer to a Symbol that names the class.
     Used mainly for dynamic type checking.
 
+In Serpent, every object on the heap derives from a base class that
+consists of an 8-byte header that is packed with a type code:
+- Serpent object
+- Array
+- Array data
+- String
+- String data
+- Dict
+- Stack frame
+- Method (virtual machine code)
+- Class
+- Symbols (a symbol table)
+- ... and more ...
+
+In CSerpent, we do not have so many types of Basic_obj.
+
+For the GC to "understand" all data structures, everything in the
+cserpent heap must be a Basic_obj.
+
+Length is encoded in the header (usually) so that we can have only 8
+bytes of overhead vs 16 with a separate word for length, although I
+don't think the argument to save space is very strong. Maybe function
+pointers can be header+pointer = 16bytes, and maybe the best argument
+is strings: 8byte+sizeof(string) = 32bytes. If either was 8 bytes
+longer due to a dedicated 64-bit length count, the sizes would become
+32 and 48 bytes because we're allocating in 16byte units. (Of course,
+all of these are design choices, so who knows what's really best?)
+
+Since there's only room for 12 bits of length, we get objects up to
+4095 words or 32K bytes. Maybe that's enough for ordinary objects,
+but what about array data? For those, Basic_obj has to define a place
+after the header to store a longer length count. The convention is
+that if the short 12-bit length is zero, the actual length is stored
+in the next word.
+
+So the 2nd word of Basic_obj does double duty as either a length (for
+array data) or the first field of an object.
+
+For objects, there's not nearly enough space in the header to encode
+all possible (user defined) classes, so the first field will be a
+pointer to a class structure (another subclass of Basic_obj) that
+among other things, will have to describe what slots in the object are
+possibly pointers (i.e. they are Any slots) for the garbage collector.
+I suggest using a bitmap, with each word describing the next 64 fields
+as either Any or not an Any.
+
+For strings, the first field after the header will be a C++ string.
+
+In Cserpent, like real and int, you can declare a string, allowing the
+compiler to use the built-in string class directly. If you convert a
+string to an Any*, you must construct a CSString (inherits from
+Basic_obj) and copy the string into it (in C++ this is a shallow copy
+that does not copy the actual string data). So you could end up with
+multiple CSString objects referencing the same underlying string. On
+the other hand, if you copy an Any* to an Any*, e.g.
+    var x = "foo"
+    var y = x
+then you just need to copy the 8-bytes of the Any, and you do not
+allocate another CSString. The CSString is now referenced by multiple
+pointers, but it's on the heap and will get GC'd when the references
+all go away. When the CSString is deleted, C++ reference counting will
+free the actual string data.
