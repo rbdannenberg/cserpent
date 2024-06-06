@@ -1,7 +1,8 @@
 cmake_minimum_required(VERSION 3.29)
 project(cserpent)
 
-set(CMAKE_CXX_STANDARD 14)
+set(CMAKE_CXX_STANDARD 17)
+add_compile_options(-Wno-return-type) # suppress warnings about type_error (NOT A FULL SOLUTION)
 
 add_executable(cserpent
         benchmarks/C/binary-trees.c
@@ -34,23 +35,23 @@ add_library(runtime STATIC
         #src/runtime/data_structures/string.cpp
         src/runtime/data_structures/string.h
         # src/runtime/data_structures/symbol.cpp
-        src/runtime/data_structures/symbol.h
+        # src/runtime/data_structures/symbol.h
         src/runtime/data_structures/dictionary.cpp
-        src/runtime/data_structures/dictionary.h)
+        src/runtime/data_structures/dictionary.h
+        src/runtime/obj.cpp
+)
 target_include_directories(runtime PUBLIC src/runtime)
 add_executable(runtime_benchmarks
         benchmarks/C++/matrix_mult.cpp
         benchmarks/C++/nqueen.cpp
         benchmarks/C++/main_benchmark.cpp
-        benchmarks/C++/dictionary.cpp
-        #benchmarks/C++/binary_trees.cpp
-        #benchmarks/C++/symbols.cpp
 )
 add_dependencies(runtime_benchmarks runtime)
 target_include_directories(runtime_benchmarks PUBLIC src/runtime)
 target_link_libraries(runtime_benchmarks runtime)
 add_executable(runtime_test
-        benchmarks/C++/dictionary.cpp
+        src/runtime/test/dictionary.cpp
+        src/runtime/test/main_test.cpp
 )
 add_dependencies(runtime_test runtime)
 target_include_directories(runtime_test PUBLIC src/runtime)
