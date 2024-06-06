@@ -5,6 +5,8 @@
 #include "csmem.h"
 #include "any.h"
 #include <iostream>
+#include <cassert>
+#include <cstring>
 
 static int64_t heapsize = 0;
 static int64_t allocated = 0;

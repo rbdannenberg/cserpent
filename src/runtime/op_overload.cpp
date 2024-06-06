@@ -272,7 +272,7 @@ Any& Any::operator[](int64_t i) {
         Basic_obj *basic_ptr= to_ptr(*this);
         if (basic_ptr->get_tag() == tag_array) {
             // consider using dynamic_cast instead of static_cast
-            return (static_cast<Array_heap*>(basic_ptr))->data.at(i);
+            return (static_cast<Array*>(basic_ptr))->data.at(i);
 //            Array arr (static_cast<Array_heap*>(basic_ptr));
 //            return arr[i];
         }
@@ -296,7 +296,7 @@ Any Any::operator[](int64_t i) const {
         Basic_obj *basic_ptr= to_ptr(*this);
         if (basic_ptr->get_tag() == tag_array) {
             // consider using dynamic_cast instead of static_cast
-            return (static_cast<Array_heap*>(basic_ptr))->data.at(i);
+            return (static_cast<Array*>(basic_ptr))->data.at(i);
         }
     }
     else if (is_shortstr(*this)) {

@@ -37,9 +37,24 @@ public:
      * It is shifted right 3 bits because the low-order bits
      * are zero. To use the pointer, shift it left 3 bits.
      */
-    uint64_t header;  // contains type info, GC color, size
+    uint64_t header;   // contains type info, GC color, size
+    int64_t slots[1];  // can actually be any number of slots
 
-    Tag get_tag() {return tag_array;}; // replace after implementation
+    // on return, Basic_obj header will have #SLOTS initialized
+    // and slots[1] will be an unencoded integer slot count if
+    // the slot count is greater than 4095, in which case #SLOTS
+    // will be zero. The number of slots is based on size which
+    // is rounded up to a multiple of 8 (the slot size). The
+    // TAG will be tag_object, and the superclass constructors
+    // for other types of objects should set TAG accordingly.
+    //
+    void *operator new(size_t size);
+
+    void operator delete(void *p) noexcept;
+
+    Basic_obj() { };
+
+    Tag get_tag(); // replace after implementation
     void set_tag(Tag t);
     bool has_tag(int tag);
 
@@ -47,9 +62,11 @@ public:
     void set_color(uint8_t c);
     bool has_color(int tag);
 
-    // What do these do?
-    //Obj *get_next();
-    //void set_next(Obj *ptr);
+    Basic_obj *get_next();
+    void set_next(Basic_obj *ptr);
+
+    int64_t get_size();
+    int64_t get_slot_count();
 };
 
 //// all user-defined object inherit from this, which has a class

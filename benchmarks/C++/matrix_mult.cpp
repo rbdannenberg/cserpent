@@ -33,10 +33,10 @@ Any matmul(Any a, Any b) {
     Any n = len(a);
     Any m = len(b[0]);
     Any p = len(a[0]);
-    Any c = Array {};
+    Any c = *(new Array {});
     for (int64_t i = 0; i < n; i++) {
         // list comprehension
-        Any ci = Array (m, 0.0);
+        Any ci = *(new Array (m, 0.0));
         for (int64_t k = 0; k < p; k++) {
             Any aik = a[i][k];
             Any bk = b[k];
@@ -51,11 +51,11 @@ Any matmul(Any a, Any b) {
 
 void test_matmul(Any n) {
     Any tmp = 1./n/n;
-    Any a = Array {};
-    Any b = Array {};
+    Any a = *(new Array {});
+    Any b = *(new Array {});
     for (int64_t i = 0; i < n; i++) {
-        Any _tmp_a = Array {};
-        Any _tmp_b = Array {};
+        Any _tmp_a = *(new Array {});
+        Any _tmp_b = *(new Array {});
         for (int64_t j = 0; j < n; j++) {
             _tmp_a.append(tmp * (i - j) * (i + j));
             _tmp_b.append(tmp * (i + j) * (i - j));

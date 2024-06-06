@@ -14,10 +14,10 @@ Any helper (Any i, Any y, Any n) {
 
 void nq_solve(Any n) {
     Any m = 0;
-    Any a = Array(n, -1);
-    Any l = Array(n, 0);
-    Any c = Array(n, 0);
-    Any r = Array(n, 0);
+    Any a = *(new Array(n, -1));
+    Any l = *(new Array(n, 0));
+    Any c = *(new Array(n, 0));
+    Any r = *(new Array(n, 0));
     Any y0 = (1 << n) - 1;
     Any k = 0;
     Any loops = 0;
