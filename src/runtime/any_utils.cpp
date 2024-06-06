@@ -12,7 +12,13 @@ double force_real(Any x) {
 }
 
 
-void type_error(Any x) {
+Any type_error(Any x) {
     std::cerr << "Any has incorrect type: " << get_type(x) << std::endl;
     exit(1);
 }
+
+Any type_error(Any x, const std::string& function) {
+    std::cerr << "Any has incorrect type in function " << function << ": " << get_type(x) << std::endl;
+    exit(1);
+}
+
