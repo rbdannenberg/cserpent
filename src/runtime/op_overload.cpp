@@ -263,6 +263,9 @@ bool operator==(Any lhs, int rhs) {
     return lhs == static_cast<int64_t>(rhs);
 }
 
+bool operator==(Any lhs, Any rhs) {
+    return lhs.integer == rhs.integer;
+}
 
 Any& Any::operator[](int64_t i) {
     if (is_ptr(*this)) {

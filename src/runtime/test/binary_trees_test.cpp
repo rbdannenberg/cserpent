@@ -17,7 +17,7 @@ public:
         std::cout << "Tree(" << left << ", " << right << ")" << std::endl;
     }
 
-    Any get(const std::string& member_name) override {
+    Any& get(const std::string& member_name) override {
         if (member_name == "left") {
             return left;
         }

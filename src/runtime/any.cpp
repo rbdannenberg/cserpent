@@ -269,7 +269,7 @@ Any Any::call(const std::string &method, const Array &args, const Dictionary &kw
     }
 }
 
-Any Any::get(const std::string &member) {
+Any& Any::get(const std::string &member) {
     if (is_ptr(*this)) {
         Basic_obj *basic_ptr = to_ptr(*this);
         if (true) {

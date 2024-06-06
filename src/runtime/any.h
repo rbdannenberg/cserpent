@@ -60,7 +60,7 @@ public:
     void append(double x);
 
     Any call (const std::string& method, const Array& args, const Dictionary& kwargs);
-    Any get (const std::string& member);
+    Any& get (const std::string& member);
 };
 
 // should we consider creating an enum type for the various underlying types?

@@ -7,11 +7,14 @@
 
 extern void test_matmul(Any n);
 extern void nq_solve(Any n);
+extern void test_trees(Any n);
 
 
 int main() {
     auto start = std::chrono::high_resolution_clock::now();
 
+    std::cout << "Testing binary trees..." << std::endl;
+    test_trees(15);
     std::cout << "Testing matrix multiplication..." << std::endl;
     test_matmul(10);
     test_matmul(50);
@@ -19,7 +22,7 @@ int main() {
     std::cout << "Testing n queens..." << std::endl;
     nq_solve(5);
     nq_solve(8);
-    nq_solve(15);
+    nq_solve(12);
     std::cout << "All tests passed!" << std::endl;
 
     auto end = std::chrono::high_resolution_clock::now();

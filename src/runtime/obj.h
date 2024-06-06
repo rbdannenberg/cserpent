@@ -62,7 +62,8 @@ public:
 
     //Symbol& name;  // symbol denoting class name
     virtual Any call(const std::string& member_name, const Array& args, const Dictionary& kwargs) =0;
-    virtual Any get(const std::string& member_name)=0;
+    virtual Any& get(const std::string& member_name)=0;
+    // probably need a const version of get
 };
 
 void check_dispatch(const std::string& method, const Array& args, const Dictionary& kwargs, size_t args_len, size_t kwargs_len);

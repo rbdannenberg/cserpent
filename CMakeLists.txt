@@ -45,6 +45,7 @@ add_executable(runtime_benchmarks
         benchmarks/C++/matrix_mult.cpp
         benchmarks/C++/nqueen.cpp
         benchmarks/C++/main_benchmark.cpp
+        benchmarks/C++/binary_trees.cpp
 )
 add_dependencies(runtime_benchmarks runtime)
 target_include_directories(runtime_benchmarks PUBLIC src/runtime)
