@@ -1,0 +1,32 @@
+What is a string?
+
+1) A class that inherits from Basic_obj and contains a std::string.
+Benefits: tag_string, length information and convenience of std::string
+Issue: its pointer (which is what gets stored in an Any) would point to somewhere on the heap
+- Currently, the hash function hashes the raw bytes in the Any. If two variables with the same string literal get
+created, they have different addresses and hence mess with the hash function.
+The most common keys to dictionaries are usually strings, so this is a significant issue.
+- Besides, std::string is mutable, and strings in Serpent are not mutable
+
+2) A type-def'd const char * (allocated in the .data section)
+Benefits: no garbage collection needed, immutable, different variables of the same string have the same address
+(IF there is "string pooling" compiler optimization)
+Issue: No length information (O(n)), how to identify it is a string?
+- Possible solutions:
+- Length information by using a static constexpr char[] instead of a const char *. But won't it decay into a pointer
+when passed into an Any/when passed into a function regardless?
+- Length information by using a class but allocating it statically. But now it is less likely for string pooling to
+occur.
+- Identify it is a string: flip a bit at the end of the pointer
+
+There are some other magic tricks using std::string_view (only in C++17), or templates to prevent a char[] from
+decaying, but I'm unfamiliar so far.
+
+Thoughts?
+
+Probably going to be:
+Should hash the string itself, not the pointer
+
+pointer to a std::string (static and const to make it stored in .data?)
+    - if can't use a class with a char[] and its length (basically a custom std::string on .data)
+either flipping the least significant bits or boxing it with a header

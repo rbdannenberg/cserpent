@@ -11,6 +11,7 @@ static constexpr uint64_t INT_TAG      = 0xFFFC000000000000uLL;
 
 // forward declaration of Array
 class Array;
+class Dictionary;
 
 union Any {
     uint64_t integer;
@@ -33,6 +34,7 @@ public:
     Any (void* x);
 
     Any (const Basic_obj& x);
+    Any (const Obj& x);
 
     /**@brief OCCUPY: 0xFFFA
      * @pre x.length () <= 5
@@ -42,13 +44,16 @@ public:
     // I'm not sure if we should use Array x instead of Array&& x
     Any (Array&& x);
 
+    /// Implicit conversion assignments
     Any& operator=(int64_t x);
     Any& operator=(int x);
     Any& operator=(double x);
     Any& operator=(void* x);
     Any& operator=(Array&& x);
 
+    /// Implicit conversion: type-cast operator
     operator int64_t();
+    operator double();
 
     Any& operator[] (int64_t i);
     Any operator[] (int64_t i) const; // return-by-value is faster
@@ -56,6 +61,9 @@ public:
     void append(Any x);
     void append(int64_t x);
     void append(double x);
+
+    Any call (const std::string& method, const Array& args, const Dictionary& kwargs);
+    Any get (const std::string& member);
 };
 
 // enum type?

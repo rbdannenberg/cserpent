@@ -3,6 +3,12 @@
 //
 #pragma once
 #include <cstdint>
+#include <string>
+#include <iostream>
+
+union Any;
+class Dictionary;
+class Array;
 
 enum Tag { tag_free,
     tag_symbol,
@@ -48,8 +54,16 @@ public:
 
 //// all user-defined object inherit from this, which has a class
 //// pointer
-//class Obj : public Basic_obj {
-//public:
+class Obj : public Basic_obj {
+public:
+//    std::string class_name; //TODO: reference?
 //    // note: I removed the pointer here
-//    Symbol& name;  // symbol denoting class name
-//};
+//    Obj(std::string name);
+
+    //Symbol& name;  // symbol denoting class name
+    virtual Any call(const std::string& member_name, const Array& args, const Dictionary& kwargs) =0;
+    virtual Any get(const std::string& member_name)=0;
+};
+
+inline void dispatch_error(const std::string& method, const Array& args, const Dictionary& kwargs, size_t args_len, size_t kwargs_len);
+

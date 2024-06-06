@@ -6,6 +6,8 @@
 #include "any.h"
 #include "any_utils.h"
 #include <data_structures/array.h>
+#include <data_structures/dictionary.h>
+#include <data_structures/symbol.h>
 
 constexpr uint64_t TAG_MASK     = 0xFFFF000000000000uLL;
 constexpr uint64_t PTR_TAG      = 0x0000000000000000uLL;
@@ -167,6 +169,10 @@ Any::operator int64_t() {
     return as_int(*this);
 }
 
+Any::operator double() {
+    return as_real(*this);
+}
+
 void Any::append(Any x) {
     if (is_ptr(*this)) {
         Basic_obj *basic_ptr = to_ptr(*this);
@@ -192,3 +198,37 @@ Any::Any(const Basic_obj &x) {
     integer = reinterpret_cast<uint64_t>(&x);
 }
 
+Any::Any(const Obj &x) {
+    integer = reinterpret_cast<uint64_t>(&x);
+}
+
+Any Any::call(const std::string &method, const Array &args, const Dictionary &kwargs) {
+    if (is_ptr(*this)) {
+        Basic_obj *basic_ptr = to_ptr(*this);
+        if (true) {
+//        if (basic_ptr->get_tag() == tag_object) { /// @note: get_tag is not implemented
+            Obj *obj_ptr = reinterpret_cast<Obj*>(basic_ptr);
+            return obj_ptr->call(method, args, kwargs);
+//
+//            std::string name = obj_ptr->class_name;
+//            Symbol C = global::symbol_table[name];
+//            return std::invoke(C.call, obj_ptr, method, args, kwargs);
+        }
+    }
+    else {
+        type_error(*this);
+    }
+}
+
+Any Any::get(const std::string &member) {
+    if (is_ptr(*this)) {
+        Basic_obj *basic_ptr = to_ptr(*this);
+        if (true) {
+            Obj *obj_ptr = reinterpret_cast<Obj*>(basic_ptr);
+            return obj_ptr->get(member);
+        }
+    }
+    else {
+        type_error(*this);
+    }
+}
