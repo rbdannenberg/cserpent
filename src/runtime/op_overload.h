@@ -44,6 +44,9 @@ int64_t operator& (Any lhs, int64_t rhs);
 Any operator- (Any lhs, int rhs);
 int64_t operator>> (Any lhs, int rhs);
 
+std::ostream& operator<<(std::ostream& os, Any x);
 
-
-
+// only defining operator overloads for binary_trees
+/// @note only doing int comparison because I worry about floating point equality
+bool operator==(Any lhs, int64_t rhs);
+bool operator==(Any lhs, int rhs);

@@ -242,6 +242,27 @@ int64_t operator>> (Any lhs, int rhs) {
     } else type_error(lhs);
 }
 
+std::ostream& operator<<(std::ostream& os, Any x) {
+    if (is_int(x)) {
+        return os << to_int(x);
+    }
+    else if (is_real(x)) {
+        return os << to_real(x);
+    }
+    else type_error(x, __func__);
+}
+
+bool operator==(Any lhs, int64_t rhs) {
+    if (is_int(lhs)) {
+        return to_int(lhs) == rhs;
+    }
+    else type_error(lhs, __func__);
+}
+
+bool operator==(Any lhs, int rhs) {
+    return lhs == static_cast<int64_t>(rhs);
+}
+
 
 Any& Any::operator[](int64_t i) {
     if (is_ptr(*this)) {
@@ -287,3 +308,4 @@ const Any& Any::operator[](int64_t i) const {
         type_error(*this);
     }
 }
+
