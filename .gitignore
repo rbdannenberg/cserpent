@@ -55,3 +55,19 @@ benchmarks/mypyc-benchmarks
 /reprtest/cmake_install.cmake
 
 /reprtest/reprtest.xcodeproj/
+
+/src/runtime/test/cmake_install.cmake
+
+/src/runtime/test/CMakeCache.txt
+
+/src/runtime/test/CMakeFiles/
+
+/src/runtime/test/Release/
+
+/src/runtime/test/CMakeScripts/
+
+/src/runtime/test/build/
+
+/src/runtime/test/runtimetests.xcodeproj/
+
+/src/runtime/test/Debug/

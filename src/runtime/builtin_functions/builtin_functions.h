@@ -7,6 +7,10 @@
 int64_t len(Any x);
 //int64_t len(String x);
 
+
+// int64_t len(Any x);
+// int64_t len(CSString x);
+
 int64_t pow(int base, Any exp);
 
 int64_t idiv(Any lhs, int rhs);
