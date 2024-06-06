@@ -6,10 +6,7 @@
 
 #pragma once
 
-static constexpr uint64_t BIAS         =    0x1000000000000uLL;
-static constexpr uint64_t INT_TAG      = 0xFFFC000000000000uLL;
-
-// forward declaration of Array
+// forward declaration of Array and Dictionary for call()
 class Array;
 class Dictionary;
 
@@ -33,23 +30,23 @@ public:
     /**@brief OCCUPY: 0x0000 */
     Any (void* x);
 
-    Any (const Basic_obj& x);
-    Any (const Obj& x);
-
     /**@brief OCCUPY: 0xFFFA
      * @pre x.length () <= 5
      */
-    Any (std::string x);
-    // when initializing an array from its constructor
-    // I'm not sure if we should use Array x instead of Array&& x
-    Any (Array&& x);
+    Any (std::string x); // might need to change this to const reference
+    Any (const Array& x);
+    Any (const Dictionary& x);
+    Any (const Obj& x);
 
-    /// Implicit conversion assignments
+    /// Implicit conversion: assignment
+    /// Return type allows for chaining
     Any& operator=(int64_t x);
     Any& operator=(int x);
     Any& operator=(double x);
     Any& operator=(void* x);
-    Any& operator=(Array&& x);
+    Any& operator=(const Array& x);
+    Any& operator=(const Dictionary& x);
+    Any& operator=(const Obj& x);
 
     /// Implicit conversion: type-cast operator
     operator int64_t();
@@ -66,7 +63,7 @@ public:
     Any get (const std::string& member);
 };
 
-// enum type?
+// should we consider creating an enum type for the various underlying types?
 
 bool is_int(Any x);
 bool is_real(Any x);
@@ -89,7 +86,7 @@ int64_t as_int(Any x);
 double as_real(Any x);
 void *as_ptr(Any x);
 
-/** @brief Obtains the underlying type of an Any, mainly for debugging */
+/// Obtains the underlying type of an Any, mainly for debugging.
 std::string get_type(Any x);
 
 
@@ -102,38 +99,3 @@ std::string get_type(Any x);
 
 /** --------- IMPLEMENTATION ---------------- */
 
-inline Any::Any(int64_t x) {
-#ifdef DEBUG
-    int64_t tmp = x & 0xFFFE000000000000;
-    if (tmp != 0 && tmp != 0xFFFE000000000000) {
-        throw std::runtime_error("Precondition failed: integer value corrupted:");
-    }
-#endif
-    integer = static_cast<uint64_t>(x) | INT_TAG;
-}
-
-inline Any::Any(int x) {
-    integer = static_cast<uint64_t>(x) | INT_TAG;
-}
-
-inline Any::Any(double x) {
-    real = x;
-#ifdef DEBUG
-    if ((integer & 0x7FF0000000000000) == DOUBLE_UP) {
-        throw std::runtime_error("Precondition failed: Nan or Inf value.");
-        return {};
-    }
-#endif
-    integer += BIAS;
-}
-
-inline Any::Any(void* x) {
-    // not integer = reinterpret_cast<uint64_t>(x);?
-    integer = *reinterpret_cast<uint64_t*>(&x);
-#ifdef DEBUG
-    if (integer & TAG_MASK) {
-        std::cerr << "Precondition failed: pointer corrupted" << std::endl;
-        return {};
-    }
-#endif
-}

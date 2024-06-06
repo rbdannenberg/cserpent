@@ -9,12 +9,14 @@
 #include <data_structures/dictionary.h>
 #include <data_structures/symbol.h>
 
+constexpr uint64_t BIAS         =    0x1000000000000uLL;
+constexpr uint64_t INT_TAG      = 0xFFFC000000000000uLL;
 constexpr uint64_t TAG_MASK     = 0xFFFF000000000000uLL;
 constexpr uint64_t PTR_TAG      = 0x0000000000000000uLL;
 constexpr uint64_t SHORTSTR_TAG = 0xFFFA000000000000uLL;
 constexpr size_t num_chars = 5; // 8 bytes - 2 (tag) - 1 (nul terminator)
 
-/*
+/**
 Hexadecimal to Binary Conversion Table:
 
 Hex | Binary   | Hex | Binary   | Hex | Binary   | Hex | Binary
@@ -25,10 +27,46 @@ Hex | Binary   | Hex | Binary   | Hex | Binary   | Hex | Binary
  3  | 0011     | 7   | 0111     | B   | 1011     | F   | 1111
 */
 
-// Note: integer promotion rules - int64_t & uint64_t, int64_t gets cast to uint64_t
+/// @note integer promotion rules - int64_t & uint64_t, int64_t gets cast to uint64_t
 
+// Default constructor: 0, nullptr, nil
 Any::Any() : integer {0} {}
 
+Any::Any(int64_t x) {
+#ifdef DEBUG
+    int64_t tmp = x & 0xFFFE000000000000;
+    if (tmp != 0 && tmp != 0xFFFE000000000000) {
+        throw std::runtime_error("Precondition failed: integer value corrupted:");
+    }
+#endif
+    integer = static_cast<uint64_t>(x) | INT_TAG;
+}
+
+Any::Any(int x) {
+    integer = static_cast<uint64_t>(x) | INT_TAG;
+}
+
+Any::Any(double x) {
+    real = x;
+#ifdef DEBUG
+    if ((integer & 0x7FF0000000000000) == DOUBLE_UP) {
+        throw std::runtime_error("Precondition failed: Nan or Inf value.");
+        return {};
+    }
+#endif
+    integer += BIAS;
+}
+
+Any::Any(void* x) {
+    // not integer = reinterpret_cast<uint64_t>(x);?
+    integer = *reinterpret_cast<uint64_t*>(&x);
+#ifdef DEBUG
+    if (integer & TAG_MASK) {
+        std::cerr << "Precondition failed: pointer corrupted" << std::endl;
+        return {};
+    }
+#endif
+}
 Any::Any(std::string x) {
     // 2 possible ways:
     // 1: get 8 bytes starting from x, discard the last 2 bytes, shift right and add tag
@@ -46,8 +84,16 @@ Any::Any(std::string x) {
     // warning: this copies a lot of garbage after the nul terminator into the Any
 }
 
-Any::Any(Array&& x) {
+Any::Any(const Array& x) {
     integer = reinterpret_cast<uint64_t>(x.ptr);
+}
+
+Any::Any(const Dictionary &x) {
+    integer = reinterpret_cast<uint64_t>(&x);
+}
+
+Any::Any(const Obj &x) {
+    integer = reinterpret_cast<uint64_t>(&x);
 }
 
 Any& Any::operator=(int64_t x) {
@@ -90,8 +136,18 @@ Any& Any::operator=(void* x) {
     return *this;
 }
 
-Any& Any::operator=(Array&& x) {
+Any& Any::operator=(const Array& x) {
     integer = reinterpret_cast<uint64_t>(x.ptr);
+    return *this;
+}
+
+Any &Any::operator=(const Dictionary &x) {
+    integer = reinterpret_cast<uint64_t>(&x);
+    return *this;
+}
+
+Any &Any::operator=(const Obj &x) {
+    integer = reinterpret_cast<uint64_t>(&x);
     return *this;
 }
 
@@ -194,13 +250,6 @@ void Any::append(double x) {
     append(Any {x});
 }
 
-Any::Any(const Basic_obj &x) {
-    integer = reinterpret_cast<uint64_t>(&x);
-}
-
-Any::Any(const Obj &x) {
-    integer = reinterpret_cast<uint64_t>(&x);
-}
 
 Any Any::call(const std::string &method, const Array &args, const Dictionary &kwargs) {
     if (is_ptr(*this)) {
@@ -232,3 +281,4 @@ Any Any::get(const std::string &member) {
         type_error(*this);
     }
 }
+

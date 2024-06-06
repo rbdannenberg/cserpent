@@ -6,7 +6,7 @@
 
 #include <utility>
 
-void dispatch_error(const std::string& method, const Array& args, const Dictionary& kwargs, size_t args_len, size_t kwargs_len) {
+void check_dispatch(const std::string& method, const Array& args, const Dictionary& kwargs, size_t args_len, size_t kwargs_len) {
     if (len(args) != args_len || kwargs_len != 0) { /// change when kwargs are implemented
         std::cout << "Dispatch error by method: " << method << std::endl;
     }

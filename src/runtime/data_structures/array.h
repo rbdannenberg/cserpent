@@ -26,7 +26,6 @@ public:
     explicit Array(Array_heap *hptr); // make this private?
     Array(std::initializer_list<Any> l);
     Array(int64_t size, Any value);
-    //Array( value_lambda, )
 
     void append(Any x);
     void append(int64_t x);

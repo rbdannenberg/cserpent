@@ -7,7 +7,6 @@
 #include <iostream>
 
 void test_dictionary() {
-    Dictionary& D_native = *(new Dictionary {});
     Any D = *(new Dictionary {});
     D['a'] = 5;
     D['b'] = 8;

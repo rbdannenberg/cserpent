@@ -32,13 +32,13 @@ add_library(runtime STATIC
         src/runtime/data_structures/array.h
         src/runtime/csmem.cpp
         src/runtime/obj.h
+        src/runtime/obj.cpp
         #src/runtime/data_structures/string.cpp
         src/runtime/data_structures/string.h
         # src/runtime/data_structures/symbol.cpp
         # src/runtime/data_structures/symbol.h
         src/runtime/data_structures/dictionary.cpp
         src/runtime/data_structures/dictionary.h
-        src/runtime/obj.cpp
 )
 target_include_directories(runtime PUBLIC src/runtime)
 add_executable(runtime_benchmarks
@@ -50,8 +50,9 @@ add_dependencies(runtime_benchmarks runtime)
 target_include_directories(runtime_benchmarks PUBLIC src/runtime)
 target_link_libraries(runtime_benchmarks runtime)
 add_executable(runtime_test
-        src/runtime/test/dictionary.cpp
+        src/runtime/test/dictionary_test.cpp
         src/runtime/test/main_test.cpp
+        src/runtime/test/binary_trees_test.cpp
 )
 add_dependencies(runtime_test runtime)
 target_include_directories(runtime_test PUBLIC src/runtime)

@@ -65,5 +65,5 @@ public:
     virtual Any get(const std::string& member_name)=0;
 };
 
-inline void dispatch_error(const std::string& method, const Array& args, const Dictionary& kwargs, size_t args_len, size_t kwargs_len);
+void check_dispatch(const std::string& method, const Array& args, const Dictionary& kwargs, size_t args_len, size_t kwargs_len);
 
