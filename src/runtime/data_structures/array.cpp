@@ -31,7 +31,11 @@ void Array::append(double x) {
     ptr->data.push_back(Any {x});
 }
 
-Any Array::operator[](int64_t i) {
+Any& Array::operator[](int64_t i) {
+    return ptr->data.at(i);
+}
+
+Any Array::operator[](int64_t i) const {
     return ptr->data.at(i);
 }
 

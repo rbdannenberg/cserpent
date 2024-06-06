@@ -32,7 +32,8 @@ public:
     void append(int64_t x);
     void append(double x);
 
-    Any operator[](int64_t i);
+    Any& operator[](int64_t i);
+    Any operator[](int64_t i) const;
     friend int64_t len(Array x);
 
 };

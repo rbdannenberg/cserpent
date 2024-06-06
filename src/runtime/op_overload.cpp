@@ -288,7 +288,7 @@ Any& Any::operator[](int64_t i) {
     }
 }
 
-const Any& Any::operator[](int64_t i) const {
+Any Any::operator[](int64_t i) const {
     if (is_ptr(*this)) {
         Basic_obj *basic_ptr= to_ptr(*this);
         if (basic_ptr->get_tag() == tag_array) {

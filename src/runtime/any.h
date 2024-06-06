@@ -51,7 +51,7 @@ public:
     operator int64_t();
 
     Any& operator[] (int64_t i);
-    const Any& operator[] (int64_t i) const;
+    Any operator[] (int64_t i) const; // return-by-value is faster
 
     void append(Any x);
     void append(int64_t x);
