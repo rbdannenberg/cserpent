@@ -21,6 +21,15 @@
 # //               "(" actuals post_inner | empty ## method call
 # // actuals := [ [ id "=" ] expr  { "," [ id "=" ] expr }* ] ")"  ## key word arguments
 
+# // expression := sum [ relop sum ]
+# // sum := product { (+,-,|,^,<<,>>) product }*
+# // product := term { "*,/,%,&" term }*
+# // term := "-" term | "+" term | "not" term | "~" term | inner
+# // inner := long | double | string | "(" expression ")" | id post_inner | symbol |
+# //               "[" array post_inner | "{" dictionary post_inner
+# // array := [ expression { "," expression }* ] "]"
+# // dictionary := [ expression ":" expression { "," expression }* ] "}"
+# // post_inner = empty
 """
 def matmul(a, b):
 
@@ -33,7 +42,10 @@ def matmul(a, b):
 class OperatorToken:
     def __init__(self, value):
         self.value = value
-        self.token_class = "operator"
+        self.token_class = value
+
+    def __repr__(self):
+        return self.value + " : token"
 
 class Expression:
     pass
@@ -42,7 +54,10 @@ class Literal(Expression):
     def __init__(self, value, type):
         self.value = value
         self.type = type # int, real, string, bool
-        self.token_class = "constant"
+        self.token_class = "literal"
+
+    def __repr__(self):
+        return self.value + " : " + self.type + " " + self.token_class
 
 class BoolOp(Expression):
     def __init__(self, left, op, right):
@@ -56,6 +71,9 @@ class BinOp(Expression):
         self.op = op # +, -, *, /, %, &, |, ^, <<, >>, **
         self.right = right # an expression
 
+    def __repr__(self):
+        return f"BinOp ({self.left}, {self.op}, {self.right})"
+
 class UnaryOp(Expression):
     def __init__(self, op, value):
         self.op = op # +, -, not, ~
@@ -66,6 +84,9 @@ class Identifier(Expression):
         self.name = name # a string
         self.token_class = "identifier"
         # context?
+
+    def __repr__(self):
+        return self.name + " : " + self.token_class
 
 class Array(Expression):
     def __init__(self, elements):
