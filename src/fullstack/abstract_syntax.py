@@ -48,10 +48,12 @@ class OperatorToken:
         return self.value + " : token"
 
 class Expression:
-    pass
+    def __init__(self):
+        self.children = []
 
 class Literal(Expression):
     def __init__(self, value, type):
+        super().__init__()
         self.value = value
         self.type = type # int, real, string, bool
         self.token_class = "literal"
@@ -70,9 +72,10 @@ class BinOp(Expression):
         self.left = left # an expression
         self.op = op # +, -, *, /, %, &, |, ^, <<, >>, **
         self.right = right # an expression
+        self.children = [left, right]
 
     def __repr__(self):
-        return f"BinOp ({self.left}, {self.op}, {self.right})"
+        return f"BinOp {self.op.value} "
 
 class UnaryOp(Expression):
     def __init__(self, op, value):
@@ -91,6 +94,10 @@ class Identifier(Expression):
 class Array(Expression):
     def __init__(self, elements):
         self.elements = elements # a list of expressions
+        self.children = elements
+
+    def __repr__(self):
+        return "Array of " + str(len(self.elements)) + " elements"
 
 class Dictionary(Expression):
     def __init__(self, pairs):
