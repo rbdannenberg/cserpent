@@ -16,20 +16,32 @@
 # //               string
 # // literal_array := [ expr { "," expr }* ] "]"
 # // literal_dict := [ expr ":" expr { "," expr }* ] "}"
-# // post_inner := "." id [ "(" actuals ] post_inner |
+# // post_inner := "." id [ "(" arguments ] post_inner |
 # //               "[" expr "]" post_inner | ## indexing
-# //               "(" actuals post_inner | empty ## method call
-# // actuals := [ [ id "=" ] expr  { "," [ id "=" ] expr }* ] ")"  ## key word arguments
+# //               "(" arguments post_inner | empty ## method call
+# // arguments := [ [ id "=" ] expr  { "," [ id "=" ] expr }* ] ")"  ## key word arguments
 
-# // expression := sum [ relop sum ]
-# // sum := product { (+,-,|,^,<<,>>) product }*
-# // product := term { "*,/,%,&" term }*
-# // term := "-" term | "+" term | "not" term | "~" term | inner
-# // inner := long | double | string | "(" expression ")" | id post_inner | symbol |
-# //               "[" array post_inner | "{" dictionary post_inner
-# // array := [ expression { "," expression }* ] "]"
-# // dictionary := [ expression ":" expression { "," expression }* ] "}"
-# // post_inner = empty
+###### EXPRESSION ######
+# expression := sum [ relop sum ]
+# sum := product { (+,-,|,^,<<,>>) product }*
+# product := term { "*,/,%,&" term }*
+# term := "-" term | "+" term | "not" term | "~" term | inner
+# inner := literal | "(" expression ")" | id post_inner |
+#               "[" array post_inner | "{" dictionary post_inner
+# literal := integer | real | string | symbol
+# array := [ expression { "," expression }* ] "]"
+# dictionary := [ expression ":" expression { "," expression }* ] "}"
+# post_inner := "." id [ "(" arguments ] post_inner |
+#                "[" expr "]" post_inner | ## indexing
+#                "(" arguments post_inner | empty ## method call
+# arguments := [ [ id "=" ] expr  { "," [ id "=" ] expr }* ] ")"  ## key word arguments
+
+###### STATEMENT ######
+# statement := [ type ] identifier "=" expression | type identifier | expression
+
+
+
+# x[5](3, 4) <- when is this a valid expression?
 """
 def matmul(a, b):
 
@@ -39,6 +51,7 @@ def matmul(a, b):
 
         var c = []
 """
+# does Serpent have multiple inheritance? If so, consider setting OperatorToken, Identifier and Literal to inherit from Token
 class OperatorToken:
     def __init__(self, value):
         self.value = value
@@ -49,7 +62,11 @@ class OperatorToken:
 
 class Expression:
     def __init__(self):
+        # for printing using pptree
         self.children = []
+
+    def __repr__(self):
+        return self.__class__.__name__
 
 class Literal(Expression):
     def __init__(self, value, type):
@@ -63,12 +80,18 @@ class Literal(Expression):
 
 class BoolOp(Expression):
     def __init__(self, left, op, right):
+        super().__init__()
         self.left = left # an expression
         self.op = op # and, or
         self.right = right # an expression
+        self.children = [left, right]
+
+    def __repr__(self):
+        return f"BoolOp {self.op.value}"
 
 class BinOp(Expression):
     def __init__(self, left, op, right):
+        super().__init__()
         self.left = left # an expression
         self.op = op # +, -, *, /, %, &, |, ^, <<, >>, **
         self.right = right # an expression
@@ -79,11 +102,13 @@ class BinOp(Expression):
 
 class UnaryOp(Expression):
     def __init__(self, op, value):
+        super().__init__()
         self.op = op # +, -, not, ~
         self.value = value # an expression
 
 class Identifier(Expression):
     def __init__(self, name):
+        super().__init__()
         self.name = name # a string
         self.token_class = "identifier"
         # context?
@@ -93,6 +118,7 @@ class Identifier(Expression):
 
 class Array(Expression):
     def __init__(self, elements):
+        super().__init__()
         self.elements = elements # a list of expressions
         self.children = elements
 
@@ -101,36 +127,74 @@ class Array(Expression):
 
 class Dictionary(Expression):
     def __init__(self, pairs):
+        super().__init__()
         self.pairs = pairs # a list of key-value pairs
+
+    def __repr__(self):
+        return "Dictionary of " + str(len(self.pairs)) + " pairs"
 
 class FunctionCall(Expression):
     def __init__(self, name, parameters):
+        super().__init__()
+        self.name = name
         self.function_name = name # an identifier
         self.parameters = parameters # a parameter list
+        self.children = [name, parameters]
 
 class MethodCall(Expression):
     def __init__(self, object, method_name, parameters):
+        super().__init__()
         self.object = object # an expression
         self.method_name = method_name # an identifier
         self.parameters = parameters # a
+        self.children = [object, method_name, parameters]
+
+class GetAttribute(Expression):
+    def __init__(self, object, attribute):
+        super().__init__()
+        self.object = object # an expression
+        self.attribute = attribute # an identifier
+        self.children = [object, attribute]
 
 class Index(Expression):
     def __init__(self, object, index):
+        super().__init__()
         self.object = object # an expression
         self.index = index # an expression
+        self.children = [object, index]
 
-class ParamaterList(Expression):
-    def __init__(self, params):
-        self.params = params # a list of expressions. can be named or not
+class ArgumentList(Expression):
+    def __init__(self, args, kwargs):
+        super().__init__()
+        self.args = args # a list of expressions. can be named or not
+        self.kwargs = kwargs # a dictionary of named expressions. Key must either be an identifier.
+        self.children = args + list(kwargs.items())
+
 
 class Statement:
-    pass
+    def __repr(self):
+        return self.__class__.__name__
 
 class Assignment(Statement):
     def __init__(self, identifier, expression):
         self.identifier = identifier
         self.expression = expression
+        self.children = [identifier, expression]
 
 class StandaloneExpression(Statement):
     def __init__(self, expression):
         self.expression = expression
+        self.children = [expression]
+
+class Declaration(Statement):
+    def __init__(self, type, identifier):
+        self.type = type
+        self.identifier = identifier
+        self.children = [type, identifier]
+
+class DeclarationNAssignment(Statement):
+    def __init__(self, type, identifier, expression):
+        self.type = type
+        self.identifier = identifier
+        self.expression = expression
+        self.children = [type, identifier, expression]
