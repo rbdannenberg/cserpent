@@ -5,7 +5,7 @@ sum := product { (+,-,|,^,<<,>>) product }*
 product := term { "*,/,%,&" term }*
 term := "-" term | "+" term | "not" term | "~" term | inner
 inner := literal | "(" expression ")" | id post_inner |
-"[" array post_inner | "{" dictionary post_inner
+"[" array post_inner | "{" dictionary post_inner | type "(" arguments post_inner
 literal := integer | real | string | symbol
 array := [ expression { "," expression }* ] "]"
 dictionary := [ expression ":" expression { "," expression }* ] "}"
@@ -16,8 +16,8 @@ arguments := [ [ id "=" ] expr  { "," [ id "=" ] expr }* ] ")"  ## key word argu
 
 ##### STATEMENT ######
 statement := [ type ] identifier "=" expression | type identifier | expression
-statement := type identfier [ "=" expression ] | identifier "=" expression | expression
-
+statement := type identfier [ "=" expression ] | expression [ "=" expression ] | "return" expression
+d
 ##### MULTI-LINE ###### 
 **Note**: from here, we move on from single-line parsing.
 **Note**: need to be an indentation level deeper than the previous line.

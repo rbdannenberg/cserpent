@@ -61,6 +61,9 @@ class Token:
         self.value = value
         self.token_class = None
 
+    def __repr__(self):
+        return self.value + " : " + self.token_class
+
 # does Serpent have multiple inheritance? If so, consider setting OperatorToken, Identifier and Literal to inherit from Token
 class OperatorToken(Token):
     def __init__(self, value):
@@ -77,13 +80,22 @@ class Type(Token):
         self.token_class = "type"
         self.children = []
 
-    def __repr__(self):
-        return self.value + " : type"
 
 class Construct(Token):
     def __init__(self, value):
         super().__init__(value)
         self.token_class = value
+
+    def __repr__(self):
+        return self.value + " : construct"
+
+class Indentation(Token):
+    def __init__(self, value):
+        super().__init__(value)
+        self.token_class = "indentation"
+
+    def __repr__(self):
+        return "Indentation of " + str(self.value)
 
 class Expression:
     def __init__(self):
@@ -165,6 +177,14 @@ class FunctionCall(Expression):
         self.parameters = parameters # a parameter list
         self.children = [name, parameters]
 
+# also includes type casts. Not sure if that is better to be called a "function call" or a "constructor"
+class Constructor(Expression):
+    def __init__(self, type, parameters):
+        super().__init__()
+        self.type = type # a type
+        self.parameters = parameters # a parameter list
+        self.children = [type, parameters]
+
 class MethodCall(Expression):
     def __init__(self, object, method_name, parameters):
         super().__init__()
@@ -200,6 +220,7 @@ class BlockElement:
         return self.__class__.__name__
 
 class Statement(BlockElement):
+    pass
 
 class Assignment(Statement):
     def __init__(self, identifier, expression):
@@ -219,7 +240,6 @@ class Declaration(Statement):
         super().__init__()
         self.type = type
         self.identifier = identifier
-        print(identifier)
         self.children = [type, identifier]
 
 class DeclarationNAssignment(Statement):
@@ -230,9 +250,24 @@ class DeclarationNAssignment(Statement):
         self.expression = expression
         self.children = [type, identifier, expression]
 
+class ReturnStatement(Statement):
+    def __init__(self, expression):
+        super().__init__()
+        self.expression = expression
+        self.children = [expression]
+
+
 ##### MULTI_LINE #####
 class ControlFlow(BlockElement):
     pass
+
+class Block:
+    def __init__(self, statements):
+        self.statements = statements
+        self.children = statements
+
+    def __repr__(self):
+        return "Block"
 
 class If(ControlFlow):
     def __init__(self, condition, block, else_block=None):
@@ -268,6 +303,25 @@ class Function():
         self.block = block
         self.children = [name, arguments, block]
 
+    def __repr__(self):
+        return "Function"
+
+class MemberVariables():
+    def __init__(self, variables):
+        self.variables = variables
+        self.children = variables
+
+    def __repr__(self):
+        return "Member Variables"
+
+class MemberFunctions():
+    def __init__(self, functions):
+        self.functions = functions
+        self.children = functions
+
+    def __repr__(self):
+        return "Member Functions"
+
 class Class():
     def __init__(self, name, member_variables, member_functions):
         super().__init__()
@@ -276,11 +330,16 @@ class Class():
         self.member_functions = member_functions
         self.children = [name, member_variables, member_functions]
 
+    def __repr__(self):
+        return "Class"
+
 class Program():
     def __init__(self, elements):
         self.elements = elements
         self.children = elements
 
+    def __repr__(self):
+        return "Program"
 
 
 
