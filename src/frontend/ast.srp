@@ -1,1 +1,7 @@
-class Exp
+class Program:
+
+    // map<string, true> (imitate hash set)
+    var loaded_files
+
+    def init():
+        this.loaded_files = {}

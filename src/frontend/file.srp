@@ -1,0 +1,17 @@
+class SourceFile:
+
+    var file_path
+    var source
+    // <list of starting position of each line>
+    var source_map
+
+    def init(file_path, source):
+        this.file_path = file_path
+        this.source = source
+        this.source_map = [0]
+
+        for pos = 0 to len(source):
+            if source[pos] == "\n":
+                this.source_map.append(pos + 1)
+
+        
