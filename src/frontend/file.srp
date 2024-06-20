@@ -15,3 +15,13 @@ class SourceFile:
                 this.source_map.append(pos + 1)
 
         
+def load_from_path(path):
+    f = open(path, "r")
+    if f == nil:
+        return nil
+
+    # TODO: check if read size is appropriate
+    source = f.read(65536)
+    f.close()
+
+    return SourceFile(path, source)

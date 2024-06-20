@@ -1,6 +1,62 @@
-def list_cmp(a, b):
-    for i = 0 to len(a):
-        if a[i] != b[i]:
-            return a[i] - b[i]
-    
-    return 0
+class Range:
+
+    // Source of the program (string).
+    var file
+
+    // Span (byte offset) of a range in a source file.
+    var start
+    var end
+
+    def init(file, start, end):
+        this.start = start
+        this.end = end
+
+    def join(other):
+        new_start = min(this.start, other.start)
+        new_end = max(this.end, other.end)
+        return Span(file, new_start, new_end)
+
+    # returns [[start_line, start_col], [end_line, end_col]]
+    # line and col numbers are 1-based
+    def to_readable_pos(source_map):
+        # linear search is slow but this is only done once per execution soooo
+        line = 0
+        while line < len(source_map) and source_map[line] < this.start:
+            line = line + 1
+        
+        start_line = line
+        start_col = this.start - source_map[line - 1] + 1
+
+        while line < len(source_map) and source_map[line] < this.end:
+            line = line + 1
+
+        end_line = line
+        end_col = this.end - source_map[line - 1] + 1
+
+        return [[start_line, start_col], [end_line, end_col]]
+
+
+
+class Error:
+
+    var span
+    var msg
+
+    def init(span, msg):
+        this.span = span
+        this.msg = msg
+
+
+class Result:
+
+    var ok
+    var result
+    var error
+
+    def init(ok, inner):
+        this.ok = ok
+        if ok:
+            this.result = inner
+        else:
+            this.error = inner
+

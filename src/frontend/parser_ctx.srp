@@ -1,47 +1,6 @@
 require "utils"
 
 
-class Span:
-
-    // Source of the program (string).
-    var file
-
-    // Line and column of a token/event position.
-    // Format: [line, col]
-    var start
-    var end
-
-    def init(file, start, end):
-        this.line = line
-        this.col = col
-
-    def join(other):
-        new_start = nil
-        new_end = nil
-
-        if list_cmp(this.start, other.start) <= 0:
-            new_start = this.start
-        else:
-            new_start = other.start
-
-        if list_cmp(this.end, other.end) <= 0:
-            new_end = other.end
-        else:
-            new_end = this.end
-
-        return Span(file, new_start, new_end)
-
-
-class Error:
-
-    var span
-    var msg
-
-    def init(span, msg):
-        this.span = span
-        this.msg = msg
-
-
 // Mutable context object passed along when `Parser` is ran on an input.
 class ParseContext:
 

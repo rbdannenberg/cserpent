@@ -1,0 +1,80 @@
+# straightforward LL(1) tokenizing cuz no support for regex yet qwq
+require "utils"
+
+
+TK_KEYWORD = "KEYWORD"
+TK_IDENTIFIER = "IDENTIFIER"
+TK_SYMBOL = "SYMBOL"
+TK_LITERAL = "LITERAL"
+TK_WHITESPACE = "WHITESPACE"
+
+
+KW_STR = [
+    "class",
+    "var",
+    "def",
+    "if",
+    "elif",
+    "else",
+    "while",
+    "print",
+    "for",
+    "in",
+    "from",
+    "to",
+    "by",
+    "return",
+    "load",
+    "or",
+    "and",
+    "is",
+    "not",
+    "in"
+]
+
+SYMBOL_STR = [
+    "**", "<<", ">>", "<=", "!=", ">=",
+    "(", ")", "[", "]", "{", "}",
+    ":", ",", "=",
+    "<", ">",
+    "+", "-", "|", "^", 
+    "*", "/", "%", "&", "~", "."
+]
+
+
+class Token:
+
+    var tk_type
+    var content
+    var range
+
+    def init(tk_type, content, range):
+        this.tk_type = tk_type
+        this.content = content
+        this.range = range
+
+
+def tk_iden(stream, pos):
+    if not (stream[pos].isalpha() or stream[pos] == "_"):
+        return -1
+    
+    ptr = pos + 1
+    while ptr < len(stream) and stream[ptr].isalnum() or stream[ptr] == "_":
+        ptr = ptr + 1
+    
+    return ptr - pos
+
+
+def tk_symbol(stream, pos):
+    for s in SYMBOL_STR:
+        if s == subseq(stream, pos, pos + len(s)):
+            return len(s)
+
+    return -1
+
+
+def tokenize(source_file):
+    pos = 0
+    while pos < len(source_file):
+        # TODO: actually lex stuff
+        a = 1
