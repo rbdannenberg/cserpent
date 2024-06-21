@@ -5,7 +5,7 @@ require "utils"
 TAB_SIZE = 4
 
 
-INLINE_WHITESPACE = " \t\v\r\f"
+INLINE_WHITESPACE = [" ", "\t", "\v", "\r", "\f"]
 
 
 TK_KEYWORD = "KEYWORD"
@@ -71,12 +71,13 @@ class Token:
 
 
 def tk_iden(source_file, pos, boxed_output):
+    print len(source_file.source), pos
     stream = source_file.source
-    if not (stream[pos].isalpha() or stream[pos] == "_"):
+    if not (isalpha(stream[pos]) or stream[pos] == "_"):
         return false
     
     ptr = pos + 1
-    while ptr < len(stream) and stream[ptr].isalnum() or stream[ptr] == "_":
+    while ptr < len(stream) and isalnum(stream[ptr]) or stream[ptr] == "_":
         ptr = ptr + 1
     
     boxed_output[0] = ptr
@@ -99,7 +100,7 @@ def tk_whitespace(source_file, pos, boxed_output):
         return false
     
     for i = pos + 1 to len(stream):
-        if i not in INLINE_WHITESPACE:
+        if stream[i] not in INLINE_WHITESPACE:
             boxed_output[0] = i
             return true
         
@@ -115,7 +116,27 @@ def strip_empty_lines(source_file, pos):
         line_ptr = ptr
 
         # clear preceding whitespaces
-        while ptr < len(stream) and stream[ptr] in INLINE_WHITESPACE:
+        flag = true
+        in_comment = false
+        while ptr < len(stream) and flag:
+            char = stream[ptr]
+
+            # hashtag comment
+            if char == "#":
+                in_comment = true
+
+            # slash comment
+            if ptr < len(stream) - 1 and char == "/" and stream[ptr + 1] == "/":
+                in_comment = true
+            
+            # end search on non-whitespace if not in comment
+            if char not in INLINE_WHITESPACE and not in_comment:
+                flag = false
+            
+            # end search on linebreak
+            if char == "\n":
+                flag = false
+
             ptr = ptr + 1
         
         # return EOF position if file ended
@@ -174,9 +195,11 @@ def tokenize(source_file):
     while pos < len(stream):
 
         # skip empty lines (that doesn't contribute to indentation levels)
-        pos = strip_empty_lines(source_file, pos)
-        if pos == len(stream):
-            return res(tokens)
+        # TODO: find out why hashtag isnt skipped
+        if newline:
+            pos = strip_empty_lines(source_file, pos)
+            if pos == len(stream):
+                return res(tokens)
 
         # ugly boxed value representation for cursor position
         new_pos = [-1]
@@ -213,9 +236,18 @@ def tokenize(source_file):
             elif iden in LITERAL_STR:
                 ty_type = TK_LITERAL
 
-            source_file.get_range(pos, new_pos[0])
+            range = source_file.get_range(pos, new_pos[0])
             tokens.append(Token(tk_type, iden, range))
             newline = false
+
+        if new_pos[0] == -1:
+            range = source_file.get_range(pos, pos + 1)
+            return err_res(
+                "invalid character during tokenizing: " + stream[pos],
+                range
+            )
+
+        pos = new_pos[0]
 
     
     return res(tokens)
