@@ -4,6 +4,7 @@
 #include <data_structures/array.h>
 #include <iostream>
 
+// ARITHMETIC OPERATORS
 
 // Right now, we are ignoring the fact that strings and lists can be added to
 Any operator+ (Any lhs, int64_t rhs) {
@@ -47,6 +48,7 @@ Any operator+ (double lhs, Any rhs) {
     return rhs + lhs;
 }
 
+// * operators
 Any operator* (Any lhs, int64_t rhs) {
     if (is_int(lhs)) {
         return { to_int(lhs) * rhs };
@@ -88,7 +90,71 @@ Any operator* (double lhs, Any rhs) {
     return rhs * lhs;
 }
 
-// < operator
+// - operators
+Any operator- (Any lhs, int64_t rhs) {
+    if (is_int(lhs)) {
+        return { to_int(lhs) - rhs };
+    } else if (is_real(lhs)) {
+        return { to_real(lhs) - static_cast<double>(rhs) };
+    } else type_error(lhs);
+}
+
+Any operator- (Any lhs, int rhs) {
+    return lhs - static_cast<int64_t>(rhs);
+}
+
+Any operator- (Any lhs, double rhs) {
+    return { force_real(lhs) - rhs };
+}
+
+Any operator- (Any lhs, Any rhs) {
+    if (is_int(rhs)) {
+        return lhs - to_int(rhs);
+    }
+    else if (is_real(rhs)) {
+        return lhs - to_real(rhs);
+    }
+    else type_error(rhs);
+}
+
+Any operator- (int64_t lhs, Any rhs) {
+    if (is_int(rhs)) {
+        return { lhs - to_int(rhs) };
+    } else if (is_real(rhs)) {
+        return { static_cast<double>(lhs) - to_real(rhs) };
+    } else type_error(rhs);
+}
+
+Any operator- (int lhs, Any rhs) {
+    return static_cast<int64_t>(lhs) - rhs;
+}
+
+Any operator- (double lhs, Any rhs) {
+    return lhs - force_real(rhs);
+}
+
+// / operators
+double operator/ (double lhs, Any rhs) {
+    return lhs / force_real(rhs);
+}
+
+double operator/ (int64_t lhs, Any rhs) {
+    return static_cast<double>(lhs) / force_real(rhs);
+}
+
+double operator/ (Any lhs, Any rhs) {
+    return force_real(lhs) / force_real(rhs);
+}
+
+double operator/ (Any lhs, double rhs) {
+    return force_real(lhs) / rhs;
+}
+
+double operator/ (Any lhs, int64_t rhs) {
+    return force_real(lhs) / static_cast<double>(rhs);
+}
+
+// COMPARISON OPERATORS
 bool operator< (int64_t lhs, Any rhs) {
     if (is_int(rhs)) {
         return lhs < to_int(rhs);
@@ -113,18 +179,41 @@ bool operator< (Any lhs, Any rhs) {
     else type_error(lhs);
 }
 
-double operator/ (double lhs, Any rhs) {
-    return lhs / force_real(rhs);
+bool operator< (Any lhs, int64_t rhs) {
+    if (is_int(lhs)) {
+        return to_int(lhs) < rhs;
+    }
+    else if (is_real(lhs)) {
+        return to_real(lhs) < static_cast<double>(rhs);
+    }
+    else type_error(lhs);
 }
 
-double operator/ (int64_t lhs, Any rhs) {
-    return static_cast<double>(lhs) / force_real(rhs);
+bool operator< (Any lhs, double rhs) {
+    return force_real(lhs) < rhs;
 }
 
-double operator/ (Any lhs, Any rhs) {
-    return force_real(lhs) / force_real(rhs);
+bool operator> (Any lhs, Any rhs) {
+    return !(lhs < rhs || lhs == rhs);
 }
 
+bool operator>= (Any lhs, int rhs) {
+    if (is_int(lhs)) {
+        return to_int(lhs) >= rhs;
+    } else type_error(lhs);
+}
+
+bool operator>= (Any lhs, Any rhs) {
+    ! (lhs < rhs);
+}
+
+bool operator<= (Any lhs, Any rhs) {
+    return !(lhs > rhs);
+}
+
+// BITWISE OPERATORS
+
+// &= operators
 int64_t operator&= (int64_t& lhs, Any rhs) {
     if (is_int(rhs)) {
         return lhs &= to_int(rhs);
@@ -154,11 +243,24 @@ int64_t operator&= (Any& lhs, Any rhs) {
     }
 }
 
+// & operators
 int64_t operator& (Any lhs, int rhs) {
     if (is_int(lhs)) {
         return to_int(lhs) & static_cast<int64_t>(rhs);
     }
     else type_error(lhs);
+}
+
+int64_t operator& (int64_t lhs, Any rhs) {
+    if (is_int(rhs)) {
+        return lhs & to_int(rhs);
+    } else type_error(rhs);
+}
+
+int64_t operator& (Any lhs, int64_t rhs) {
+    if (is_int(lhs)) {
+        return to_int(lhs) & rhs;
+    } else type_error(lhs);
 }
 
 int64_t operator<< (int64_t lhs, Any rhs) {
@@ -168,30 +270,10 @@ int64_t operator<< (int64_t lhs, Any rhs) {
     else type_error(rhs);
 }
 
-/** Define the rest of the operators here:
- *
-int64_t operator<< (int lhs, Any rhs);
-bool operator>= (Any lhs, int rhs);
-int64_t operator| (Any lhs, Any rhs);
-int64_t operator| (int64_t lhs, Any rhs);
-int64_t operator& (int64_t lhs, Any rhs);
-int64_t operator^ (Any lhs, Any rhs);
-int64_t operator>> (int64_t lhs, Any rhs);
-int64_t operator& (Any lhs, int64_t rhs);
-Any operator- (Any lhs, int rhs);
-int64_t operator>> (Any lhs, int rhs);
- */
-
 int64_t operator<< (int lhs, Any rhs) {
     if (is_int(rhs)) {
         return static_cast<int64_t>(lhs) << to_int(rhs);
     } else type_error(rhs);
-}
-
-bool operator>= (Any lhs, int rhs) {
-    if (is_int(lhs)) {
-        return to_int(lhs) >= rhs;
-    } else type_error(lhs);
 }
 
 int64_t operator| (Any lhs, Any rhs) {
@@ -206,12 +288,6 @@ int64_t operator| (int64_t lhs, Any rhs) {
     } else type_error(rhs);
 }
 
-int64_t operator& (int64_t lhs, Any rhs) {
-    if (is_int(rhs)) {
-        return lhs & to_int(rhs);
-    } else type_error(rhs);
-}
-
 int64_t operator^ (Any lhs, Any rhs) {
     if (is_int(lhs) && is_int(rhs)) {
         return to_int(lhs) ^ to_int(rhs);
@@ -222,18 +298,6 @@ int64_t operator>> (int64_t lhs, Any rhs) {
     if (is_int(rhs)) {
         return lhs >> to_int(rhs);
     } else type_error(rhs);
-}
-
-int64_t operator& (Any lhs, int64_t rhs) {
-    if (is_int(lhs)) {
-        return to_int(lhs) & rhs;
-    } else type_error(lhs);
-}
-
-Any operator- (Any lhs, int rhs) {
-    if (is_int(lhs)) {
-        return { to_int(lhs) - rhs };
-    } else type_error(lhs);
 }
 
 int64_t operator>> (Any lhs, int rhs) {

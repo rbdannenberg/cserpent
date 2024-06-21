@@ -45,5 +45,5 @@ void nq_solve(Any n) {
         }
         loops = loops + 1;
     }
-    std::cout << to_int(m) << std::endl;
+    //std::cout << to_int(m) << std::endl;
 }

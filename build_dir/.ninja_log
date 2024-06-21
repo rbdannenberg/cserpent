@@ -1,0 +1,18 @@
+# ninja log v6
+44	1675	7406558240720010	CMakeFiles/runtime.dir/src/runtime/op_overload.cpp.obj	59d74f8b3d51c8b1
+8	704	7406564699536564	CMakeFiles/runtime_benchmarks.dir/benchmarks/C++/matrix_mult.cpp.obj	14e815a2ddd05713
+82	1853	7406558241129028	CMakeFiles/runtime.dir/src/runtime/builtin_functions/builtin_functions.cpp.obj	4caa80f5b74a3c3d
+28	814	7406599403175624	CMakeFiles/runtime_benchmarks.dir/benchmarks/C++/main_benchmark.cpp.obj	4c99d6422184b5d
+1680	2858	7406558257081673	CMakeFiles/runtime.dir/src/runtime/data_structures/dictionary.cpp.obj	15089e77409466
+1147	1657	7406561375174295	libruntime.a	5540b3b2a5a0662f
+7	1635	7406558240364160	CMakeFiles/runtime.dir/src/runtime/any.cpp.obj	1ebfd354d458041b
+64	2279	7406558240919528	CMakeFiles/runtime.dir/src/runtime/main.cpp.obj	9d2865ea987ec96
+8	679	7406585663773431	CMakeFiles/runtime_benchmarks.dir/benchmarks/C++/binary_trees.cpp.obj	c4a401ee995b4e4a
+819	1038	7406599411060297	runtime_benchmarks.exe	4c5114ed57b4f75
+26	1144	7406561363995890	CMakeFiles/runtime.dir/src/runtime/data_structures/array.cpp.obj	447a24df2e4526bc
+14	751	7406599403031152	CMakeFiles/runtime_benchmarks.dir/benchmarks/C++/nqueen.cpp.obj	d23ef390c9c20eeb
+56	1066	7406561364291494	CMakeFiles/runtime.dir/src/runtime/obj.cpp.obj	694db3bbb39bbb5f
+39	1039	7406561364115954	CMakeFiles/runtime.dir/src/runtime/csmem.cpp.obj	547d46f7a3558a13
+22	1525	7406558240500455	CMakeFiles/runtime.dir/src/runtime/any_utils.cpp.obj	55770b700773a780
+11	884	7406599831096059	CMakeFiles/runtime_benchmarks.dir/benchmarks/C++/main_benchmark.cpp.obj	4c99d6422184b5d
+890	1120	7406599839872355	runtime_benchmarks.exe	4c5114ed57b4f75

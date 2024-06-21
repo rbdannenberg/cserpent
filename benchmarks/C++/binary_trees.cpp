@@ -47,7 +47,7 @@ void test_trees(Any arg) {
     Any min_depth = 4;
     Any max_depth = arg;
     Any stretch_depth = max_depth + 1;
-    std::cout << "stretch tree of depth " << stretch_depth << " check: " << check_tree(make_tree(stretch_depth)) << std::endl;
+    //std::cout << "stretch tree of depth " << stretch_depth << " check: " << check_tree(make_tree(stretch_depth)) << std::endl;
 
     Any long_lived_tree = make_tree(max_depth);
     Any iterations = pow(2, max_depth);
@@ -56,8 +56,8 @@ void test_trees(Any arg) {
         for (int64_t i = 0; i < iterations; i++) {
             check = check + check_tree(make_tree(depth));
         }
-        std::cout << iterations << " trees of depth " << depth << " check: " << check << std::endl;
+        //std::cout << iterations << " trees of depth " << depth << " check: " << check << std::endl;
         iterations = idiv(iterations, 4);
     }
-    std::cout << "long lived tree of depth " << to_int(max_depth) << " check: " << check_tree(long_lived_tree) << std::endl;
+    //std::cout << "long lived tree of depth " << to_int(max_depth) << " check: " << check_tree(long_lived_tree) << std::endl;
 }
