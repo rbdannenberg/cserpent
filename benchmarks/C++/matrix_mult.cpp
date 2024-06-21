@@ -64,5 +64,5 @@ void test_matmul(Any n) {
         b.append(_tmp_b);
     }
     Any d = matmul(a, b);
-    std::cout << to_real(d[static_cast<int64_t>(n) / 2][static_cast<int64_t>(n) / 2]) << std::endl;
+    //std::cout << to_real(d[static_cast<int64_t>(n) / 2][static_cast<int64_t>(n) / 2]) << std::endl;
 }

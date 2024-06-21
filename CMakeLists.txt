@@ -34,7 +34,7 @@ add_library(runtime STATIC
         src/runtime/obj.h
         src/runtime/obj.cpp
         #src/runtime/data_structures/string.cpp
-        src/runtime/data_structures/string.h
+        # src/runtime/data_structures/string.h
         # src/runtime/data_structures/symbol.cpp
         # src/runtime/data_structures/symbol.h
         src/runtime/data_structures/dictionary.cpp

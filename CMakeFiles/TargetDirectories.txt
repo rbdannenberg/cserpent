@@ -1,0 +1,6 @@
+C:/Users/georg/Documents/GitHub/cserpent/CMakeFiles/cserpent.dir
+C:/Users/georg/Documents/GitHub/cserpent/CMakeFiles/runtime.dir
+C:/Users/georg/Documents/GitHub/cserpent/CMakeFiles/runtime_benchmarks.dir
+C:/Users/georg/Documents/GitHub/cserpent/CMakeFiles/runtime_test.dir
+C:/Users/georg/Documents/GitHub/cserpent/CMakeFiles/edit_cache.dir
+C:/Users/georg/Documents/GitHub/cserpent/CMakeFiles/rebuild_cache.dir
