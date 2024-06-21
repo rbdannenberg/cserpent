@@ -1,3 +1,6 @@
+require "utils"
+
+
 class SourceFile:
 
     var file_path
@@ -13,6 +16,9 @@ class SourceFile:
         for pos = 0 to len(source):
             if source[pos] == "\n":
                 this.source_map.append(pos + 1)
+
+    def get_range(start, end):
+        return Range(this.file_path, start, end)
 
         
 def load_from_path(path):

@@ -39,11 +39,11 @@ class Range:
 
 class Error:
 
-    var span
+    var range
     var msg
 
-    def init(span, msg):
-        this.span = span
+    def init(range, msg):
+        this.range = range
         this.msg = msg
 
 
@@ -59,4 +59,16 @@ class Result:
             this.result = inner
         else:
             this.error = inner
+
+    def replace(value):
+        if this.ok:
+            return Result(true, value)
+        
+        return Result(false, error)
+
+def res(val):
+    return Result(true, val)
+
+def err_res(err, range):
+    return Result(false, Error(range, err))
 

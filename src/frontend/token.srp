@@ -2,11 +2,19 @@
 require "utils"
 
 
+TAB_SIZE = 4
+
+
+INLINE_WHITESPACE = " \t\v\r\f"
+
+
 TK_KEYWORD = "KEYWORD"
 TK_IDENTIFIER = "IDENTIFIER"
 TK_SYMBOL = "SYMBOL"
 TK_LITERAL = "LITERAL"
 TK_WHITESPACE = "WHITESPACE"
+TK_INDENT = "INDENT"
+TK_DEDENT = "DEDENT"
 
 
 KW_STR = [
@@ -32,6 +40,8 @@ KW_STR = [
     "in"
 ]
 
+LITERAL_STR = ["true", "false", "nil"]
+
 SYMBOL_STR = [
     "**", "<<", ">>", "<=", "!=", ">=",
     "(", ")", "[", "]", "{", "}",
@@ -54,27 +64,157 @@ class Token:
         this.range = range
 
 
-def tk_iden(stream, pos):
+# Since `continue` doesn't exist in Serpent, we are using boxed value (single
+# integer inside a singleton list) to pass output from a tokenizing function
+# so that everything can be put into a single `if/else` condition and avoid
+# a bunch of guards or nested `if/else` or smth.
+
+
+def tk_iden(source_file, pos, boxed_output):
+    stream = source_file.source
     if not (stream[pos].isalpha() or stream[pos] == "_"):
-        return -1
+        return false
     
     ptr = pos + 1
     while ptr < len(stream) and stream[ptr].isalnum() or stream[ptr] == "_":
         ptr = ptr + 1
     
-    return ptr - pos
+    boxed_output[0] = ptr
+    return true
 
 
-def tk_symbol(stream, pos):
+def tk_symbol(source_file, pos, boxed_output):
+    stream = source_file.source
     for s in SYMBOL_STR:
         if s == subseq(stream, pos, pos + len(s)):
-            return len(s)
+            boxed_output[0] = pos + len(s)
+            return true
 
-    return -1
+    return false
+
+
+def tk_whitespace(source_file, pos, boxed_output):
+    stream = source_file.source
+    if stream[pos] not in INLINE_WHITESPACE:
+        return false
+    
+    for i = pos + 1 to len(stream):
+        if i not in INLINE_WHITESPACE:
+            boxed_output[0] = i
+            return true
+        
+    boxed_output[0] = len(stream)
+    return true
+
+
+def strip_empty_lines(source_file, pos):
+    stream = source_file.source
+    ptr = pos
+    while ptr < len(stream):
+        line_ptr = ptr
+
+        # clear preceding whitespaces
+        while ptr < len(stream) and stream[ptr] in INLINE_WHITESPACE:
+            ptr = ptr + 1
+        
+        # return EOF position if file ended
+        if ptr == len(stream):
+            return ptr
+
+        if stream[ptr] == "\n":
+            # skip linebreak if line is empty
+            ptr = ptr + 1
+        else:
+            # return posiion of <last linebreak + 1>
+            return line_ptr
+
+
+def indent_size(source_file, start, end):
+    if start == end:
+        return 0
+
+    stream = source_file.source
+    raw = subseq(stream, start, end)
+    tabs = raw.count("\t")
+    spaces = raw.count(" ")
+
+    if tabs != 0 and spaces != 0:
+        return err_res(
+            "cannot use mixed space and tabs in indentation",
+            source_file.get_range(start, end)
+        )
+
+    # true if whitespace contains anything other than " " and "\t"
+    if tabs + spaces != end - start:
+        return err_res(
+            "cannot use whitespace in indentation other than space or tab",
+            source_file.get_range(start, end)
+        )
+
+    if spaces % TAB_SIZE != 0:
+        return err_res(
+            "space indentation must be a multiple of " + str(TAB_SIZE) +
+            ", got " + str(spaces),
+            source_file.get_range(start, end)
+        )
+
+    return res(int(spaces / TAB_SIZE) + tabs)
 
 
 def tokenize(source_file):
     pos = 0
-    while pos < len(source_file):
-        # TODO: actually lex stuff
-        a = 1
+    indent_level = 0
+    newline = true # true if a linebreak was just encountered
+
+    # List<Token>
+    tokens = []
+    stream = source_file.source
+
+    while pos < len(stream):
+
+        # skip empty lines (that doesn't contribute to indentation levels)
+        pos = strip_empty_lines(source_file, pos)
+        if pos == len(stream):
+            return res(tokens)
+
+        # ugly boxed value representation for cursor position
+        new_pos = [-1]
+
+        if stream[pos] == "\n": # line break
+            newline = true
+            new_pos[0] = pos + 1
+
+        elif tk_whitespace(source_file, pos, new_pos): # whitespace
+            
+            # if at start of line, calculate indentation
+            if newline:
+                res = indent_size(source_file, pos, new_pos[0])
+                if not res.ok:
+                    return res
+                
+                indent = res.result
+                range = source_file.get_range(pos, new_pos[0])
+                if indent < indent_level:
+                    for i = indent to indent_level:
+                        tokens.append(Token(TK_INDENT, "", range))
+                elif indent > indent_level:
+                    for i = indent_level to indent:
+                        tokens.append(Token(TK_DEDENT, "", range))
+
+            newline = false
+
+        elif tk_iden(source_file, pos, new_pos): # identifier
+            iden = subseq(stream, pos, new_pos[0])
+            tk_type = TK_IDENTIFIER
+
+            if iden in KW_STR:
+                tk_type = TK_KEYWORD
+            elif iden in LITERAL_STR:
+                ty_type = TK_LITERAL
+
+            source_file.get_range(pos, new_pos[0])
+            tokens.append(Token(tk_type, iden, range))
+            newline = false
+
+    
+    return res(tokens)
