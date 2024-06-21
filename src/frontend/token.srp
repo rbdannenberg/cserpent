@@ -107,6 +107,7 @@ def tk_whitespace(source_file, pos, boxed_output):
     return true
 
 
+# TODO: HANDLE COMMENT AS EMPTY LINES ASIHDBAUIBKJEBJKWAB KWBKJBAW
 def strip_empty_lines(source_file, pos):
     stream = source_file.source
     ptr = pos
