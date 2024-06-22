@@ -109,6 +109,21 @@ def tk_whitespace(source_file, pos, boxed_output):
     return true
 
 
+# tokenizes a comment up to (excluding) the next line break
+def tk_comment(source_file, pos, boxed_output):
+    stream = source_file.source
+    if not (stream[pos] == "#" or subseq(stream, pos, pos + 2) == "//"):
+        return false
+        
+    for i = pos + 1 to len(stream):
+        if stream[i] == "\n":
+            boxed_output[0] = i
+            return true
+
+    boxed_output[0] = len(stream)
+    return true
+
+
 # TODO: HANDLE COMMENT AS EMPTY LINES ASIHDBAUIBKJEBJKWAB KWBKJBAW
 def strip_empty_lines(source_file, pos):
     stream = source_file.source
