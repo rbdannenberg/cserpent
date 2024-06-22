@@ -15,6 +15,7 @@ TK_LITERAL = "LITERAL"
 TK_WHITESPACE = "WHITESPACE"
 TK_INDENT = "INDENT"
 TK_DEDENT = "DEDENT"
+TK_BREAK = "LINEBREAK"
 
 
 KW_STR = [
@@ -128,14 +129,16 @@ def strip_empty_lines(source_file, pos):
             # slash comment
             if ptr < len(stream) - 1 and char == "/" and stream[ptr + 1] == "/":
                 in_comment = true
-            
-            # end search on non-whitespace if not in comment
-            if char not in INLINE_WHITESPACE and not in_comment:
-                flag = false
-            
+
             # end search on linebreak
             if char == "\n":
                 flag = false
+                ptr = ptr - 1
+            
+            # end search on non-whitespace if not in comment
+            elif char not in INLINE_WHITESPACE and not in_comment:
+                flag = false
+                ptr = ptr - 1
 
             ptr = ptr + 1
         
@@ -153,7 +156,7 @@ def strip_empty_lines(source_file, pos):
 
 def indent_size(source_file, start, end):
     if start == end:
-        return 0
+        return res(0)
 
     stream = source_file.source
     raw = subseq(stream, start, end)
@@ -199,7 +202,29 @@ def tokenize(source_file):
         if newline:
             pos = strip_empty_lines(source_file, pos)
             if pos == len(stream):
+                for i = 0 to indent_level:
+                    tokens.append(Token(TK_DEDENT, "", range))
                 return res(tokens)
+
+            whitespace_end = [-1]
+            if not tk_whitespace(source_file, pos, whitespace_end):
+                whitespace_end[0] = pos
+
+            res = indent_size(source_file, pos, whitespace_end[0])
+            if not res.ok:
+                return res
+            
+            indent = res.result
+            range = source_file.get_range(pos, whitespace_end[0])
+            if indent < indent_level:
+                for i = indent to indent_level:
+                    tokens.append(Token(TK_DEDENT, "", range))
+            elif indent > indent_level:
+                for i = indent_level to indent:
+                    tokens.append(Token(TK_INDENT, "", range))
+
+            indent_level = indent
+            newline = false
 
         # ugly boxed value representation for cursor position
         new_pos = [-1]
@@ -207,25 +232,11 @@ def tokenize(source_file):
         if stream[pos] == "\n": # line break
             newline = true
             new_pos[0] = pos + 1
+            range = source_file.get_range(pos, pos + 1)
+            tokens.append(Token(TK_BREAK, "", range))
 
         elif tk_whitespace(source_file, pos, new_pos): # whitespace
-            
-            # if at start of line, calculate indentation
-            if newline:
-                res = indent_size(source_file, pos, new_pos[0])
-                if not res.ok:
-                    return res
-                
-                indent = res.result
-                range = source_file.get_range(pos, new_pos[0])
-                if indent < indent_level:
-                    for i = indent to indent_level:
-                        tokens.append(Token(TK_INDENT, "", range))
-                elif indent > indent_level:
-                    for i = indent_level to indent:
-                        tokens.append(Token(TK_DEDENT, "", range))
-
-            newline = false
+            pass = 1
 
         elif tk_iden(source_file, pos, new_pos): # identifier
             iden = subseq(stream, pos, new_pos[0])
@@ -238,7 +249,6 @@ def tokenize(source_file):
 
             range = source_file.get_range(pos, new_pos[0])
             tokens.append(Token(tk_type, iden, range))
-            newline = false
 
         if new_pos[0] == -1:
             range = source_file.get_range(pos, pos + 1)
@@ -249,5 +259,18 @@ def tokenize(source_file):
 
         pos = new_pos[0]
 
-    
+    for i = 0 to indent_level:
+        tokens.append(Token(TK_DEDENT, "", range))
     return res(tokens)
+
+
+def pretty_print_tokenize_result(result):
+    if result.ok:
+        print "Sucessful. Tokens:"
+        for tok in result.result:
+            print "[" + tok.tk_type +"]", tok.content
+    else:
+        err = result.error
+        range_str = str(err.range.start) + "-" + str(err.range.end)
+        print "Tokenizer Error (" + range_str + ")"
+        print err.msg
