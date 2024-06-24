@@ -1,197 +1,269 @@
-class Program:
+// class Program:
 
-    // map<string, true> (imitate hash set)
-    var loaded_files
+//     // map<string, true> (imitate hash set)
+//     var loaded_files
 
-    def init():
-        this.loaded_files = {}
+//     def init():
+//         this.loaded_files = {}
 
 class Expression:
     def init():
         pass
 
+    def accept(visitor):
+        pass
+
 class Literal(Expression):
-    value # a value of type object_type
-    object_type
+    var value # a value of type object_type
+    var object_type
 
     def init(_value, _object_type):
         super.init()
         value = _value
         object_type = _object_type
 
+    def accept(visitor):
+        visitor.visitLiteral(self)
+
 class Identifier(Expression):
-    value # a string
+    var value # a string
 
     def init(_value):
         super.init()
         value = _value
 
+    def accept(visitor):
+        visitor.visitIdentifier(self)
+
 class BoolOp(Expression):
-    left
-    op
-    right
+    var left
+    var op
+    var right
     def init(_left, _op, _right):
         super.init()
         left = _left
         op = _op # and, or
         right = _right
 
+    def accept(visitor):
+        visitor.visitBoolOp(self)
+
 class BinOp(Expression):
-    left
-    op  # +, -, *, /, %, &, |, ^, <<, >>, **
-    right
+    var left
+    var op  # +, -, *, /, %, &, |, ^, <<, >>, **
+    var right
     def init(_left, _op, _right):
         super.init()
         left = _left
         op = _op
         right = _right
 
+    def accept(visitor):
+        visitor.visitBinOp(self)
+
 class UnaryOp(Expression):
-    op # +, -, not, ~
-    value
+    var op # +, -, not, ~
+    var value
     def init(_op, _value):
         super.init()
         op = _op
         value = _value
 
+    def accept(visitor):
+        visitor.visitUnaryOp(self)
+
 class Array(Expression):
-    elements # a list of expressions
+    var elements # a list of expressions
     def init(_elements):
         super.init()
         elements = _elements
 
+    def accept(visitor):
+        visitor.visitArray(self)
+
 class Dictionary(Expression):
-    pairs # a list of key-value pairs
+    var pairs # a list of key-value pairs
     def init(_pairs):
         super.init()
         pairs = _pairs
 
-class ArgumentList():
-    args # : Array [Expression]
-    kwargs # : Dictionary[Identifier, Expression]
+    def accept(visitor):
+        visitor.visitDictionary(self)
+
+class ArgumentList:
+    var args # : Array [Expression]
+    var kwargs # : Dictionary[Identifier, Expression]
     def init(_args, _kwargs):
         super.init()
         args = _args
         kwargs = _kwargs
 
+    def accept(visitor):
+        visitor.visitArgumentList(self)
+
 class FunctionCall(Expression):
-    function_name # : Identifier
-    parameters # : ArgumentList
+    var function_name # : Identifier
+    var parameters # : ArgumentList
     def init(_name, _parameters):
         super.init()
         function_name = _name
         parameters = _parameters
 
+    def accept(visitor):
+        visitor.visitFunctionCall(self)
+
 class Constructor(Expression):
-    class_name # : Identifier
-    parameters # : ArgumentList
+    var class_name # : Identifier
+    var parameters # : ArgumentList
     # this is isomorphic to FunctionCall
     def init(_class_name, _parameters):
         super.init()
         class_name = _class_name
         parameters = _parameters
 
+    def accept(visitor):
+        visitor.visitConstructor(self)
+
 class MethodCall(Expression):
-    object # : Expression
-    method_name # : Identifier
-    parameters # : ArgumentList
+    var object # : Expression
+    var method_name # : Identifier
+    var parameters # : ArgumentList
     def init(_object, _method_name, _parameters):
         super.init()
         object = _object
         method_name = _method_name
         parameters = _parameters
 
+    def accept(visitor):
+        visitor.visitMethodCall(self)
+
 class GetAttribute(Expression):
-    object # : Expression
-    attribute # : Identifier
+    var object # : Expression
+    var attribute # : Identifier
     def init(_object, _attribute):
         super.init()
         object = _object
         attribute = _attribute
 
+    def accept(visitor):
+        visitor.visitGetAttribute(self)
+
 class Index(Expression):
-    object # : Expression
-    index # : Expression
+    var object # : Expression
+    var index # : Expression
     def init(_object, _index):
         super.init()
         object = _object
         index = _index
 
+    def accept(visitor):
+        visitor.visitIndex(self)
+
 class BlockElement:
-    pass
+
+    def accept(visitor):
+        pass
 
 class Statement(BlockElement):
-    pass
+
+    def accept(visitor):
+        pass
 
 class Assignment(Statement):
-    identifier # : Identifier
-    expression # : Expression
+    var identifier # : Identifier
+    var expression # : Expression
     def init(_identifier, _expression):
         super.init()
         identifier = _identifier
         expression = _expression
 
+    def accept(visitor):
+        visitor.visitAssignment(self)
+
 class StandaloneExpression(Statement):
-    expression # : Expression
+    var expression # : Expression
     def init(_expression):
         super.init()
         expression = _expression
 
+    def accept(visitor):
+        visitor.visitStandaloneExpression(self)
+
 class Declaration(Statement):
-    declared_type # : Identifier?
-    identifier # : Identifier
+    var declared_type # : Identifier?
+    var identifier # : Identifier
     def init(_declared_type, _identifier):
         super.init()
         declared_type = _declared_type
         identifier = _identifier
 
+    def accept(visitor):
+        visitor.visitDeclaration(self)
+
 class DeclarationNAssignment(Statement):
-    declared_type # : Identifier?
-    identifier # : Identifier
-    expression # : Expression
+    var declared_type # : Identifier?
+    var identifier # : Identifier
+    var expression # : Expression
     def init(_declared_type, _identifier, _expression):
         super.init()
         declared_type = _declared_type
         identifier = _identifier
         expression = _expression
 
+    def accept(visitor):
+        visitor.visitDeclarationNAssignment(self)
+
 class ReturnStatement(Statement):
-    expression # : Expression
+    var expression # : Expression
     def init(_expression):
         super.init()
         expression = _expression
 
+    def accept(visitor):
+        visitor.visitReturnStatement(self)
+
 class ControlFlow(BlockElement):
-    pass
+
+    def accept(visitor):
+        pass
 
 class Block:
-    statements # : List[BlockElement]
+    var statements # : List[BlockElement]
     def init(_statements):
         statements = _statements
 
+    def accept(visitor):
+        visitor.visitBlock(self)
+
 class If(ControlFlow):
-    condition # : Expression # must be a boolean
-    block # : Block
-    else_block # : Block
-    def init(_condition, _block, _else_block=None):
+    var condition # : Expression # must be a boolean
+    var block # : Block
+    var else_block # : Block
+    def init(_condition, _block, optional _else_block=nil):
         super.init()
         condition = _condition
         block = _block
         else_block = _else_block
 
+    def accept(visitor):
+        visitor.visitIf(self)
+
 class While(ControlFlow):
-    condition # : Expression # must be a boolean
-    block # : Block
+    var condition # : Expression # must be a boolean
+    var block # : Block
     def init(_condition, _block):
         super.init()
         condition = _condition
         block = _block
 
+    def accept(visitor):
+        visitor.visitWhile(self)
+
 class For(ControlFlow):
-    identifier # : Identifier # loop variable
-    start # : Expression
-    end # : Expression
-    block # : Block
+    var identifier # : Identifier # loop variable
+    var start # : Expression
+    var end # : Expression
+    var block # : Block
     def init(_identifier, _start, _end, _block):
         super.init()
         identifier = _identifier
@@ -199,37 +271,55 @@ class For(ControlFlow):
         end = _end
         block = _block
 
-class Function():
-    name # : Identifier
-    arguments # : ArgumentList or List[Declaration]??
-    block # : Block
+    def accept(visitor):
+        visitor.visitFor(self)
+
+class Function:
+    var name # : Identifier
+    var arguments # : ArgumentList or List[Declaration]??
+    var block # : Block
     def init(_name, _arguments, _block):
         super.init()
         name = _name
         arguments = _arguments
         block = _block
 
-class MemberVariables():
-    variables # : List[Declaration]
+    def accept(visitor):
+        visitor.visitFunction(self)
+
+class MemberVariables:
+    var variables # : List[Declaration]
     def init(_variables):
         variables = _variables
 
-class MemberFunctions():
-    functions # : List[Function]
+    def accept(visitor):
+        visitor.visitMemberVariables(self)
+
+class MemberFunctions:
+    var functions # : List[Function]
     def init(_functions):
         functions = _functions
 
-class Class():
-    name # : Identifier
-    member_variables # : MemberVariables
-    member_functions # : MemberFunctions
+    def accept(visitor):
+        visitor.visitMemberFunctions(self)
+
+class Class:
+    var name # : Identifier
+    var member_variables # : MemberVariables
+    var member_functions # : MemberFunctions
     def init(_name, _member_variables, _member_functions):
         super.init()
         name = _name
         member_variables = _member_variables
         member_functions = _member_functions
 
-class File():
-    elements # list of class/function/block elements, List[Class | Function | BlockElement] if you will
+    def accept(visitor):
+        visitor.visitClass(self)
+
+class File:
+    var elements # list of class/function/block elements, List[Class | Function | BlockElement] if you will
     def init(_elements):
         elements = _elements
+
+    def accept(visitor):
+        visitor.visitFile(self)
