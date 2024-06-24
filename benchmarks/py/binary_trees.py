@@ -19,13 +19,13 @@ def check_tree(node):
     return 1 + check_tree(left) + check_tree(right)
 
 
-def main(arg):
+def test_trees(arg):
     min_depth = 4
     max_depth = max(min_depth + 2, arg)
     stretch_depth = max_depth + 1
-
-    #print("stretch tree of depth %d\t check:" % 
-    #      stretch_depth, check_tree(make_tree(stretch_depth)))
+    stretch_tree = make_tree(stretch_depth)
+    # print("stretch tree of depth %d\t check:" %
+    #      stretch_depth, check_tree(stretch_tree))
 
     long_lived_tree = make_tree(max_depth)
 
@@ -37,20 +37,9 @@ def main(arg):
         for i in range(1, iterations + 1):
             check += check_tree(make_tree(depth))
 
-        print("%d\t trees of depth %d\t check:" % (iterations, depth), check)
+        # print("%d\t trees of depth %d\t check:" % (iterations, depth), check)
         iterations //= 4
 
-    print("long lived tree of depth %d\t check:" %
-     max_depth, check_tree(long_lived_tree))
-
-
-# BENCHMARKING:
-import time
-
-for i in range(5):
-    start_time = time.time()
-    main(15)
-    end_time = time.time()
-    execution_time = end_time - start_time
-    print(str(round(execution_time, 4)).replace(".",","))
+    # print("long lived tree of depth %d\t check:" %
+    #  max_depth, check_tree(long_lived_tree))
 

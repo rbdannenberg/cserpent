@@ -32,11 +32,4 @@ def nq_solve(n):
 		else:
 			a[k] = -1
 			k -= 1
-	return m
-
-def main():
-	n = 15
-	if (len(sys.argv) > 1): n = int(sys.argv[1])
-	print(nq_solve(n))
-
-if __name__ == '__main__': main()
+	# print(m)

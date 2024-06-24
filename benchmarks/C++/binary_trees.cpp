@@ -3,6 +3,7 @@
 #include <data_structures/array.h>
 #include <data_structures/dictionary.h>
 #include <builtin_functions/builtin_functions.h>
+#include "benchmarking_utils.h"
 
 
 class Tree : public Obj {
@@ -47,7 +48,9 @@ void test_trees(Any arg) {
     Any min_depth = 4;
     Any max_depth = arg;
     Any stretch_depth = max_depth + 1;
-    //std::cout << "stretch tree of depth " << stretch_depth << " check: " << check_tree(make_tree(stretch_depth)) << std::endl;
+    Any stretch_tree = make_tree(stretch_depth);
+    do_not_optimize(stretch_tree);
+//    std::cout << "stretch tree of depth " << stretch_depth << " check: " << check_tree(stretch_tree) << std::endl;
 
     Any long_lived_tree = make_tree(max_depth);
     Any iterations = pow(2, max_depth);
@@ -56,8 +59,10 @@ void test_trees(Any arg) {
         for (int64_t i = 0; i < iterations; i++) {
             check = check + check_tree(make_tree(depth));
         }
-        //std::cout << iterations << " trees of depth " << depth << " check: " << check << std::endl;
+        do_not_optimize(check);
+//        std::cout << iterations << " trees of depth " << depth << " check: " << check << std::endl;
         iterations = idiv(iterations, 4);
     }
-    //std::cout << "long lived tree of depth " << to_int(max_depth) << " check: " << check_tree(long_lived_tree) << std::endl;
+    do_not_optimize(long_lived_tree);
+//    std::cout << "long lived tree of depth " << to_int(max_depth) << " check: " << check_tree(long_lived_tree) << std::endl;
 }

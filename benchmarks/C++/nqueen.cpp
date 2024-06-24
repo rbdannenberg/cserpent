@@ -2,6 +2,7 @@
 #include "data_structures/array.h"
 #include "op_overload.h"
 #include <iostream>
+#include "benchmarking_utils.h"
 
 Any helper (Any i, Any y, Any n) {
     while (i < n) {
@@ -45,5 +46,6 @@ void nq_solve(Any n) {
         }
         loops = loops + 1;
     }
-    //std::cout << to_int(m) << std::endl;
+    do_not_optimize(m);
+//    std::cout << to_int(m) << std::endl;
 }

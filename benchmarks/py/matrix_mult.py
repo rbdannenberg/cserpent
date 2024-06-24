@@ -20,17 +20,5 @@ def test_matmul(n):
     a = [[tmp * (i - j) * (i + j) for j in range(n)] for i in range(n)]
     b = [[tmp * (i - j) * (i + j) for j in range(n)] for i in range(n)]
     d = matmul(a, b)
-    #print(d[n//2][n//2])
+    # print(d[n//2][n//2])
 
-
-# BENCHMARKING: Input size: 10, 50, and 100 
-# for i in range(500):
-#     start_time = time.time()
-#     #main(50)
-#     for iter in range(100):
-#         test_matmul(10)
-#     end_time = time.time()
-#     execution_time = end_time - start_time
-#
-#     exec_ms = int(execution_time*1000)
-#     print(exec_ms)

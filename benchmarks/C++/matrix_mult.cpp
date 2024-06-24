@@ -26,6 +26,7 @@ return c
 #include "op_overload.h"
 #include "builtin_functions/builtin_functions.h"
 #include <iostream>
+#include "benchmarking_utils.h"
 
 
 // a is a (Array *)
@@ -64,5 +65,6 @@ void test_matmul(Any n) {
         b.append(_tmp_b);
     }
     Any d = matmul(a, b);
-    //std::cout << to_real(d[static_cast<int64_t>(n) / 2][static_cast<int64_t>(n) / 2]) << std::endl;
+    do_not_optimize(d);
+//    std::cout << to_real(d[static_cast<int64_t>(n) / 2][static_cast<int64_t>(n) / 2]) << std::endl;
 }

@@ -90,6 +90,7 @@ benchmarks/mypyc-benchmarks
 /src/runtime/test/Debug/
 
 /cmake-build-debug/
+/cmake-build-release/
 /build
 /.idea
 /**/__pycache__/
