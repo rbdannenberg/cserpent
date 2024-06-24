@@ -5,3 +5,231 @@ class Program:
 
     def init():
         this.loaded_files = {}
+
+class Expression:
+    def init():
+        pass
+
+class Literal(Expression):
+    value # a value of type object_type
+    object_type
+
+    def init(_value, _object_type):
+        super.init()
+        value = _value
+        object_type = _object_type
+
+class Identifier(Expression):
+    value # a string
+
+    def init(_value):
+        super.init()
+        value = _value
+
+class BoolOp(Expression):
+    left
+    op
+    right
+    def init(_left, _op, _right):
+        super.init()
+        left = _left
+        op = _op # and, or
+        right = _right
+
+class BinOp(Expression):
+    left
+    op  # +, -, *, /, %, &, |, ^, <<, >>, **
+    right
+    def init(_left, _op, _right):
+        super.init()
+        left = _left
+        op = _op
+        right = _right
+
+class UnaryOp(Expression):
+    op # +, -, not, ~
+    value
+    def init(_op, _value):
+        super.init()
+        op = _op
+        value = _value
+
+class Array(Expression):
+    elements # a list of expressions
+    def init(_elements):
+        super.init()
+        elements = _elements
+
+class Dictionary(Expression):
+    pairs # a list of key-value pairs
+    def init(_pairs):
+        super.init()
+        pairs = _pairs
+
+class ArgumentList():
+    args # : Array [Expression]
+    kwargs # : Dictionary[Identifier, Expression]
+    def init(_args, _kwargs):
+        super.init()
+        args = _args
+        kwargs = _kwargs
+
+class FunctionCall(Expression):
+    function_name # : Identifier
+    parameters # : ArgumentList
+    def init(_name, _parameters):
+        super.init()
+        function_name = _name
+        parameters = _parameters
+
+class Constructor(Expression):
+    class_name # : Identifier
+    parameters # : ArgumentList
+    # this is isomorphic to FunctionCall
+    def init(_class_name, _parameters):
+        super.init()
+        class_name = _class_name
+        parameters = _parameters
+
+class MethodCall(Expression):
+    object # : Expression
+    method_name # : Identifier
+    parameters # : ArgumentList
+    def init(_object, _method_name, _parameters):
+        super.init()
+        object = _object
+        method_name = _method_name
+        parameters = _parameters
+
+class GetAttribute(Expression):
+    object # : Expression
+    attribute # : Identifier
+    def init(_object, _attribute):
+        super.init()
+        object = _object
+        attribute = _attribute
+
+class Index(Expression):
+    object # : Expression
+    index # : Expression
+    def init(_object, _index):
+        super.init()
+        object = _object
+        index = _index
+
+class BlockElement:
+    pass
+
+class Statement(BlockElement):
+    pass
+
+class Assignment(Statement):
+    identifier # : Identifier
+    expression # : Expression
+    def init(_identifier, _expression):
+        super.init()
+        identifier = _identifier
+        expression = _expression
+
+class StandaloneExpression(Statement):
+    expression # : Expression
+    def init(_expression):
+        super.init()
+        expression = _expression
+
+class Declaration(Statement):
+    declared_type # : Identifier?
+    identifier # : Identifier
+    def init(_declared_type, _identifier):
+        super.init()
+        declared_type = _declared_type
+        identifier = _identifier
+
+class DeclarationNAssignment(Statement):
+    declared_type # : Identifier?
+    identifier # : Identifier
+    expression # : Expression
+    def init(_declared_type, _identifier, _expression):
+        super.init()
+        declared_type = _declared_type
+        identifier = _identifier
+        expression = _expression
+
+class ReturnStatement(Statement):
+    expression # : Expression
+    def init(_expression):
+        super.init()
+        expression = _expression
+
+class ControlFlow(BlockElement):
+    pass
+
+class Block:
+    statements # : List[BlockElement]
+    def init(_statements):
+        statements = _statements
+
+class If(ControlFlow):
+    condition # : Expression # must be a boolean
+    block # : Block
+    else_block # : Block
+    def init(_condition, _block, _else_block=None):
+        super.init()
+        condition = _condition
+        block = _block
+        else_block = _else_block
+
+class While(ControlFlow):
+    condition # : Expression # must be a boolean
+    block # : Block
+    def init(_condition, _block):
+        super.init()
+        condition = _condition
+        block = _block
+
+class For(ControlFlow):
+    identifier # : Identifier # loop variable
+    start # : Expression
+    end # : Expression
+    block # : Block
+    def init(_identifier, _start, _end, _block):
+        super.init()
+        identifier = _identifier
+        start = _start
+        end = _end
+        block = _block
+
+class Function():
+    name # : Identifier
+    arguments # : ArgumentList or List[Declaration]??
+    block # : Block
+    def init(_name, _arguments, _block):
+        super.init()
+        name = _name
+        arguments = _arguments
+        block = _block
+
+class MemberVariables():
+    variables # : List[Declaration]
+    def init(_variables):
+        variables = _variables
+
+class MemberFunctions():
+    functions # : List[Function]
+    def init(_functions):
+        functions = _functions
+
+class Class():
+    name # : Identifier
+    member_variables # : MemberVariables
+    member_functions # : MemberFunctions
+    def init(_name, _member_variables, _member_functions):
+        super.init()
+        name = _name
+        member_variables = _member_variables
+        member_functions = _member_functions
+
+class File():
+    elements # list of class/function/block elements, List[Class | Function | BlockElement] if you will
+    def init(_elements):
+        elements = _elements

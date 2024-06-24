@@ -88,3 +88,8 @@ benchmarks/mypyc-benchmarks
 /src/runtime/test/runtimetests.xcodeproj/
 
 /src/runtime/test/Debug/
+
+/cmake-build-debug/
+/build
+/.idea
+/**/__pycache__/
