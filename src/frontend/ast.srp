@@ -276,7 +276,8 @@ class For(ControlFlow):
 
 class Function:
     var name # : Identifier
-    var arguments # : ArgumentList or List[Declaration]??
+    var positional # : List[Identifier]
+    var optional   # : List[Identifier + Default]
     var block # : Block
     def init(_name, _arguments, _block):
         super.init()

@@ -1,0 +1,283 @@
+class ASTVisitor:
+    def visitLiteral(literal):
+        pass
+
+    def visitIdentifier(identifier):
+        pass
+
+    def visitBoolOp(bool_op):
+        pass
+
+    def visitBinOp(bin_op):
+        pass
+
+    def visitUnaryOp(unary_op):
+        pass
+
+    def visitArray(array_node):
+        pass
+
+    def visitDictionary(dictionary_node):
+        pass
+
+    def visitArgumentList(argument_list):
+        pass
+
+    def visitFunctionCall(function_call):
+        pass
+
+    def visitConstructor(constructor):
+        pass
+
+    def visitMethodCall(method_call):
+        pass
+
+    def visitGetAttribute(get_attribute):
+        pass
+
+    def visitIndex(index):
+        pass
+
+    def visitAssignment(assignment):
+        pass
+
+    def visitStandaloneExpression(standalone_expression):
+        pass
+
+    def visitDeclaration(declaration):
+        pass
+
+    def visitDeclarationNAssignment(declaration_n_assignment):
+        pass
+
+    def visitReturnStatement(return_statement):
+        pass
+
+    def visitBlock(block):
+        pass
+
+    def visitIf(if_statement):
+        pass
+
+    def visitWhile(while_statement):
+        pass
+
+    def visitFor(for_statement):
+        pass
+
+    def visitFunction(function):
+        pass
+
+    def visitMemberVariables(member_variables):
+        pass
+
+    def visitMemberFunctions(member_functions):
+        pass
+
+    def visitClass(class_):
+        pass
+
+    def visitFile(file):
+        pass
+
+
+class CodegenVisitor(ASTVisitor):
+    var code_lines
+    var curr_code_line
+    var indent_level
+
+    def init():
+        super.init()
+        code_lines = []
+        curr_code_line = ""
+        indent_level = 0
+
+    def add_line(line):
+        for i = 0 to indent_level:
+            line = "    " + line
+        code_lines.append(indent + line)
+
+    def visitLiteral(literal):
+        add_line("Any " + literal.value + ";")
+
+    def visitIdentifier(identifier):
+        curr_code_line = curr_code_line + identifier.value
+
+    def visitBoolOp(bool_op):
+        bool_op.left.accept(this)
+        curr_code_line = curr_code_line + " " + bool_op.op + " "
+        bool_op.right.accept(this)
+
+    def visitBinOp(bin_op):
+        bin_op.left.accept(this)
+        curr_code_line = curr_code_line + " " + bin_op.op + " "
+        bin_op.right.accept(this)
+
+    def visitUnaryOp(unary_op):
+        curr_code_line = curr_code_line + unary_op.op
+        unary_op.value.accept(this)
+
+    def visitArray(array_node):
+        # array literal, adds a 
+        curr_code_line = curr_code_line + "*(new Array {"
+        for element at i in array_node.elements:
+            element.accept(this)
+            if i < len(array_node.elements) - 1:
+                curr_code_line = curr_code_line + ", "
+        curr_code_line = curr_code_line + "})"
+
+    def visitDictionary(dictionary_node):
+        curr_code_line = curr_code_line + "*(new Dictionary {"
+        for pair at i in dictionary.pairs:
+            curr_code_line = curr_code_line + "{"
+            pair[0].accept(this)
+            curr_code_line = curr_code_line + ", "
+            pair[1].accept(this)
+            curr_code_line = curr_code_line + "}"
+
+            if i < len(dictionary.pairs) - 1:
+                curr_code_line = curr_code_line + ", "
+        curr_code_line = curr_code_line + "})"
+
+    def visitArgumentList(argument_list):
+        for arg in argument_list.args:
+            arg.accept(this)
+            curr_code_line = curr_code_line + ", "
+        var kwargs = argument_list.kwargs
+        for key in kwargs.keys():
+            key.accept(this)
+            curr_code_line = curr_code_line + " = "
+            kwargs[key].accept(this)
+            curr_code_line = curr_code_line + ", "
+
+    def visitFunctionCall(function_call):
+        function_call.function_name.accept(this)
+        curr_code_line = curr_code_line + "("
+        function_call.parameters.accept(this)
+        curr_code_line = curr_code_line + ")"
+
+    def visitConstructor(constructor):
+        curr_code_line = curr_code_line + "new " + constructor.class_name.value + "("
+        constructor.parameters.accept(this)
+        curr_code_line = curr_code_line + ")"
+
+    def visitMethodCall(method_call):
+        method_call.object.accept(this)
+        curr_code_line = curr_code_line + "."
+        method_call.method_name.accept(this)
+        curr_code_line = curr_code_line + "("
+        method_call.parameters.accept(this)
+        curr_code_line = curr_code_line + ")"
+
+    def visitGetAttribute(get_attribute):
+        get_attribute.object.accept(this)
+        curr_code_line = curr_code_line + "." + get_attribute.attribute.value
+
+    def visitIndex(index):
+        index.object.accept(this)
+        curr_code_line = curr_code_line + "["
+        index.index.accept(this)
+        curr_code_line = curr_code_line + "]"
+
+    def visitAssignment(assignment):
+        assignment.identifier.accept(this)
+        curr_code_line = curr_code_line + " = "
+        assignment.expression.accept(this)
+        add_line(curr_code_line)
+        curr_code_line = ""
+
+    def visitStandaloneExpression(standalone_expression):
+        standalone_expression.expression.accept(this)
+        add_line(curr_code_line + ";")
+        curr_code_line = ""
+
+    def visitDeclaration(declaration):
+        add_line("Any " + declaration.identifier.value + ";")
+
+    def visitDeclarationNAssignment(declaration_n_assignment):
+        declaration_n_assignment.identifier.accept(this)
+        curr_code_line = curr_code_line + " = "
+        declaration_n_assignment.expression.accept(this)
+        add_line("Any " + curr_code_line + ";")
+        curr_code_line = ""
+
+    def visitReturnStatement(return_statement):
+        curr_code_line = "return "
+        return_statement.expression.accept(this)
+        add_line(curr_code_line + ";")
+        curr_code_line = ""
+
+    def visitBlock(block):
+        add_line("{")
+        indent_level = indent_level + 1
+        for statement in block.statements:
+            statement.accept(this)
+        indent_level = indent_level - 1
+        add_line("}")
+
+    def visitIf(if_statement):
+        curr_code_line = "if ("
+        if_statement.condition.accept(this)
+        curr_code_line = curr_code_line + ")"
+        add_line(curr_code_line)
+        curr_code_line = ""
+        if_statement.block.accept(this)
+        if if_statement.else_block is not None:
+            add_line("else")
+            if_statement.else_block.accept(this)
+
+    def visitWhile(while_statement):
+        curr_code_line = "while ("
+        while_statement.condition.accept(this)
+        curr_code_line = curr_code_line + ")"
+        add_line(curr_code_line)
+        curr_code_line = ""
+        while_statement.block.accept(this)
+
+    def visitFor(for_statement):
+        curr_code_line = "for (Any " + for_statement.identifier.value + " = "
+        for_statement.start.accept(this)
+        curr_code_line = curr_code_line + "; " + for_statement.identifier.value + " < "
+        for_statement.end.accept(this)
+        curr_code_line = curr_code_line + "; " + for_statement.identifier.value + "++)"
+        add_line(curr_code_line)
+        curr_code_line = ""
+        for_statement.block.accept(this)
+
+    def visitFunction(function):
+        curr_code_line = "void " + function.name.value + "("
+        function.arguments.accept(this)
+        curr_code_line = curr_code_line.rstrip(", ") + ")"
+        add_line(curr_code_line)
+        curr_code_line = ""
+        function.block.accept(this)
+
+    def visitMemberVariables(member_variables):
+        for variable in member_variables.variables:
+            variable.accept(this)
+
+    def visitMemberFunctions(member_functions):
+        for function in member_functions.functions:
+            function.accept(this)
+
+    def visitClass(class_):
+        add_line("class " + class_.name.value + " {")
+        indent_level = indent_level + 1
+        class_.member_variables.accept(this)
+        class_.member_functions.accept(this)
+        indent_level = indent_level - 1
+        add_line("};")
+
+    def visitFile(file):
+        for element in file.elements:
+            element.accept(this)
+
+    def generate_code(filename, ast):
+        init()
+        ast.accept(this)
+        var file = open(filename, "w")
+        for line in code_lines:
+            file.write(line + "\n")
+        file.close()
+        init()
+
