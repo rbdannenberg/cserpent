@@ -253,6 +253,9 @@ def tokenize(source_file):
         elif tk_whitespace(source_file, pos, new_pos): # whitespace
             pass = 1
 
+        elif tk_comment(source_file, pos, new_pos): # comment
+            pass = 1
+
         elif tk_iden(source_file, pos, new_pos): # identifier
             iden = subseq(stream, pos, new_pos[0])
             tk_type = TK_IDENTIFIER
