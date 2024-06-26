@@ -259,20 +259,37 @@ class While(ControlFlow):
     def accept(visitor):
         visitor.visitWhile(self)
 
-class For(ControlFlow):
+class ForRange(ControlFlow):
     var identifier # : Identifier # loop variable
     var start # : Expression
     var end # : Expression
+    var by_amount
     var block # : Block
-    def init(_identifier, _start, _end, _block):
+    def init(_identifier, _start, _end, _by, _block):
         super.init()
         identifier = _identifier
         start = _start
         end = _end
+        by_amount = _by
         block = _block
 
     def accept(visitor):
-        visitor.visitFor(self)
+        visitor.visitForRange(self)
+
+
+class ForEach(ControlFlow):
+    var identifier # : Identifier # loop variable
+    var iter # : Expression
+    var block # : Block
+    def init(_identifier, _iter, _end, _block):
+        super.init()
+        identifier = _identifier
+        iter = _iter
+        block = _block
+
+    def accept(visitor):
+        visitor.visitForEach(self)
+
 
 class Function:
     var name # : Identifier
@@ -288,26 +305,10 @@ class Function:
     def accept(visitor):
         visitor.visitFunction(self)
 
-class MemberVariables:
-    var variables # : List[Declaration]
-    def init(_variables):
-        variables = _variables
-
-    def accept(visitor):
-        visitor.visitMemberVariables(self)
-
-class MemberFunctions:
-    var functions # : List[Function]
-    def init(_functions):
-        functions = _functions
-
-    def accept(visitor):
-        visitor.visitMemberFunctions(self)
-
 class Class:
     var name # : Identifier
-    var member_variables # : MemberVariables
-    var member_functions # : MemberFunctions
+    var member_variables # : List[Declaration]
+    var member_functions # : List[Function]
     def init(_name, _member_variables, _member_functions):
         super.init()
         name = _name
