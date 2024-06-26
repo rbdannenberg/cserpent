@@ -6,7 +6,7 @@
 #include "csmem.h"
 #include <utility>
 
-
+#ifdef CSMALLLOC
 void *Basic_obj::operator new(size_t size) {
     return csmalloc(size);
 }
@@ -15,7 +15,7 @@ void *Basic_obj::operator new(size_t size) {
 void Basic_obj::operator delete(void *p) noexcept {
     csfree(p);
 }
-
+#endif
 
 // get the object pointed to by this object's header
 Basic_obj *Basic_obj::get_next()

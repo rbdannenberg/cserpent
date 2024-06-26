@@ -13,7 +13,7 @@ Any helper (Any i, Any y, Any n) {
     }
 }
 
-void nq_solve(Any n) {
+std::string nq_solve(Any n) {
     Any m = 0;
     Any a = *(new Array(n, -1));
     Any l = *(new Array(n, 0));
@@ -46,6 +46,13 @@ void nq_solve(Any n) {
         }
         loops = loops + 1;
     }
-    do_not_optimize(m);
-//    std::cout << to_int(m) << std::endl;
+    //do_not_optimize(m);
+    std::string result = std::to_string(to_int(m));
+#ifdef FREE
+    delete reinterpret_cast<Array*>(to_ptr(a));
+    delete reinterpret_cast<Array*>(to_ptr(l));
+    delete reinterpret_cast<Array*>(to_ptr(c));
+    delete reinterpret_cast<Array*>(to_ptr(r));
+#endif
+    return result;
 }

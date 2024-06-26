@@ -331,6 +331,10 @@ bool operator==(Any lhs, Any rhs) {
     return lhs.integer == rhs.integer;
 }
 
+bool operator!=(Any lhs, Any rhs) {
+    return !(lhs == rhs);
+}
+
 Any& Any::operator[](int64_t i) {
     if (is_ptr(*this)) {
         Basic_obj *basic_ptr= to_ptr(*this);

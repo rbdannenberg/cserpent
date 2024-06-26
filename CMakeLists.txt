@@ -3,6 +3,8 @@ project(cserpent)
 
 set(CMAKE_CXX_STANDARD 17)
 add_compile_options(-Wno-return-type) # suppress warnings about type_error (NOT A FULL SOLUTION)
+set(CMAKE_INTERPROCEDURAL_OPTIMIZATION_RELEASE TRUE)
+add_definitions(-DFREE)
 
 add_executable(cserpent
         benchmarks/C/binary-trees.c
@@ -46,6 +48,9 @@ add_executable(runtime_benchmarks
         benchmarks/C++/nqueen.cpp
         benchmarks/C++/main_benchmark.cpp
         benchmarks/C++/binary_trees.cpp
+        benchmarks/C++/C/binary_trees_c.cpp
+        benchmarks/C++/C/matrix_mult_c.cpp
+        benchmarks/C++/C/nqueen_c.cpp
 )
 add_dependencies(runtime_benchmarks runtime)
 target_include_directories(runtime_benchmarks PUBLIC src/runtime)

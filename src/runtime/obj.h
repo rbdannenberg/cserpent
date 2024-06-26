@@ -48,10 +48,11 @@ public:
     // TAG will be tag_object, and the superclass constructors
     // for other types of objects should set TAG accordingly.
     //
+#ifdef CSMALLOC
     void *operator new(size_t size);
 
     void operator delete(void *p) noexcept;
-
+#endif
     Basic_obj() { };
 
     Tag get_tag(); // replace after implementation

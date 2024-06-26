@@ -72,3 +72,4 @@ std::ostream& operator<<(std::ostream& os, Any x);
 bool operator==(Any lhs, int64_t rhs);
 bool operator==(Any lhs, int rhs);
 bool operator==(Any lhs, Any rhs);
+bool operator!=(Any lhs, Any rhs);

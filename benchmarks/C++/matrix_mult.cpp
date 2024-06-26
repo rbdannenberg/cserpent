@@ -50,7 +50,7 @@ Any matmul(Any a, Any b) {
     return c;
 }
 
-void test_matmul(Any n) {
+std::string test_matmul(Any n) {
     Any tmp = 1./n/n;
     Any a = *(new Array {});
     Any b = *(new Array {});
@@ -65,6 +65,18 @@ void test_matmul(Any n) {
         b.append(_tmp_b);
     }
     Any d = matmul(a, b);
-    do_not_optimize(d);
-//    std::cout << to_real(d[static_cast<int64_t>(n) / 2][static_cast<int64_t>(n) / 2]) << std::endl;
+    //do_not_optimize(d);
+    /// This is an optimization blocker, makes it harder to inline and lets us check correctness
+    std::string result = std::to_string(to_real(d[static_cast<int64_t>(n) / 2][static_cast<int64_t>(n) / 2]));
+#ifdef FREE
+    for (int64_t i = 0; i < n; i++) {
+        delete reinterpret_cast<Array*>(to_ptr(a[i]));
+        delete reinterpret_cast<Array*>(to_ptr(b[i]));
+        delete reinterpret_cast<Array*>(to_ptr(d[i]));
+    }
+    delete reinterpret_cast<Array*>(to_ptr(a));
+    delete reinterpret_cast<Array*>(to_ptr(b));
+    delete reinterpret_cast<Array*>(to_ptr(d));
+#endif
+    return result;
 }
