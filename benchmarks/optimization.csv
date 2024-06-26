@@ -1,0 +1,19 @@
+"MatMul, n=10","MatMul, n=50","MatMul, n=100","BinTrees, n=10","BinTrees, n=15","BinTrees, n=17","NQ, n=10","NQ, n=12","NQ, n=14",Optimization
+9.1643e-06, 0.000401627, 0.00312716, 0.00363623, 0.133597, 2.13653, 0.00165983, 0.0369231, 0.89739, Link Time Optimization
+1.42646e-05, 0.000739826, 0.00347142, 0.00377508, 0.134325, 2.26388, 0.00285548, 0.0538995, 0.897094, Link Time Optimization + Loop unrolling
+1.01054e-05, 0.000464355, 0.0030065, 0.00364028, 0.132373, 1.85355, 0.0015081, 0.0398943, 0.854822, Link Time Optimization + March=native
+1.06677e-05, 0.000327372, 0.00221582, 0.00259078, 0.129151, 1.7807, 0.00192951, 0.0388771, 0.851925, Link Time Optimization + prefetch loop arrays
+1.24016e-05, 0.000491637, 0.00254535, 0.00320072, 0.126868, 1.54179, 0.0016094, 0.0413386, 0.886312,LTO + omit frame pointer
+1.30965e-05, 0.00053731, 0.00424129, 0.00325132, 0.126434, 1.66593, 0.00156443, 0.0391523, 0.895948, Link Time Optimization
+8.0576e-06, 0.000500753, 0.00447882, 0.00325328, 0.121849, 1.77015, 0.00162217, 0.0400901, 0.973344, Link Time Optimization
+9.7332e-06, 0.000473665, 0.00278722, 0.00256948, 0.128293, 1.97978, 0.00259697, 0.0632932, 1.46931, Link Time Optimization
+0.0027124, Link Time Optimization
+0.003772, Link Time Optimization
+0.0115832, Link Time Optimization
+0.00326895, Link Time Optimization
+0.00290977, Link Time Optimization
+0.00420109, Link Time Optimization
+0.00273534, Link Time Optimization
+0.00283297, Link Time Optimization
+0.00173861, Link Time Optimization
+0.0018525, Link Time Optimization

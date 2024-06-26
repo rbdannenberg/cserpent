@@ -3,6 +3,7 @@
 //
 #include <any.h>
 #include <iostream>
+#include <fstream>
 #include <chrono>
 
 extern void test_matmul(Any n);
@@ -10,13 +11,16 @@ extern void nq_solve(Any n);
 extern void test_trees(Any n);
 
 typedef void (*BenchmarkFunction)(Any);
-bool checkOnly = false;
+static constexpr bool checkOnly = false;
+static constexpr bool writeToFile = false;
+static const std::string filename = "../benchmarks/optimization.csv";
+static const std::string optimization = "Link Time Optimization";
 
 /**
  * Benchmark times for binary trees for n = 10, 15, 17, iterations = 100. Print average and highest time.
  */
 template <BenchmarkFunction Func>
-void benchmark(Any argument, int iterations=100, int warmup=10) {
+double benchmark(Any argument, int iterations=100, int warmup=0) {
     std::vector<double> times{};
     // warmup
     for (size_t i = 0; i < warmup; i++) {
@@ -37,11 +41,14 @@ void benchmark(Any argument, int iterations=100, int warmup=10) {
             max = t;
         }
     }
+    double avg = sum / iterations;
     std::cout << "Average time for n = " << to_int(argument) << " over " << iterations << " iterations: "
-              << sum / iterations << std::endl;
+              << avg << std::endl;
     std::cout << "Max time for n = " << to_int(argument) << " over " << iterations << " iterations: " << max
               << std::endl;
+    return avg;
 }
+
 
 int main() {
     if (checkOnly) {
@@ -50,18 +57,29 @@ int main() {
         nq_solve(10);
         return 0;
     }
-    std::cout << "Benchmarking Binary Trees..." << std::endl;
-    benchmark<test_trees>(10, 1, 1);
-    benchmark<test_trees>(15, 1, 1);
-    benchmark<test_trees>(17, 1, 1);
+    std::vector<double> times{};
     std::cout << "Benchmarking Matrix Multiplication..." << std::endl;
-    benchmark<test_matmul>(10, 1, 1);
-    benchmark<test_matmul>(50, 1, 1);
-    benchmark<test_matmul>(100, 1, 1);
+    times.push_back(benchmark<test_matmul>(10));
+    times.push_back(benchmark<test_matmul>(50));
+    times.push_back(benchmark<test_matmul>(100));
+    std::cout << "Benchmarking Binary Trees..." << std::endl;
+    times.push_back(benchmark<test_trees>(10));
+    times.push_back(benchmark<test_trees>(15));
+    times.push_back(benchmark<test_trees>(17));
     std::cout << "Benchmarking N Queens..." << std::endl;
-    benchmark<nq_solve>(10, 1, 1);
-    benchmark<nq_solve>(12, 1, 1);
-    benchmark<nq_solve>(15, 1, 1);
+    times.push_back(benchmark<nq_solve>(10));
+    times.push_back(benchmark<nq_solve>(12));
+    times.push_back(benchmark<nq_solve>(14));
+    benchmark<nq_solve>(15);
+    if (writeToFile) {
+        std::cout << "Writing to file..." << std::endl;
+        std::ofstream file {filename, std::ios::app};
+        for (double time : times) {
+            file << time << ", ";
+        }
+        file << optimization << std::endl;
+        file.close();
+    }
     std::cout << "Done." << std::endl;
     return 0;
 }
