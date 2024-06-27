@@ -8,14 +8,17 @@ TAB_SIZE = 4
 INLINE_WHITESPACE = [" ", "\t", "\v", "\r", "\f"]
 
 
-TK_KEYWORD = "KEYWORD"
-TK_IDENTIFIER = "IDENTIFIER"
-TK_SYMBOL = "SYMBOL"
-TK_LITERAL = "LITERAL"
-TK_WHITESPACE = "WHITESPACE"
-TK_INDENT = "INDENT"
-TK_DEDENT = "DEDENT"
-TK_BREAK = "LINEBREAK"
+# hack: use `<>` brackets to ensure no token's content can match a token type
+# so that during parsing, we can do `expect(["if", TK_IDENTIFIER])` to mix the
+# usage of token type and token content.
+TK_KEYWORD = "<KEYWORD>"
+TK_IDENTIFIER = "<IDENTIFIER>"
+TK_SYMBOL = "<SYMBOL>"
+TK_LITERAL = "<LITERAL>"
+TK_WHITESPACE = "<WHITESPACE>"
+TK_INDENT = "<INDENT>"
+TK_DEDENT = "<DEDENT>"
+TK_BREAK = "<LINEBREAK>"
 
 
 KW_STR = [
@@ -63,6 +66,9 @@ class Token:
         this.tk_type = tk_type
         this.content = content
         this.range = range
+
+    def render():
+        return "(" + tk_type + ": \"" + content + "\")"
 
 
 # Since `continue` doesn't exist in Serpent, we are using boxed value (single
@@ -139,6 +145,7 @@ def tk_dec(source_file, pos, boxed_output):
         
     if stream[pos] == "e":
         pos = pos + 1
+        # TODO: emit error if exponent is empty
         if not isdigit(stream[pos]):
             return false
         
@@ -333,7 +340,7 @@ def pretty_print_tokenize_result(result):
     if result.ok:
         print "Sucessful. Tokens:"
         for tok in result.result:
-            print "[" + tok.tk_type +"]", tok.content
+            print tok.tk_type, tok.content
     else:
         err = result.error
         range_str = str(err.range.start) + "-" + str(err.range.end)
