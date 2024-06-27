@@ -40,12 +40,12 @@ def parse_postfix(ctx):
 def parse_inner(ctx):
     
     # literal
-    if ctx.skip_store(TK_LITERAL, False):
+    if ctx.skip_store(TK_LITERAL, false):
         // TODO: object_type
         ctx.set_result(Literal(ctx.pop_partial(), nil))
         return true
 
-    if ctx.skip("(", False):
+    if ctx.skip("(", false):
         if not parse_expression(ctx): return false
         if not ctx.skip(")"): return false
         return true
@@ -60,7 +60,7 @@ def parse_exponent(ctx):
     if not parse_inner(ctx): return false
     ast = ctx.pop_result()
 
-    while ctx.skip("**", False):
+    while ctx.skip("**", false):
         if not parse_inner(ctx): return false
         rhs = ctx.pop_result()
         ast = BinOp(ast, "**", rhs)
@@ -71,7 +71,7 @@ def parse_exponent(ctx):
 
 def parse_term(ctx):
     precs = []
-    while ctx.skip_store(PREFIX_TABLE, False):
+    while ctx.skip_store(PREFIX_TABLE, false):
         precs.append(ctx.pop_partial())
 
     if not parse_exponent(ctx): return false
@@ -93,7 +93,7 @@ def parse_infix(ctx, level = 0):
     if not parse_infix(ctx, level + 1): return false
     ast = ctx.pop_result()
 
-    while ctx.skip_store(pred, False):
+    while ctx.skip_store(pred, false):
         symbol = ctx.pop_partial()
         if not parse_infix(ctx, level + 1): return false
         rhs = ctx.pop_result()

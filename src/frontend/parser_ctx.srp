@@ -23,6 +23,7 @@ class ParseContext:
     var res
     // Partial result store (for tokens).
     var partial
+    var should_ignore_whitespace
 
     ### SETUPS ###
 
@@ -32,6 +33,7 @@ class ParseContext:
         this.error = nil
         this.res = nil
         this.partial = []
+        this.should_ignore_whitespace = false
 
     def at_eof():
         return this.pos >= len(this.input)
@@ -43,6 +45,9 @@ class ParseContext:
         return this.input[pos]
 
     def get(predicate, should_err = True):
+        if this.should_ignore_whitespace:
+            this.skip_whitespace()
+
         if this.at_eof():
             if should_err:
                 this.error_eof_with(predicate):
@@ -101,6 +106,19 @@ class ParseContext:
             this.err_eof_with(predicate)
 
         this.err_expect(this.peek(), predicate)
+
+    
+    ## INDENTATION CONTEXT ###
+
+    def skip_whitespace():
+        for i = this.pos to len(this.input):
+            if not match(this.input[i], [TK_INDENT, TK_DEDENT, TK_BREAK]):
+                this.pos = i
+                return
+
+    # When on, all encountered indentations and linebreaks will be skipped.
+    def ignore_whitespace(state):
+        this.should_ignore_whitespace = state
 
 
     ### RESULT MANIPULATION ###
