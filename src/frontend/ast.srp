@@ -94,7 +94,6 @@ class ArgumentList:
     var args # : Array [Expression]
     var kwargs # : Dictionary[Identifier, Expression]
     def init(_args, _kwargs):
-        super.init()
         args = _args
         kwargs = _kwargs
 
@@ -192,7 +191,7 @@ class StandaloneExpression(Statement):
 class Declaration(Statement):
     var declared_type # : Identifier?
     var identifier # : Identifier
-    def init(_declared_type, _identifier):
+    def init(_identifier, optional _declared_type = "Any"):
         super.init()
         declared_type = _declared_type
         identifier = _identifier
@@ -263,7 +262,7 @@ class ForRange(ControlFlow):
     var identifier # : Identifier # loop variable
     var start # : Expression
     var end # : Expression
-    var by_amount
+    var by_amount # : Expression
     var block # : Block
     def init(_identifier, _start, _end, _by, _block):
         super.init()
@@ -296,10 +295,10 @@ class Function:
     var positional # : List[Identifier]
     var optional   # : List[Identifier + Default]
     var block # : Block
-    def init(_name, _arguments, _block):
-        super.init()
+    def init(_name, _positional, _optional, _block):
         name = _name
-        arguments = _arguments
+        positional = _positional
+        optional = _optional
         block = _block
 
     def accept(visitor):
@@ -310,7 +309,6 @@ class Class:
     var member_variables # : List[Declaration]
     var member_functions # : List[Function]
     def init(_name, _member_variables, _member_functions):
-        super.init()
         name = _name
         member_variables = _member_variables
         member_functions = _member_functions
