@@ -1,0 +1,130 @@
+require "debug"
+require "codegen_visitor"
+
+pass = 8
+visitor = CodegenVisitor()
+
+# This is the AST for the following program:
+# Create Identifier instances for all identifiers
+tree_class_name = Identifier("Tree")
+left_var_name = Identifier("left")
+right_var_name = Identifier("right")
+make_tree_func_name = Identifier("make_tree")
+depth_var_name = Identifier("depth")
+new_tree_var_name = Identifier("new_tree")
+check_tree_func_name = Identifier("check_tree")
+node_var_name = Identifier("node")
+main_func_name = Identifier("main")
+arg_var_name = Identifier("arg")
+min_depth_var_name = Identifier("min_depth")
+max_depth_var_name = Identifier("max_depth")
+stretch_depth_var_name = Identifier("stretch_depth")
+long_lived_tree_var_name = Identifier("long_lived_tree")
+iterations_var_name = Identifier("iterations")
+depth_var_name_for_loop = Identifier("depth")
+check_var_name = Identifier("check")
+i_var_name = Identifier("i")
+
+# Create Literal instances for all literals
+zero_literal = Literal(0, "int")
+one_literal = Literal(1, "int")
+four_literal = Literal(4, "int")
+two_literal = Literal(2, "int")
+
+# Create the Tree class
+tree_class = Class(
+    tree_class_name,
+    [Declaration(left_var_name), Declaration(right_var_name)],
+    []
+)
+
+# Create the make_tree function
+block = Block([ReturnStatement(Constructor(tree_class_name, ArgumentList([], {})))])
+make_tree_func = Function(
+    make_tree_func_name,
+    [depth_var_name],
+    [],
+    Block([
+        If(
+            BoolOp(depth_var_name, "==", zero_literal),
+            block
+        ),
+        Assignment(depth_var_name, BinOp(depth_var_name, "-", one_literal)),
+        DeclarationNAssignment(tree_class_name, new_tree_var_name, Constructor(tree_class_name, ArgumentList([], {}))),
+        Assignment(GetAttribute(new_tree_var_name, left_var_name), FunctionCall(make_tree_func_name, ArgumentList([depth_var_name], {}))),
+        Assignment(GetAttribute(new_tree_var_name, right_var_name), FunctionCall(make_tree_func_name, ArgumentList([depth_var_name], {}))),
+        ReturnStatement(new_tree_var_name)
+    ])
+)
+
+
+
+return_check = ReturnStatement(
+                    BinOp(
+                        Literal(1, "int"),
+                        "+",
+                        BinOp(
+                            FunctionCall(
+                                Identifier("check_tree"),
+                                ArgumentList(
+                                    [GetAttribute(
+                                        Identifier("node"),
+                                        Identifier("left")
+                                    )],
+                                    {}
+                                )
+                            ),
+                            "+",
+                            FunctionCall(
+                                Identifier("check_tree"),
+                                ArgumentList(
+                                    [GetAttribute(
+                                        Identifier("node"),
+                                        Identifier("right")
+                                    )],
+                                    {}
+                                )
+                            )
+                        )
+                    )
+                )
+block_check = Block([
+        If(
+            BinOp(
+                GetAttribute(
+                    Identifier("node"),
+                    Identifier("left")
+                ),
+                "==",
+                Literal("nil", "Symbol")
+            ),
+            Block([
+                ReturnStatement(
+                    Literal(1, "int")
+                )
+            ])
+            
+        ),
+        return_check
+    ])
+check_tree_func = Function(
+    Identifier("check_tree"),
+    [Identifier("node")],
+    [],
+    block_check
+)
+
+// Create the File instance
+binary_trees_file = File([
+    tree_class,
+    make_tree_func,
+    check_tree_func])
+
+print("\nTree class: ")
+print_ast(tree_class)
+print("\nMake function: ")
+print_ast(make_tree_func)
+print("\nCheck function: ")
+print_ast(block_check)
+
+visitor.generate_code("binary_trees.cpp", binary_trees_file)
