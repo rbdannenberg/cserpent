@@ -46,8 +46,8 @@ make_tree_func = Function(
     [],
     Block([
         If(
-            BoolOp(depth_var_name, "==", zero_literal),
-            block
+            BinOp(depth_var_name, "==", zero_literal),
+            block 
         ),
         Assignment(depth_var_name, BinOp(depth_var_name, "-", one_literal)),
         DeclarationNAssignment(tree_class_name, new_tree_var_name, Constructor(tree_class_name, ArgumentList([], {}))),
