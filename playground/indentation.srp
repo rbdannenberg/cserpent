@@ -14,5 +14,8 @@ double_dedent
 same_level
         double_indent_yay
                 YAYAYAYAYAYAYAYAYYA
-                and_trailing_indentation_cuz_yay
+                and_trailing_indentation_cuz_yay 6969
+        72.3e6
+    7.e2
+    0x8
 // # ignore yay
