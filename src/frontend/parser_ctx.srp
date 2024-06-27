@@ -2,6 +2,11 @@ require "utils"
 
 
 def match(token, predicate):
+
+    if type(predicate) == type([]):
+        return token.tk_type in predicate or token.content in predicate
+
+    # string input
     return token.tk_type == predicate or token.content == predicate
 
 
@@ -12,10 +17,12 @@ class ParseContext:
     var input
     // 1-D position of the context, i.e., the current character pointer.
     var pos
-    // Error message
+    // Error message.
     var error
-    // An AST holder used for return type
+    // An AST holder used for return type.
     var res
+    // Partial result store (for tokens).
+    var partial
 
     ### SETUPS ###
 
@@ -23,6 +30,8 @@ class ParseContext:
         this.pos = 0
         this.input = input
         this.error = nil
+        this.res = nil
+        this.partial = []
 
     def at_eof():
         return this.pos >= len(this.input)
@@ -33,20 +42,41 @@ class ParseContext:
     def peek():
         return this.input[pos]
 
-    def get(predicate):
+    def get(predicate, should_err = True):
         if this.at_eof():
-            this.error_eof_with(predicate):
+            if should_err:
+                this.error_eof_with(predicate):
             return nil
         
         tok = this.peek()
         if not match(tok, predicate):
-            this.error_expect(tok, predicate)
+            if should_err:
+                this.error_expect(tok, predicate)
             return nil
 
         return tok
 
-    def skip(predicate):
-        return this.get(predicate) != nil
+    def skip(predicate, should_err = True):
+        if this.get(predicate, should_err) == nil:
+            return false
+
+        this.pos = this.pos + 1
+        return true
+
+    def skip_store(predicate, should_err = True):
+        tok = this.get(predicate, should_err)
+        this.partial.append(tok)
+        if tok == nil:
+            return false
+
+        this.pos = this.pos + 1
+        return true
+
+    def indent():
+        return this.skip(TK_INDENT)
+
+    def dedent():
+        return this.skip(TK_DEDENT)
 
 
     ### ERROR EMISSION AND HANDLING ###
@@ -61,10 +91,16 @@ class ParseContext:
         err(nil, "unexpected end of file")
 
     def err_eof_with(predicate):
-        err(nil, "unexpected end of file (expected `" + predicate + "`")
+        err(nil, "unexpected end of file (expected " + predicate + ")")
 
     def err_expect(tok, predicate):
         err(tok.range, "expected " + predicate + ", got " + tok.render())
+
+    def err_fset_miss(predicate):
+        if this.at_eof():
+            this.err_eof_with(predicate)
+
+        this.err_expect(this.peek(), predicate)
 
 
     ### RESULT MANIPULATION ###
@@ -76,3 +112,14 @@ class ParseContext:
         out = this.res
         this.res = nil
         return out
+
+    def get_partial(idx):
+        return this.partial[idx]
+
+    def pop_partial():
+        part = this.partial[0]
+        this.partial.clear()
+        return part
+
+    def clear_partial(idx):
+        this.partial.clear()

@@ -1,4 +1,107 @@
 require "parser_ctx"
 
 
+### FIRST SETS ###
 
+FS_EXPRESSION = [
+    TK_LITERAL,
+    TK_IDENTIFIER,
+    "[",
+    "{",
+    "(",
+    "-",
+    "+",
+    "not",
+    "~"
+]
+
+### PRECEDENCE SYMBOLS ###
+
+// TODO: handle "is not" and "not in"
+PREC_TABLE = [
+    ["or"],
+    ["and"],
+    ["<", "<=", "==", "!=", ">", ">=", "is", "in"],
+    ["+", "-", "|", "^", "<<", ">>"],
+    ["*", "/", "%", "&"],
+    // `**` not included as it has higher associativity that prefix operators
+]
+
+PREFIX_TABLE = ["+", "-", "~", "not"]
+
+
+### EXPRESSIONS ###
+
+
+def parse_postfix(ctx):
+    pass = 1
+
+
+def parse_inner(ctx):
+    
+    # literal
+    if ctx.skip_store(TK_LITERAL, False):
+        // TODO: object_type
+        ctx.set_result(Literal(ctx.pop_partial(), nil))
+        return true
+
+    if ctx.skip("(", False):
+        if not parse_expression(ctx): return false
+        if not ctx.skip(")"): return false
+        return true
+
+    // TODO: parse postfix
+
+    ctx.err_fset_miss([TK_LITERAL, "("])
+    return false
+
+
+def parse_exponent(ctx):
+    if not parse_inner(ctx): return false
+    ast = ctx.pop_result()
+
+    while ctx.skip("**", False):
+        if not parse_inner(ctx): return false
+        rhs = ctx.pop_result()
+        ast = BinOp(ast, "**", rhs)
+    
+    ctx.set_result(ast)
+    return true
+
+
+def parse_term(ctx):
+    precs = []
+    while ctx.skip_store(PREFIX_TABLE, False):
+        precs.append(ctx.pop_partial())
+
+    if not parse_exponent(ctx): return false
+    inner = ctx.pop_result()
+    for i = len(prec - 1) to -1 by -1:
+        inner = UnaryOp(precs[i].content, inner)
+    
+    ctx.set_result(inner)
+    return true
+
+
+def parse_infix(ctx, level = 0):
+
+    # If at end of recorded precedence table, use the term parser instead.
+    if level == len(PREC_TABLE):
+        return parse_term(ctx)
+    
+    pred = PREC_TABLE[level]
+    if not parse_infix(ctx, level + 1): return false
+    ast = ctx.pop_result()
+
+    while ctx.skip_store(pred, False):
+        symbol = ctx.pop_partial()
+        if not parse_infix(ctx, level + 1): return false
+        rhs = ctx.pop_result()
+        ast = BinOp(ast, symbol.content, rhs)
+    
+    ctx.set_result(ast)
+    return true
+
+
+def parse_expression(ctx):
+    return parse_infix(ctx)
