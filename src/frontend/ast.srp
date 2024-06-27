@@ -37,19 +37,6 @@ class Identifier(Expression):
     def accept(visitor):
         visitor.visitIdentifier(this)
 
-class BoolOp(Expression):
-    var left
-    var op
-    var right
-    def init(_left, _op, _right):
-        super.init()
-        left = _left
-        op = _op # and, or
-        right = _right
-
-    def accept(visitor):
-        visitor.visitBoolOp(this)
-
 class BinOp(Expression):
     var left
     var op  # +, -, *, /, %, &, |, ^, <<, >>, **

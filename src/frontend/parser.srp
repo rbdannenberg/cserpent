@@ -15,6 +15,7 @@ FS_EXPRESSION = [
     "~"
 ]
 
+
 ### PRECEDENCE SYMBOLS ###
 
 // TODO: handle "is not" and "not in"
@@ -31,7 +32,6 @@ PREFIX_TABLE = ["+", "-", "~", "not"]
 
 
 ### EXPRESSIONS ###
-
 
 def parse_postfix(ctx):
     pass = 1
