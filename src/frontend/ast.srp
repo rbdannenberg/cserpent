@@ -6,6 +6,8 @@
 //     def init():
 //         this.loaded_files = {}
 
+require "debug"
+
 class Expression:
     def init():
         pass
@@ -346,8 +348,6 @@ def print_ast(ast, optional prefix=""):
         print_ast(child, prefix + "-----")
 
 # Test case for print_ast:
-require "debug"
-require "../frontend/ast.srp"
 def test_print_ast():
     var ast = File([Declaration(Identifier("a")), Declaration(Identifier("b"))])
     print_ast(ast)
@@ -360,6 +360,3 @@ def test_print_ast():
     File([Declaration(Identifier("var1")), Function(Identifier("func1"), [], [], Block([]))])
     ])
     print_ast(combined_ast)
-
-pass = 8
-test_print_ast()
