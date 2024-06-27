@@ -1,60 +1,78 @@
 require "utils"
 
 
+def match(token, predicate):
+    return token.tk_type == predicate or token.content == predicate
+
+
 // Mutable context object passed along when `Parser` is ran on an input.
 class ParseContext:
 
-    // Name of the source of the input code (string).
-    var file
     // Input code to be parsed.
     var input
-    // Length of the input.
-    var length
-    // Contextual information: current position within the input.
-    var line
-    var col
     // 1-D position of the context, i.e., the current character pointer.
     var pos
     // Error message
-    var err
+    var error
+    // An AST holder used for return type
+    var res
 
-    // A heterogenous list of partial result values (used for return type)
-    var cache
+    ### SETUPS ###
 
     def init(input, file):
-        this.line = 0
-        this.col = 0
         this.pos = 0
         this.input = input
-        this.file = file
-        this.length = len(input)
+        this.error = nil
 
     def at_eof():
-        return this.pos >= this.length
+        return this.pos >= len(this.input)
 
-    def peek(optional n = 1):
-        return subseq(this.input, 0, n)
+
+    ### SHORTHANDS FOR PARSING ###
+
+    def peek():
+        return this.input[pos]
+
+    def get(predicate):
+        if this.at_eof():
+            this.error_eof_with(predicate):
+            return nil
+        
+        tok = this.peek()
+        if not match(tok, predicate):
+            this.error_expect(tok, predicate)
+            return nil
+
+        return tok
+
+    def skip(predicate):
+        return this.get(predicate) != nil
+
+
+    ### ERROR EMISSION AND HANDLING ###
+
+    def ok():
+        return this.error == nil
+
+    def err(range, msg):
+        this.error = Error(range, msg)
+
+    def err_eof():
+        err(nil, "unexpected end of file")
+
+    def err_eof_with(predicate):
+        err(nil, "unexpected end of file (expected `" + predicate + "`")
+
+    def err_expect(tok, predicate):
+        err(tok.range, "expected " + predicate + ", got " + tok.render())
+
+
+    ### RESULT MANIPULATION ###
     
-    def skip(optional n = 1):
-        s = this.peek(n)
-        for i = 0 to n:
-            this.pos = this.pos + 1
-            if s[i] == "\n":
-                this.line = this.line + 1
-                this.col = 0
-            else:
-                this.col = this.col + 1
-        return s
+    def set_result(ast):
+        this.res = ast
 
-    // Saves a copy of all the file-position sensitive information of this
-    // context. Used for backtracing during parse.
-    def save():
-        return [this.line, this.col, this.pos]
-
-    def restore(backup):
-        this.line = backup[0]
-        this.col = backup[1]
-        this.pos = backup[2]
-
-    def err():
-        return this.err != nil
+    def pop_result():
+        out = this.res
+        this.res = nil
+        return out

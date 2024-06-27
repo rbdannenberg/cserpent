@@ -8,14 +8,17 @@ TAB_SIZE = 4
 INLINE_WHITESPACE = [" ", "\t", "\v", "\r", "\f"]
 
 
-TK_KEYWORD = "KEYWORD"
-TK_IDENTIFIER = "IDENTIFIER"
-TK_SYMBOL = "SYMBOL"
-TK_LITERAL = "LITERAL"
-TK_WHITESPACE = "WHITESPACE"
-TK_INDENT = "INDENT"
-TK_DEDENT = "DEDENT"
-TK_BREAK = "LINEBREAK"
+# hack: use `<>` brackets to ensure no token's content can match a token type
+# so that during parsing, we can do `expect(["if", TK_IDENTIFIER])` to mix the
+# usage of token type and token content.
+TK_KEYWORD = "<KEYWORD>"
+TK_IDENTIFIER = "<IDENTIFIER>"
+TK_SYMBOL = "<SYMBOL>"
+TK_LITERAL = "<LITERAL>"
+TK_WHITESPACE = "<WHITESPACE>"
+TK_INDENT = "<INDENT>"
+TK_DEDENT = "<DEDENT>"
+TK_BREAK = "<LINEBREAK>"
 
 
 KW_STR = [
@@ -63,6 +66,9 @@ class Token:
         this.tk_type = tk_type
         this.content = content
         this.range = range
+
+    def render():
+        return "(" + tk_type + ": \"" + content + "\")"
 
 
 # Since `continue` doesn't exist in Serpent, we are using boxed value (single
@@ -124,7 +130,50 @@ def tk_comment(source_file, pos, boxed_output):
     return true
 
 
-# TODO: HANDLE COMMENT AS EMPTY LINES ASIHDBAUIBKJEBJKWAB KWBKJBAW
+def tk_dec(source_file, pos, boxed_output):
+    stream = source_file.source
+    if not isdigit(stream[pos]):
+        return false
+    
+    while isdigit(stream[pos]):
+        pos = pos + 1
+
+    if stream[pos] == ".":
+        pos = pos + 1
+        while isdigit(stream[pos]):
+            pos = pos + 1
+        
+    if stream[pos] == "e":
+        pos = pos + 1
+        # TODO: emit error if exponent is empty
+        if not isdigit(stream[pos]):
+            return false
+        
+        while isdigit(stream[pos]):
+            pos = pos + 1
+    
+    boxed_output[0] = pos
+    return true
+
+
+def tk_hex(source_file, pos, boxed_output):
+    stream = source_file.source
+    header = subseq(stream, pos, pos + 2)
+    if header != "0x" and header != "0X":
+        return false
+
+    pos = pos + 2
+    while isalnum(stream[pos]):
+        pos = pos + 1
+    
+    boxed_output[0] = pos
+    return true
+
+
+def tk_number(source_file, pos, boxed_output):
+    return tk_hex(source_file, pos, boxed_output) or tk_dec(source_file, pos, boxed_output)
+
+
 def strip_empty_lines(source_file, pos):
     stream = source_file.source
     ptr = pos
@@ -256,6 +305,11 @@ def tokenize(source_file):
         elif tk_comment(source_file, pos, new_pos): # comment
             pass = 1
 
+        elif tk_number(source_file, pos, new_pos): # nnumeric literal
+            lit = subseq(stream, pos, new_pos[0])
+            range = source_file.get_range(pos, new_pos[0])
+            tokens.append(Token(TK_LITERAL, lit, range))
+
         elif tk_iden(source_file, pos, new_pos): # identifier
             iden = subseq(stream, pos, new_pos[0])
             tk_type = TK_IDENTIFIER
@@ -286,7 +340,7 @@ def pretty_print_tokenize_result(result):
     if result.ok:
         print "Sucessful. Tokens:"
         for tok in result.result:
-            print "[" + tok.tk_type +"]", tok.content
+            print tok.tk_type, tok.content
     else:
         err = result.error
         range_str = str(err.range.start) + "-" + str(err.range.end)
