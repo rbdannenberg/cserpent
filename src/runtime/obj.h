@@ -10,11 +10,11 @@ union Any;
 class Dictionary;
 class Array;
 
-enum Tag { tag_free,
+enum Tag {
+    tag_free,
     tag_symbol,
     tag_integer,
     tag_string,
-    tag_array,
     tag_arraydata,
     tag_dict,
     tag_object,

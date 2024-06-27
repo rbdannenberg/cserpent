@@ -7,6 +7,7 @@
 #include "any.h"
 #include "csmem.h"
 #include <iostream>
+#include <string>
 
 using namespace std;
 
@@ -19,6 +20,11 @@ int main()
 {
     csmem_init();
     srandom(12345);
+    
+    // this has nothing to do with memtest, but I'm just curious about
+    // C++ string implementation
+    string foo("this is longer enough to show it is stored elsewhere");
+    cout << "string size " << sizeof(foo) << endl;
 
     for (long i = 0; i < nobjs; i++) {
         objects[i] = nullptr;
