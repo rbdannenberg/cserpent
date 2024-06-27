@@ -25,7 +25,7 @@ class Literal(Expression):
         object_type = _object_type
 
     def accept(visitor):
-        visitor.visitLiteral(self)
+        visitor.visitLiteral(this)
 
 class Identifier(Expression):
     var value # a string
@@ -35,7 +35,7 @@ class Identifier(Expression):
         value = _value
 
     def accept(visitor):
-        visitor.visitIdentifier(self)
+        visitor.visitIdentifier(this)
 
 class BoolOp(Expression):
     var left
@@ -48,7 +48,7 @@ class BoolOp(Expression):
         right = _right
 
     def accept(visitor):
-        visitor.visitBoolOp(self)
+        visitor.visitBoolOp(this)
 
 class BinOp(Expression):
     var left
@@ -61,7 +61,7 @@ class BinOp(Expression):
         right = _right
 
     def accept(visitor):
-        visitor.visitBinOp(self)
+        visitor.visitBinOp(this)
 
 class UnaryOp(Expression):
     var op # +, -, not, ~
@@ -72,7 +72,7 @@ class UnaryOp(Expression):
         value = _value
 
     def accept(visitor):
-        visitor.visitUnaryOp(self)
+        visitor.visitUnaryOp(this)
 
 class Array(Expression):
     var elements # a list of expressions
@@ -81,7 +81,7 @@ class Array(Expression):
         elements = _elements
 
     def accept(visitor):
-        visitor.visitArray(self)
+        visitor.visitArray(this)
 
 class Dictionary(Expression):
     var pairs # a list of key-value pairs
@@ -90,7 +90,7 @@ class Dictionary(Expression):
         pairs = _pairs
 
     def accept(visitor):
-        visitor.visitDictionary(self)
+        visitor.visitDictionary(this)
 
 class ArgumentList:
     var args # : Array [Expression]
@@ -100,7 +100,7 @@ class ArgumentList:
         kwargs = _kwargs
 
     def accept(visitor):
-        visitor.visitArgumentList(self)
+        visitor.visitArgumentList(this)
 
 class FunctionCall(Expression):
     var function_name # : Identifier
@@ -111,7 +111,7 @@ class FunctionCall(Expression):
         parameters = _parameters
 
     def accept(visitor):
-        visitor.visitFunctionCall(self)
+        visitor.visitFunctionCall(this)
 
 class Constructor(Expression):
     var class_name # : Identifier
@@ -123,7 +123,7 @@ class Constructor(Expression):
         parameters = _parameters
 
     def accept(visitor):
-        visitor.visitConstructor(self)
+        visitor.visitConstructor(this)
 
 class MethodCall(Expression):
     var object # : Expression
@@ -136,7 +136,7 @@ class MethodCall(Expression):
         parameters = _parameters
 
     def accept(visitor):
-        visitor.visitMethodCall(self)
+        visitor.visitMethodCall(this)
 
 class GetAttribute(Expression):
     var object # : Expression
@@ -147,7 +147,7 @@ class GetAttribute(Expression):
         attribute = _attribute
 
     def accept(visitor):
-        visitor.visitGetAttribute(self)
+        visitor.visitGetAttribute(this)
 
 class Index(Expression):
     var object # : Expression
@@ -158,7 +158,7 @@ class Index(Expression):
         index = _index
 
     def accept(visitor):
-        visitor.visitIndex(self)
+        visitor.visitIndex(this)
 
 class BlockElement:
 
@@ -179,7 +179,7 @@ class Assignment(Statement):
         expression = _expression
 
     def accept(visitor):
-        visitor.visitAssignment(self)
+        visitor.visitAssignment(this)
 
 class StandaloneExpression(Statement):
     var expression # : Expression
@@ -188,7 +188,7 @@ class StandaloneExpression(Statement):
         expression = _expression
 
     def accept(visitor):
-        visitor.visitStandaloneExpression(self)
+        visitor.visitStandaloneExpression(this)
 
 class Declaration(Statement):
     var declared_type # : Identifier?
@@ -199,7 +199,7 @@ class Declaration(Statement):
         identifier = _identifier
 
     def accept(visitor):
-        visitor.visitDeclaration(self)
+        visitor.visitDeclaration(this)
 
 class DeclarationNAssignment(Statement):
     var declared_type # : Identifier?
@@ -212,7 +212,7 @@ class DeclarationNAssignment(Statement):
         expression = _expression
 
     def accept(visitor):
-        visitor.visitDeclarationNAssignment(self)
+        visitor.visitDeclarationNAssignment(this)
 
 class ReturnStatement(Statement):
     var expression # : Expression
@@ -221,7 +221,7 @@ class ReturnStatement(Statement):
         expression = _expression
 
     def accept(visitor):
-        visitor.visitReturnStatement(self)
+        visitor.visitReturnStatement(this)
 
 class ControlFlow(BlockElement):
 
@@ -234,7 +234,7 @@ class Block:
         statements = _statements
 
     def accept(visitor):
-        visitor.visitBlock(self)
+        visitor.visitBlock(this)
 
 class If(ControlFlow):
     var condition # : Expression # must be a boolean
@@ -247,7 +247,7 @@ class If(ControlFlow):
         else_block = _else_block
 
     def accept(visitor):
-        visitor.visitIf(self)
+        visitor.visitIf(this)
 
 class While(ControlFlow):
     var condition # : Expression # must be a boolean
@@ -258,7 +258,7 @@ class While(ControlFlow):
         block = _block
 
     def accept(visitor):
-        visitor.visitWhile(self)
+        visitor.visitWhile(this)
 
 class ForRange(ControlFlow):
     var identifier # : Identifier # loop variable
@@ -275,7 +275,7 @@ class ForRange(ControlFlow):
         block = _block
 
     def accept(visitor):
-        visitor.visitForRange(self)
+        visitor.visitForRange(this)
 
 
 class ForEach(ControlFlow):
@@ -289,11 +289,12 @@ class ForEach(ControlFlow):
         block = _block
 
     def accept(visitor):
-        visitor.visitForEach(self)
+        visitor.visitForEach(this)
 
 
 class Function:
-    var name # : Identifier
+    var name # : Identifie
+    # Note: no type definitions yet
     var positional # : List[Identifier]
     var optional   # : List[Identifier + Default]
     var block # : Block
@@ -304,7 +305,7 @@ class Function:
         block = _block
 
     def accept(visitor):
-        visitor.visitFunction(self)
+        visitor.visitFunction(this)
 
 class Class:
     var name # : Identifier
@@ -316,7 +317,7 @@ class Class:
         member_functions = _member_functions
 
     def accept(visitor):
-        visitor.visitClass(self)
+        visitor.visitClass(this)
 
 class File:
     var elements # list of class/function/block elements, List[Class | Function | BlockElement] if you will
@@ -324,7 +325,7 @@ class File:
         elements = _elements
 
     def accept(visitor):
-        visitor.visitFile(self)
+        visitor.visitFile(this)
 
 # for debugging: print the tree
 def print_ast(ast, optional prefix=""):
@@ -338,7 +339,7 @@ def print_ast(ast, optional prefix=""):
             print_ast(ast[key], prefix + "---")
         return
     if not isobject(ast):
-        print(prefix + ast)
+        print(prefix + str(ast))
         return
     class_name_plus = str(ast)
     close_paren_idx = find(class_name_plus, ")")

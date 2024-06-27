@@ -80,25 +80,37 @@ class ASTVisitor:
     def visitFile(file):
         pass
 
+require "../frontend/ast.srp"
 
 class CodegenVisitor(ASTVisitor):
     var code_lines
     var curr_code_line
     var indent_level
+    var include_list
 
     def init():
         super.init()
         code_lines = []
         curr_code_line = ""
         indent_level = 0
+        include_list = 
+            "#include <any.h>\n" + 
+            "#include <op_overload.h>\n" + 
+            "#include <data_structures/array.h>\n" +
+            "#include <data_structures/dictionary.h>\n" +
+            "#include <builtin_functions/builtin_functions.h>\n"
+        indentation = "    "
 
     def add_line(line):
         for i = 0 to indent_level:
-            line = "    " + line
-        code_lines.append(indent + line)
+            line = indentation + line
+        code_lines.append(line)
+
+    def drop_comma(string):
+        return subseq(string, 0, -2)
 
     def visitLiteral(literal):
-        add_line("Any " + literal.value + ";")
+        curr_code_line = curr_code_line + str(literal.value)
 
     def visitIdentifier(identifier):
         curr_code_line = curr_code_line + identifier.value
@@ -140,15 +152,18 @@ class CodegenVisitor(ASTVisitor):
         curr_code_line = curr_code_line + "})"
 
     def visitArgumentList(argument_list):
-        for arg in argument_list.args:
-            arg.accept(this)
-            curr_code_line = curr_code_line + ", "
+        for i = 0 to len(argument_list.args):
+            argument_list.args[i].accept(this)
+            if i < len(argument_list.args) - 1
+                curr_code_line = curr_code_line + ", "
         var kwargs = argument_list.kwargs
-        for key in kwargs.keys():
+        for i = 0 to len(kwargs.keys()):
+            key = kwargs.keys()[i]
             key.accept(this)
             curr_code_line = curr_code_line + " = "
             kwargs[key].accept(this)
-            curr_code_line = curr_code_line + ", "
+            if i < len(kwargs) - 1:
+                curr_code_line = curr_code_line + ", "
 
     def visitFunctionCall(function_call):
         function_call.function_name.accept(this)
@@ -157,9 +172,9 @@ class CodegenVisitor(ASTVisitor):
         curr_code_line = curr_code_line + ")"
 
     def visitConstructor(constructor):
-        curr_code_line = curr_code_line + "new " + constructor.class_name.value + "("
+        curr_code_line = curr_code_line + "*(new " + constructor.class_name.value + " {"
         constructor.parameters.accept(this)
-        curr_code_line = curr_code_line + ")"
+        curr_code_line = curr_code_line + "})"
 
     def visitMethodCall(method_call):
         method_call.object.accept(this)
@@ -171,7 +186,7 @@ class CodegenVisitor(ASTVisitor):
 
     def visitGetAttribute(get_attribute):
         get_attribute.object.accept(this)
-        curr_code_line = curr_code_line + "." + get_attribute.attribute.value
+        curr_code_line = curr_code_line + ".get(\"" + get_attribute.attribute.value + "\")"
 
     def visitIndex(index):
         index.object.accept(this)
@@ -183,7 +198,7 @@ class CodegenVisitor(ASTVisitor):
         assignment.identifier.accept(this)
         curr_code_line = curr_code_line + " = "
         assignment.expression.accept(this)
-        add_line(curr_code_line)
+        add_line(curr_code_line + ";")
         curr_code_line = ""
 
     def visitStandaloneExpression(standalone_expression):
@@ -222,7 +237,7 @@ class CodegenVisitor(ASTVisitor):
         add_line(curr_code_line)
         curr_code_line = ""
         if_statement.block.accept(this)
-        if if_statement.else_block is not None:
+        if if_statement.else_block is not nil:
             add_line("else")
             if_statement.else_block.accept(this)
 
@@ -256,35 +271,62 @@ class CodegenVisitor(ASTVisitor):
 
 
     def visitFunction(function):
-        curr_code_line = "void " + function.name.value + "("
-        function.arguments.accept(this)
-        curr_code_line = curr_code_line.rstrip(", ") + ")"
+        num_args = len(function.positional)
+        curr_code_line = "Any " + function.name.value + "("
+        for i = 0 to num_args:
+            curr_code_line = curr_code_line + "Any "  # Change this once type inference exists
+            function.positional[i].accept(this)
+            if i < num_args - 1:
+                curr_code_line = curr_code_line + ", "
         add_line(curr_code_line)
         curr_code_line = ""
         function.block.accept(this)
 
-    def visitMemberVariables(member_variables):
-        for variable in member_variables.variables:
-            variable.accept(this)
+        # define the call override for class member functions
+        // if indent_level > 0: # if we are in a class
+        //     add_line("Any " + function.name.value + "(const Array& args, const Dictionary& kwargs) {")
+        //     indent_level = indent_level + 1
+        //     add_line("if (member_name == \"" + function.name.value + "\") {")
+        //     add_line("return Any {" + function.name.value + "(args, kwargs)};")
+        //     add_line("} else {")
+        //     add_line("throw std::runtime_error(\"No such member function: \" + member_name);")
+        //     add_line("}")
+        //     indent_level = indent_level - 1
+        //     add_line("}") 
 
-    def visitMemberFunctions(member_functions):
-        for function in member_functions.functions:
-            function.accept(this)
+
 
     def visitClass(class_):
-        add_line("class " + class_.name.value + " {")
+        add_line("class " + class_.name.value + " : public Obj {")
         indent_level = indent_level + 1
-        for variable in member_variables.variables:
+        get_override = "Any& get(const std::string& member_name) override {\n"
+        for variable in class_.member_variables:
             variable.accept(this)
-        for function in member_functions.functions:
+            get_override = get_override + "if (member_name == \"" + variable.identifier.value + "\") {\n"
+            get_override = get_override + indentation + "return " + variable.identifier.value + ";\n"
+            get_override = get_override + "} else "
+        get_override = get_override + "throw std::runtime_error(\"No such member variable: \" + member_name);\n"
+        call_override = "Any call(const std::string& member_name, const Array& args, const Dictionary& kwargs) override {\n"
+        for function in class_.member_functions:
             function.accept(this)
+            call_override = call_override + "if (member_name == \"" + variable.name.value + "\") {\n"
+            call_override = call_override + indentation + "if (len(args) == " + str(len(function.positional)) + ") {\n"
+            call_override = call_override + indentation + indentation + "return Any {"
+            call_override = call_override + function.name.value + "("
+            for i = 0 to len(function.positional):
+                call_override = call_override + "args[" + str(i) + "]"
+                if i < len(function.positional) - 1:
+                    call_override = call_override + ", "
+            call_override = call_override + ")\n"
+            call_override = call_override + "} else "
+        call_override = call_override + "throw std::runtime_error(\"No such member function: \" + member_name);\n"
         indent_level = indent_level - 1
-        add_line("};")
+        add_line("}")
 
     def visitFile(file):
+        add_line(include_list)
         for element in file.elements:
             element.accept(this)
-
 
 
     def generate_code(filename, ast):
