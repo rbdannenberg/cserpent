@@ -31,6 +31,12 @@ PREC_TABLE = [
 PREFIX_TABLE = ["+", "-", "~", "not"]
 
 
+### MISC CONSTRUCTS ###
+
+def parse_arg_list(ctx):
+    pass = 1
+
+
 ### EXPRESSIONS ###
 
 def parse_postfix(ctx):
@@ -38,22 +44,52 @@ def parse_postfix(ctx):
 
 
 def parse_inner(ctx):
+
+    # TODO: dict and array
     
     # literal
     if ctx.skip_store(TK_LITERAL, false):
         // TODO: object_type
-        ctx.set_result(Literal(ctx.pop_partial(), nil))
-        return true
+        res = Literal(ctx.pop_partial().content, nil)
 
-    if ctx.skip("(", false):
+    # identifier
+    elif ctx.skip_store(TK_IDENTIFIER, false):
+        iden = ctx.pop_partial().content
+        if ctx.skip("(", false):
+            if not parse_arg_list(ctx): return false
+            res = FunctionCall(iden, ctx.pop_result())
+            if not ctx.skip(")"): return false
+        else:
+            res = Identifier(iden)
+
+    # parenthesized expression
+    elif ctx.skip("(", false):
         if not parse_expression(ctx): return false
         if not ctx.skip(")"): return false
-        return true
+        res = ctx.pop_result()
 
-    // TODO: parse postfix
+    else:
+        ctx.err_fset_miss([TK_LITERAL, TK_IDENTIFIER, "[", "{", "("])
+        return false
 
-    ctx.err_fset_miss([TK_LITERAL, "("])
-    return false
+    while ctx.skip_store([".", "["], false):
+        fst = ctx.pop_partial().content
+        if fst == ".":
+            if not ctx.skip_store(TK_IDENTIFIER): return false
+            iden = ctx.pop_partial().content
+            if ctx.skip("(", false):
+                if not parse_arg_list(ctx): return false
+                res = MethodCall(res, iden, ctx.pop_result())
+                if not ctx.skip(")"): return false
+            else:
+                res = GetAttribute(res, iden)
+        else:
+            if not parse_expression(ctx): return false
+            res = Index(res, ctx.pop_result())
+            if not ctx.skip("]"): return false
+
+    ctx.set_result(res)
+    return true
 
 
 def parse_exponent(ctx):
