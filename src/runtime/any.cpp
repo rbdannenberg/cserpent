@@ -232,7 +232,7 @@ Any::operator double() {
 void Any::append(Any x) {
     if (is_ptr(*this)) {
         Basic_obj *basic_ptr = to_ptr(*this);
-        if (basic_ptr->get_tag() == tag_array) {
+        if (basic_ptr->get_tag() == tag_arraydata) {
             Array *arr(static_cast<Array *>(basic_ptr));
             arr->append(x);
         }
