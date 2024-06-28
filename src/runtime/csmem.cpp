@@ -2,75 +2,40 @@
 //
 // Created by anthony on 5/17/24.
 //
-#include "csmem.h"
 #include "any.h"
+#include "gc.h"
+#include "obj.h"
 #include <iostream>
 #include <cassert>
 #include <cstring>
+#include "csmem.h"
 
-static int64_t heapsize = 0;
-static int64_t allocated = 0;
-
-
-
-int64_t csheapsize()
-{
-    return heapsize;
-}
-
-
-int64_t csallocated()
-{
-    return allocated;
-}
+int64_t cs_heapsize = 0;
+int64_t cs_allocated = 0;
 
 
 //----------- heap consists of a list of large memory areas ----------
 // A Chunk is allocated using malloc, but never freed (malloc() is
 // non-blocking but free() can block)
 
-#define CHUNK_SIZE 1000000
-
-class Chunk;
-
 // the list of chunks is used to enumerate all allocated objects
-static Chunk *chunk_list = nullptr;
-    
-class Chunk {
-public:
-    Chunk *next;       // next chunk
-    int64_t size;      // size of entire chunk
-    char *next_free;   // pointer to unallocated memory
-    char chunk[16];    // the block of memory
+Chunk *cs_chunk_list = nullptr;
 
-    static void new_chunk(int64_t n) {
-        n += offsetof(Chunk, chunk);
-        heapsize += n;  // how much has been malloc'd
-        Chunk *chunk = (Chunk *) malloc((size_t) n);
-        chunk->next = chunk_list;
-        chunk_list = chunk;
-        chunk->size = n;
-        chunk->next_free = chunk->chunk;
-    }
-    
-    int64_t unused() {
-        return chunk + size - next_free;
-    }
-
-    void *allocate(int64_t n) {
-        assert((n & 7) == 0);  // expects 8-byte alignment
-        void *result = nullptr;
-        if (next_free + n <= chunk + size) {
-            result = next_free;
-            next_free += n;
-        }
-        return result;
-    }
-};
-
-int64_t cschunkmem()
+void Chunk::new_chunk(int64_t n)
 {
-    return chunk_list->unused();
+   n += offsetof(Chunk, chunk);
+   cs_heapsize += n;  // how much has been malloc'd
+   Chunk *chunk = (Chunk *) malloc((size_t) n);
+   chunk->next = cs_chunk_list;
+   cs_chunk_list = chunk;
+   chunk->size = n;
+   chunk->next_free = chunk->chunk;
+}
+    
+
+int64_t cs_chunkmem()
+{
+    return cs_chunk_list->unused();
 }
 
 
@@ -146,7 +111,7 @@ void *csmalloc(size_t size)
     assert(size >= 16);
     int64_t slots = (size - 1) >> 3;  // 8 bytes per slot, not counting header,
     // so if there are 2 slots, the object size is 24, and 23 / 8 = 2.
-    allocated += (slots + 1) << 3;  // allocated only counts bytes used,
+    cs_allocated += (slots + 1) << 3;  // allocated only counts bytes used,
             // rounded up to multiple of 8, not any additional fragmentation
     Basic_obj **head = head_ptr_for_size(&size);
     // now size is the actual allocation size, not the object size
@@ -161,11 +126,11 @@ void *csmalloc(size_t size)
     }
 
     // otherwise return object from chunk if possible
-    if (!chunk_list) {  
+    if (!cs_chunk_list) {  
         Chunk::new_chunk(CHUNK_SIZE);
     }
 
-    result = chunk_list->allocate(size);
+    result = cs_chunk_list->allocate(size);
     if (!result) {  // can't allocate from chunk, need a new one
         // optimization: If the current chunk has more than 1000
         // bytes free (10%), then allocate a chunk solely for the
@@ -173,21 +138,21 @@ void *csmalloc(size_t size)
         // a whole chunk is very small). Also do this if the new
         // request is bigger than CHUNK_SIZE. Otherwise, start a
         // new chunk.
-        if (chunk_list->unused() > 1000 || size > CHUNK_SIZE) {
-            Chunk *old_chunk = chunk_list;
+        if (cs_chunk_list->unused() > 1000 || size > CHUNK_SIZE) {
+            Chunk *old_chunk = cs_chunk_list;
             Chunk::new_chunk(size);
-            result = chunk_list->allocate(size);
-            // now new chunk is chunk_list, but we want the old_chunk to
+            result = cs_chunk_list->allocate(size);
+            // now new chunk is cs_chunk_list, but we want the old_chunk to
             // remain at the head of the list for further allocations
-            chunk_list->next = old_chunk->next;
-            old_chunk->next = chunk_list;
-            chunk_list = old_chunk;
-            // now we have chunk_list = old_chunk -> new chunk -> rest
+            cs_chunk_list->next = old_chunk->next;
+            old_chunk->next = cs_chunk_list;
+            cs_chunk_list = old_chunk;
+            // now we have cs_chunk_list = old_chunk -> new chunk -> rest
             // so next allocation can continue from old chunk
         } else {
             int64_t chunk_size = (size > CHUNK_SIZE) ? size : CHUNK_SIZE;
             Chunk::new_chunk(chunk_size);
-            result = chunk_list->allocate(size);
+            result = cs_chunk_list->allocate(size);
         }
         assert(result);
     }
@@ -250,7 +215,7 @@ void csfree(void *object)
     // can only free Basic_obj objects
     Basic_obj *obj = (Basic_obj *) object;
     size_t size = (size_t) (obj->get_size());
-    allocated -= size;
+    cs_allocated -= size;
 
     Basic_obj **head = head_ptr_for_size(&size);
     assert(head);

@@ -13,6 +13,17 @@
 /// Only String objects (on heap) and string literals (const char *)
 class String : public Basic_obj {
 public:
+    // string takes 24 bytes, so we need 3 slots. Basic_obj has 1, so
+    // we need 2 more. This expression is essentially roundup(24 / 8) - 1:
+    int64_t more_slots[((sizeof(std::string) + sizeof(int64_t) - 1) /
+                        sizeof(int64_t)) - 1];
+    String(const char *s);
+};
+
+/* MERGE CONFLICTS BEGIN HERE */
+/* Some constructors and other methods might be needed, but I don't think
+ * these implementations will work as is ...
+
     const std::string str;
 
     //TODO: do these constructors need to set slots?
@@ -38,6 +49,13 @@ public:
         return str[i];
     }
 };
+ */
+
+#ifdef HIDE_SOME_CODE
+/* Some string methods were added for a different implementation. Like the class
+ * declaration, some of these functions might be needed, but I don't think these
+ * implementations will work as is ...
+ */
 
 String subseq(const String& s, int64_t start, int64_t end = std::numeric_limits<int64_t>::max()) {
     if (end == std::numeric_limits<int64_t>::max()) {
@@ -87,9 +105,14 @@ String operator+(const String& s1, const String& s2) {
     return String {s1.str + s2.str};
 }
 
+#endif
 
-//const char *x = "hello";
-//Any y = x;
-//
-//String x = "hello";
-//Any y = x;
+/*
+const char *x = "hello";
+Any y = x;
+
+String x = "hello";
+Any y = x;
+*/
+
+/* MERGE CONFLICTS END HERE */

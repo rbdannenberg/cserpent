@@ -5,6 +5,8 @@
 
 #include <cstdlib>
 #include "any.h"
+#include "gc.h"
+#include "obj.h"
 #include "csmem.h"
 #include <iostream>
 #include <string>
@@ -45,7 +47,7 @@ int main()
             int64_t nslots = objects[index]->get_slot_count();
             int start = (nslots >= 4096);
             for (int i = start; i < nslots; i++) {
-                assert(objects[index]->slots[i] == index + i);
+                assert(objects[index]->slots[i].integer == index + i);
             }            
             csfree(objects[index]);
         }
@@ -57,7 +59,7 @@ int main()
         int64_t nslots = objects[index]->get_slot_count();
         int start = (nslots >= 4096);
         for (int i = start; i < nslots; i++) {
-            objects[index]->slots[i] = index + i;
+            objects[index]->slots[i].integer = index + i;
         }
     }
 
@@ -71,10 +73,10 @@ int main()
     cssummary();
 #endif
 
-    cout << "Total memory in heap: " << csheapsize() << endl;
+    cout << "Total memory in heap: " << cs_heapsize << endl;
     cout << "    less available memory in chunk: " <<
-            (csheapsize() - cschunkmem()) << endl;
-    cout << "Total allocated: " << csallocated() << endl;
+            (cs_heapsize - cs_chunkmem()) << endl;
+    cout << "Total allocated: " << cs_allocated << endl;
     cout << "Total of object sizes: " << total << endl;
     
 }
