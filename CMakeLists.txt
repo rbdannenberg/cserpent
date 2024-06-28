@@ -41,6 +41,7 @@ add_library(runtime STATIC
         # src/runtime/data_structures/symbol.h
         src/runtime/data_structures/dictionary.cpp
         src/runtime/data_structures/dictionary.h
+        src/runtime/data_structures/csstring.h
 )
 target_include_directories(runtime PUBLIC src/runtime)
 add_executable(runtime_benchmarks
@@ -59,6 +60,7 @@ add_executable(runtime_test
         src/runtime/test/dictionary_test.cpp
         src/runtime/test/main_test.cpp
         src/runtime/test/binary_trees_test.cpp
+        src/runtime/test/test_string.cpp
 )
 add_dependencies(runtime_test runtime)
 target_include_directories(runtime_test PUBLIC src/runtime)

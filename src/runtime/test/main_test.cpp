@@ -3,9 +3,11 @@
 //
 extern void test_dictionary();
 extern void test_trees();
+extern void test_string();
 
 int main() {
-    test_dictionary();
-    test_trees();
+//    test_dictionary();
+//    test_trees();
+    test_string();
     return 0;
 }
