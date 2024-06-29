@@ -33,22 +33,92 @@ PREFIX_TABLE = ["+", "-", "~", "not"]
 
 ### MISC CONSTRUCTS ###
 
+def add_to_arg_lists(val, args, kwargs):
+    if val[0] == [0]:
+        args.append(val[1])
+    else:
+        kwargs[val[1][0]] = val[1][1]
+
+
+# Return type: [type, value]
+# type:
+#   0: normal argument (value is just an AST of expression)
+#   1: keyword argument (value is [Identifier, Expression])
+def parse_arg_list_entry(ctx):
+    if ctx.pos + 1 < len(ctx.input) and ctx.input[ctx.pos + 1].content == "=":
+        if not ctx.skip_store(TK_IDENTIFIER): return false
+        key = ctx.pop_partial().content
+        if not ctx.skip("="): return false
+        if not parse_expression(ctx): return false
+        value = ctx.pop_result()
+        ctx.set_result([1, [key, value]])
+    else:
+        if not parse_expression(ctx): return false
+        ctx.set_result([0, ctx.pop_result()])
+
+    return true
+
+
 def parse_arg_list(ctx):
-    pass = 1
+    args = []
+    kwargs = {}
+    if ctx.get(FS_EXPRESSION, false) != nil:
+        if not parse_arg_list_entry(ctx): return false
+        add_to_arg_lists(ctx.pop_result(), args, kwargs)
+
+        while ctx.skip(",", false):
+            if not parse_arg_list_entry(ctx): return false
+            add_to_arg_lists(ctx.pop_result(), args, kwargs)
+
+    ctx.set_result(ArgumentList(args, kwargs))
+    return true
+
+
+def parse_dict_entry(ctx):
+    if not parse_expression(ctx): return false
+    key = ctx.pop_result()
+    if not ctx.skip(","): return false
+    if not parse_expression(ctx): return false
+    value = ctx.pop_result()
+
+    ctx.set_result([key, value])
+    return true
 
 
 ### EXPRESSIONS ###
 
-def parse_postfix(ctx):
-    pass = 1
-
-
 def parse_inner(ctx):
 
-    # TODO: dict and array
+    # array
+    if ctx.skip("[", false):
+        vals = []
+        if ctx.get(FS_EXPRESSION, false) != nil:
+            if not parse_expression(ctx): return false
+            vals.append(ctx.pop_result())
+
+            while ctx.skip(",", false):
+                if not parse_expression(ctx): return false
+                vals.append(ctx.pop_result())
+
+        if not ctx.skip("]"): return false
+        res = Array(vals)
+
+    # dict
+    elif ctx.skip("{", false):
+        vals = []
+        if ctx.get(FS_EXPRESSION, false) != nil:
+            if not parse_dict_entry(ctx): return false
+            vals.append(ctx.pop_result())
+
+            while ctx.skip(",", false):
+                if not parse_dict_entry(ctx): return false
+                vals.append(ctx.pop_result())
+
+        if not ctx.skip("}"): return false
+        res = Dictionary(vals)
     
     # literal
-    if ctx.skip_store(TK_LITERAL, false):
+    elif ctx.skip_store(TK_LITERAL, false):
         // TODO: object_type
         res = Literal(ctx.pop_partial().content, nil)
 
@@ -72,6 +142,7 @@ def parse_inner(ctx):
         ctx.err_fset_miss([TK_LITERAL, TK_IDENTIFIER, "[", "{", "("])
         return false
 
+    # postfix constructs
     while ctx.skip_store([".", "["], false):
         fst = ctx.pop_partial().content
         if fst == ".":
