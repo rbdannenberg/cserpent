@@ -25,6 +25,9 @@ class ParseContext:
     var partial
     var should_ignore_whitespace
 
+    ### CONTEXT & STUFF ###
+    var types
+
     ### SETUPS ###
 
     def init(input, file):
@@ -34,6 +37,8 @@ class ParseContext:
         this.res = nil
         this.partial = []
         this.should_ignore_whitespace = false
+
+        this.types = []
 
     def at_eof():
         return this.pos >= len(this.input)
@@ -108,7 +113,7 @@ class ParseContext:
         this.err_expect(this.peek(), predicate)
 
     
-    ## INDENTATION CONTEXT ###
+    ### INDENTATION CONTEXT ###
 
     def skip_whitespace():
         for i = this.pos to len(this.input):
@@ -116,9 +121,29 @@ class ParseContext:
                 this.pos = i
                 return
 
+
+    def skip_eol():
+        if this.pos == len(this.input):
+            return true
+        
+        return this.skip(TK_BREAK)
+
+    
+    ### MISC CONTEXT ###
+
+    def is_type(iden):
+        return iden in this.types
+
+    
+    def add_type(iden):
+        this.types.append(iden)
+
+
     # When on, all encountered indentations and linebreaks will be skipped.
     def ignore_whitespace(state):
+        prev = this.should_ignore_whitespace
         this.should_ignore_whitespace = state
+        return prev
 
 
     ### RESULT MANIPULATION ###

@@ -15,6 +15,8 @@ FS_EXPRESSION = [
     "~"
 ]
 
+FS_CONTROL = ["if", "while", "for"]
+
 
 ### PRECEDENCE SYMBOLS ###
 
@@ -33,6 +35,10 @@ PREFIX_TABLE = ["+", "-", "~", "not"]
 
 ### MISC CONSTRUCTS ###
 
+def second_token_is_assign(ctx):
+    return ctx.pos + 1 < len(ctx.input) and ctx.input[ctx.pos + 1].content == "=":
+
+
 def add_to_arg_lists(val, args, kwargs):
     if val[0] == [0]:
         args.append(val[1])
@@ -45,15 +51,19 @@ def add_to_arg_lists(val, args, kwargs):
 #   0: normal argument (value is just an AST of expression)
 #   1: keyword argument (value is [Identifier, Expression])
 def parse_arg_list_entry(ctx):
-    if ctx.pos + 1 < len(ctx.input) and ctx.input[ctx.pos + 1].content == "=":
-        if not ctx.skip_store(TK_IDENTIFIER): return false
+    if second_token_is_assign(ctx):
+        if not ctx.skip_store(TK_IDENTIFIER):
+            return false
         key = ctx.pop_partial().content
-        if not ctx.skip("="): return false
-        if not parse_expression(ctx): return false
+        if not ctx.skip("="):
+            return false
+        if not parse_expression(ctx):
+            return false
         value = ctx.pop_result()
         ctx.set_result([1, [key, value]])
     else:
-        if not parse_expression(ctx): return false
+        if not parse_expression(ctx):
+            return false
         ctx.set_result([0, ctx.pop_result()])
 
     return true
@@ -63,11 +73,13 @@ def parse_arg_list(ctx):
     args = []
     kwargs = {}
     if ctx.get(FS_EXPRESSION, false) != nil:
-        if not parse_arg_list_entry(ctx): return false
+        if not parse_arg_list_entry(ctx):
+            return false
         add_to_arg_lists(ctx.pop_result(), args, kwargs)
 
         while ctx.skip(",", false):
-            if not parse_arg_list_entry(ctx): return false
+            if not parse_arg_list_entry(ctx):
+                return false
             add_to_arg_lists(ctx.pop_result(), args, kwargs)
 
     ctx.set_result(ArgumentList(args, kwargs))
@@ -75,10 +87,13 @@ def parse_arg_list(ctx):
 
 
 def parse_dict_entry(ctx):
-    if not parse_expression(ctx): return false
+    if not parse_expression(ctx):
+        return false
     key = ctx.pop_result()
-    if not ctx.skip(","): return false
-    if not parse_expression(ctx): return false
+    if not ctx.skip(","):
+        return false
+    if not parse_expression(ctx):
+        return false
     value = ctx.pop_result()
 
     ctx.set_result([key, value])
@@ -93,28 +108,34 @@ def parse_inner(ctx):
     if ctx.skip("[", false):
         vals = []
         if ctx.get(FS_EXPRESSION, false) != nil:
-            if not parse_expression(ctx): return false
+            if not parse_expression(ctx):
+                return false
             vals.append(ctx.pop_result())
 
             while ctx.skip(",", false):
-                if not parse_expression(ctx): return false
+                if not parse_expression(ctx):
+                    return false
                 vals.append(ctx.pop_result())
 
-        if not ctx.skip("]"): return false
+        if not ctx.skip("]"):
+            return false
         res = Array(vals)
 
     # dict
     elif ctx.skip("{", false):
         vals = []
         if ctx.get(FS_EXPRESSION, false) != nil:
-            if not parse_dict_entry(ctx): return false
+            if not parse_dict_entry(ctx):
+                return false
             vals.append(ctx.pop_result())
 
             while ctx.skip(",", false):
-                if not parse_dict_entry(ctx): return false
+                if not parse_dict_entry(ctx):
+                    return false
                 vals.append(ctx.pop_result())
 
-        if not ctx.skip("}"): return false
+        if not ctx.skip("}"):
+            return false
         res = Dictionary(vals)
     
     # literal
@@ -126,16 +147,20 @@ def parse_inner(ctx):
     elif ctx.skip_store(TK_IDENTIFIER, false):
         iden = ctx.pop_partial().content
         if ctx.skip("(", false):
-            if not parse_arg_list(ctx): return false
+            if not parse_arg_list(ctx):
+                return false
             res = FunctionCall(iden, ctx.pop_result())
-            if not ctx.skip(")"): return false
+            if not ctx.skip(")"):
+                return false
         else:
             res = Identifier(iden)
 
     # parenthesized expression
     elif ctx.skip("(", false):
-        if not parse_expression(ctx): return false
-        if not ctx.skip(")"): return false
+        if not parse_expression(ctx):
+            return false
+        if not ctx.skip(")"):
+            return false
         res = ctx.pop_result()
 
     else:
@@ -146,29 +171,36 @@ def parse_inner(ctx):
     while ctx.skip_store([".", "["], false):
         fst = ctx.pop_partial().content
         if fst == ".":
-            if not ctx.skip_store(TK_IDENTIFIER): return false
+            if not ctx.skip_store(TK_IDENTIFIER):
+                return false
             iden = ctx.pop_partial().content
             if ctx.skip("(", false):
-                if not parse_arg_list(ctx): return false
+                if not parse_arg_list(ctx):
+                    return false
                 res = MethodCall(res, iden, ctx.pop_result())
-                if not ctx.skip(")"): return false
+                if not ctx.skip(")"):
+                    return false
             else:
                 res = GetAttribute(res, iden)
         else:
-            if not parse_expression(ctx): return false
+            if not parse_expression(ctx):
+                return false
             res = Index(res, ctx.pop_result())
-            if not ctx.skip("]"): return false
+            if not ctx.skip("]"):
+                return false
 
     ctx.set_result(res)
     return true
 
 
 def parse_exponent(ctx):
-    if not parse_inner(ctx): return false
+    if not parse_inner(ctx):
+        return false
     ast = ctx.pop_result()
 
     while ctx.skip("**", false):
-        if not parse_inner(ctx): return false
+        if not parse_inner(ctx):
+            return false
         rhs = ctx.pop_result()
         ast = BinOp(ast, "**", rhs)
     
@@ -181,7 +213,8 @@ def parse_term(ctx):
     while ctx.skip_store(PREFIX_TABLE, false):
         precs.append(ctx.pop_partial())
 
-    if not parse_exponent(ctx): return false
+    if not parse_exponent(ctx):
+        return false
     inner = ctx.pop_result()
     for i = len(prec - 1) to -1 by -1:
         inner = UnaryOp(precs[i].content, inner)
@@ -197,12 +230,14 @@ def parse_infix(ctx, level = 0):
         return parse_term(ctx)
     
     pred = PREC_TABLE[level]
-    if not parse_infix(ctx, level + 1): return false
+    if not parse_infix(ctx, level + 1):
+        return false
     ast = ctx.pop_result()
 
     while ctx.skip_store(pred, false):
         symbol = ctx.pop_partial()
-        if not parse_infix(ctx, level + 1): return false
+        if not parse_infix(ctx, level + 1):
+            return false
         rhs = ctx.pop_result()
         ast = BinOp(ast, symbol.content, rhs)
     
@@ -211,4 +246,216 @@ def parse_infix(ctx, level = 0):
 
 
 def parse_expression(ctx):
-    return parse_infix(ctx)
+    prev = ctx.ignore_whitespace(true)
+    ok = parse_infix(ctx)
+    ctx.ignore_whitespace(prev)
+    return ok
+
+
+### STATEMENT ###
+
+
+def parse_statement(ctx):
+    # val decl with `var`
+    if ctx.skip("var", false):
+        ctx.skip_store(TK_IDENTIFIER)
+        iden = ctx.pop_partial().content
+        if ctx.skip("=", false):
+            if not parse_expression(ctx):
+                return false
+            ctx.set_result(DeclarationNAssignment("Any", iden, ctx.pop_result))
+        else:
+            ctx.set_result(Declaration(iden))
+    
+    # assignment
+    elif second_token_is_assign(ctx):
+        ctx.skip_store(TK_IDENTIFIER)
+        iden = ctx.pop_partial().content
+        if not ctx.skip("="):
+            return false
+        if not parse_expression(ctx):
+            return false
+        ctx.set_result(Assignment(iden, ctx.pop_result()))
+
+    # TODO: assignment on members such as `test.foo().bar = 12`
+
+    # return
+    elif ctx.skip("return", false):
+        if ctx.get(FS_EXPRESSION, false) != nil:
+            if not parse_expression:
+                return false
+            ctx.set_result(ReturnStatement(ctx.pop_result()))
+        
+        else:
+            ctx.set_result(ReturnStatement(Literal("nil", "Any")))
+
+    # standalone expression
+    elif ctx.get(FS_EXPRESSION, false) != nil:
+        if not parse_expression(ctx):
+            return false
+        
+        ctx.set_result(StandaloneExpression(ctx.pop_result()))
+
+    else:
+        ctx.err_fset_miss(FS_EXPRESSION + ["return", "var"])
+        return false
+
+    if not ctx.skip_eol():
+        return false
+    return true
+
+
+### MULTILINE ###
+
+def parse_block(ctx):
+    if not (ctx.skip(TK_BREAK) and ctx.indent()):
+        return false
+
+    stmts = []
+    while ctx.get(TK_DEDENT, false) == nil:
+        if ctx.get(FS_CONTROL, false) != nil:
+            if not parse_control(ctx):
+                return false
+        else:
+            if not parse_statement(ctx):
+                return false
+        stmts.append(ctx.pop_result())
+
+    if not ctx.dedent():
+        return false
+
+    res = ctx.pop_result()
+    ctx.set_result(Block(stmts))
+    return true
+
+
+def parse_if(ctx):
+    if not (parse_expression(ctx) and ctx.skip(":")):
+        return false
+    if_cond = ctx.pop_result()
+    if not parse_block(ctx):
+        return false
+
+    if_block = ctx.pop_result()
+    elifs = []
+    while ctx.skip("elif", false):
+        if not (parse_expression(ctx) and ctx.skip(:)):
+            return false
+        cond = ctx.pop_result()
+        if not parse_block(ctx):
+            return false
+        block = ctx.pop_result()
+        elifs.append([cond, block])
+    
+    var else_block
+    if ctx.skip("else", false):
+        if not parse_block(ctx):
+            return false
+        else_block = ctx.pop_result()
+    else:
+        else_block = Block([])
+
+    acc = else_block
+    for i = len(elifs) - 1 to -1 by -1:
+        curr = elifs[i]
+        acc = If(elifs[0], elifs[1], acc)
+    
+    ctx.set_result(If(if_cont, if_block, acc))
+    return true
+
+
+def parse_while(ctx):
+    if not (parse_expression(ctx) and ctx.skip(":")):
+        return false
+    cond = ctx.pop_result()
+    if not parse_block(ctx):
+        return false
+    
+    ctx.set_result(While(cond, ctx.pop_result()))
+    return true
+
+
+def parse_for(ctx):
+    if not ctx.skip_store(TK_IDENTIFIER):
+        return false
+    var_name = ctx.pop_partial().content
+    if not (ctx.skip("=") and parse_expression(ctx) and ctx.skip("to")):
+        return false
+    start = ctx.pop_result()
+    if not parse_expression(ctx):
+        return false
+    end = ctx.pop_result()
+    amount = Literal("1")
+    if ctx.skip("by", false):
+        if not parse_expression(ctx):
+            return false
+        amount = ctx.pop_result()
+    
+    if not (ctx.skip(":") and parse_block(ctx)):
+        return false
+    
+    ctx.set_result(ForRange(var_name, start, end, amount, ctx.pop_result()))
+    return true
+
+
+def parse_control(ctx):
+    if ctx.skip("if", false):
+        return parse_if(ctx)
+    if ctx.skip("while", false):
+        return parse_while(ctx)
+    if ctx.skip("for", false):
+        return parse_for(ctx)
+    ctx.err_fset_miss(FS_CONTROL)
+    return false
+
+
+### DECL STUFF ###
+
+def parse_function(ctx):
+    if not (ctx.skip_store(TK_IDENTIFIER) and ctx.skip("(")):
+        return false
+
+    name = ctx.pop_partial().content
+    params = []
+    if ctx.skip_store(TK_IDENTIFIER, false):
+        params.append(ctx.pop_partial().content)
+        while ctx.skip(",", false):
+            if not ctx.skip_store(TK_IDENTIFIER):
+                return false
+            params.append(ctx.pop_partial().content)
+
+    if not (ctx.skip(")") and ctx.skip(":") and parse_block(ctx)):
+        return false
+
+    # TODO: optionals
+
+    ctx.set_result(Function(name, params, [], ctx.pop_result()))
+    return true
+
+
+def parse_class(ctx):
+    if not (ctx.skip_store(TK_IDENTIFIER) and ctx.skip(":") and ctx.indent()):
+        return false
+
+    name = ctx.pop_partial().content
+    vars = []
+    funcs = []
+    while ctx.get(TK_DEDENT, false) == nil:
+
+        if ctx.skip("var", false):
+            if not ctx.skip_store(TK_IDENTIFIER):
+                return false
+            vars.append(ctx.pop_partial().content)
+            if not ctx.skip_eol():
+                return false
+
+        elif ctx.skip("def", false):
+            if not parse_function(ctx):
+                return false
+            funcs.append(ctx.pop_result())
+
+    if not ctx.dedent():
+        return false
+
+    ctx.set_result(Class(name, vars, funcs))
+    return true
