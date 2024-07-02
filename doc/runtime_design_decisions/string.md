@@ -41,3 +41,20 @@ at compile time in general. That's why I only see the solution as overloading a 
 resolve at runtime.
 
 (Side note: if the 3rd line was a = *(new String {"goodbye"}) instead, I don't think the copy assignment would get invoked, but TEST THIS.)
+
+SOLUTION: 
+- Make string (Serpent) be a String *. This allows the pointer to get reassigned
+- As a consequence, indexing would look like (*s)[0]. This is very ugly and tricky to compile.
+- Instead, since we have full control over the C++ code, compile this to index(s, 0) instead.
+- In general, overloads should only be non-member functions. We will see if this creates issues as we implement.
+
+CAVEATS:
+int64_t find(const String &s, const String &pattern, int64_t start=0, int64_t end=std::numeric_limits<int64_t>::max()) {
+Oftentimes, pattern is passed as a string literal. This function signature would then implicitly convert it to
+a temporary String object that gets automatically cleaned up once the function returns.
+int64_t find(const String *s, const String *pattern, int64_t start=0, int64_t end=std::numeric_limits<int64_t>::max()) {
+On the other hand, with pointers instead of references, no implicit conversion mechanism exists, so 
+1. The compiler would have to wrap the pattern in create_string
+2. This causes an additional heap allocation and object thing for the garbage collector to clean up
+
+Non-member operator overloads also don't work if there isn't at least one class or enumeration type :(
