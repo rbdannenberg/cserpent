@@ -1,11 +1,15 @@
+#include <string>
 #include <cstring>
 #include <cstdint>
-#include <string>
 #include <cstdio>
 #include "any.h"
+#include "gc.h"
+#include "obj.h"
+#include "csstring.h"
+#include "array.h"
+#include "symbol.h"
 #include "any_utils.h"
-#include "data_structures/array.h"
-#include "data_structures/dictionary.h"
+#include "dictionary.h"
 
 constexpr uint64_t BIAS         =    0x1000000000000uLL;
 constexpr uint64_t INT_TAG      = 0xFFFC000000000000uLL;
@@ -254,6 +258,7 @@ void Any::append(double x) {
 //    integer = reinterpret_cast<uint64_t>(&x);
 //}
 
+/* TODO: implement calls to Obj methods
 Any Any::call(const std::string &method, const Array &args, const Dictionary &kwargs) {
     if (is_ptr(*this)) {
         Basic_obj *basic_ptr = to_ptr(*this);
@@ -271,7 +276,9 @@ Any Any::call(const std::string &method, const Array &args, const Dictionary &kw
         type_error(*this);
     }
 }
+ */
 
+/* TODO: implement field access from Obj
 Any& Any::get(const std::string &member) {
     if (is_ptr(*this)) {
         Basic_obj *basic_ptr = to_ptr(*this);
@@ -284,4 +291,4 @@ Any& Any::get(const std::string &member) {
         type_error(*this);
     }
 }
-
+*/
