@@ -14,9 +14,8 @@ set(runtime_src
     ../obj.h ../obj.cpp
     ../csmem.h ../csmem.cpp
     ../../gc/gc.h ../../gc/gc.cpp
-    ../data_structures/symbol.h ../data_structures/symbol.cpp 
-    ../data_structures/csstring.h ../data_structures/csstring.cpp 
-    ../data_structures/array.h ../data_structures/array.cpp) 
+    ../data_structures/symbol.h ../data_structures/symbol.cpp
+    ../data_structures/array.h ../data_structures/array.cpp)
 
 
 add_executable(memtest

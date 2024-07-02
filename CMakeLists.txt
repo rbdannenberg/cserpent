@@ -42,6 +42,7 @@ add_library(runtime STATIC
         src/runtime/data_structures/dictionary.cpp
         src/runtime/data_structures/dictionary.h
         src/runtime/data_structures/csstring.h
+        src/runtime/data_structures/csstring.cpp
 )
 target_include_directories(runtime PUBLIC src/runtime)
 add_executable(runtime_benchmarks
@@ -65,3 +66,8 @@ add_executable(runtime_test
 add_dependencies(runtime_test runtime)
 target_include_directories(runtime_test PUBLIC src/runtime)
 target_link_libraries(runtime_test runtime)
+
+add_executable(string_test src/runtime/data_structures/csstring.h
+        src/runtime/data_structures/csstring.cpp
+        src/runtime/test/test_string.cpp)
+target_include_directories(string_test PUBLIC src/runtime)
