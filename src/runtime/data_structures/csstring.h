@@ -161,12 +161,4 @@ namespace reference_semantics {
 
 #endif
 
-/*
-const char *x = "hello";
-Any y = x;
-
-String x = "hello";
-Any y = x;
-*/
-
 /* MERGE CONFLICTS END HERE */
