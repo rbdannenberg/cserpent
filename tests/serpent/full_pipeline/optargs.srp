@@ -1,0 +1,88 @@
+# optargs.srp -- optional parameter examples
+#
+# Roger B. Dannenberg
+# Jan, 2010
+
+#---- example of "rest" parameter ----
+#
+# form sum of all arguments
+#
+def sum(rest a)
+    var s = 0
+    for x in a
+        s = s + x
+    s // just "s", or you can say "return s"
+
+
+# test it
+#
+display "call sum", sum(1, 2, 3, 4, 5)
+
+
+#---- example of optional parameter ----
+#
+# convert to string and print with arbitrary "quote" strings
+#
+def print_quoted(s, optional quote = "\"")
+    print quote + str(s) + quote
+
+
+# test it
+#
+def print_quoted_tests()
+    print "test: print_quoted(23) prints ... ";
+    print_quoted(23)
+    print "test: print_quoted(23, \"'\") prints ... ";
+    print_quoted(23, "'")
+    print "test: print_quoted(23, \"\") prints ... ";
+    print_quoted(23, "")
+    print "test: print_quoted(\"hello world\", \"|\") prints ... ";
+    print_quoted("hello world", "|")
+
+    
+print_quoted_tests()
+
+
+#---- example of keyword parameter ----
+#
+# print the time
+#
+def print_within(s, keyword prefix = "", keyword suffix = "")
+    print prefix; str(s); suffix
+
+
+# test it
+#
+def print_within_tests()
+    print "test: print_within(23) prints ... ";
+    print_within(23)
+    print "test: print_within(\"My Paragraph\", prefix = \"<p>\") prints ... ";
+    print_within("My Paragraph", prefix = "<p>")
+    print "test: print_within(\"My Heading\", "
+    print "          prefix = \"<h1>\", suffix = \"</h1>\") prints ... ";
+    print_within(23, prefix = "<h1>", suffix = "</h1>")
+
+
+print_within_tests()
+
+
+#---- example of dictionary parameter ----
+#
+# print keywords and their values
+#
+def print_args(required_parameter, dictionary d)
+    var keys = d.keys()
+    print "required_parameter =", required_parameter
+    for k in keys
+        print k, "=", d[k]
+
+# test it
+#
+def print_args_test()
+    print "calling print_args(a = 1, b = 2, c = 3) ..."
+    print_args(123, a = 1, b = 2, c = 3)
+    print "... done"
+
+print_args_test()
+
+exit()

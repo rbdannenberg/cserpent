@@ -1,0 +1,47 @@
+# search.srp -- variations on linear search
+#
+# Roger B. Dannenberg
+# Jan 2010
+
+require "debug"
+
+data = ["This", "is", "an", "array", "of", "words", "to", "search."]
+
+# linear search with for loop, return index of word in data or -1
+# 
+def search_with_for(data, word)
+    for i = 0 to len(data)
+        if data[i] == word
+            return i
+    return -1
+
+# for-in loop
+#
+def search_with_for_in(data, word)
+    var i = 0
+    for w in data
+        if w == word
+            return i
+        i = i + 1 
+    return -1
+
+# special form of for eliminates call to len
+#
+def search_with_for_at(data, word)
+    for w at i in data // i is the index of w in data
+        if w == word
+            return i
+    return -1
+
+# for simple equality searching, use index:
+#
+def search_with_index(data, word)
+    return data.index(word)
+
+# test it
+#
+display "test 1", search_with_for(data, "of")
+display "test 2", search_with_for_in(data, "of")
+display "test 3", search_with_for_at(data, "of")
+display "test 4", search_with_index(data, "of")
+exit()

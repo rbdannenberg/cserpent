@@ -1,0 +1,11 @@
+require "account"
+
+class Named_account(Account)
+    var name
+    def init(a_name, initial_deposit)
+        # first call superclass's init 
+        super.init(initial_deposit)
+        name = a_name
+    def show()
+        print name, "has a balance of $"; balance
+

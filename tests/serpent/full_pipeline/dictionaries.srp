@@ -1,0 +1,11 @@
+d = {}; print d
+d["address"] = "5000 Forbes Avenue."
+d['city'] = "Pittsburgh"
+d["state"] = 'PA'
+d['zip'] = 15213
+print d["address"]; "\n"; d['city']; ",", d["state"], d['zip']
+print d.keys()
+print d.get('country', "USA")
+print d
+
+exit()

@@ -1,0 +1,25 @@
+def adder(x, y):
+    x + y
+
+print apply('adder', [5, 7])
+print funcall('adder', 5, 7)
+
+fn = 'adder'; print fn
+args = [4, 9]
+print apply(fn, args)
+
+class Subtractor:
+    var x
+    var y
+    def init(_x, _y):
+        x = _x
+        y = _y
+    def subtract_inplace():
+        x - y
+    def subtract(a, b):
+        a - b
+
+s = Subtractor(5, 3)
+print send(s, 'subtract_inplace')
+print sendapply(s, 'subtract', [8, 1])
+exit()

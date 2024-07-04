@@ -1,0 +1,15 @@
+class Account:
+    var balance
+    # init() is called automatically when an Account is created
+    def init(initial_deposit)
+        balance = initial_deposit
+    def deposit(x)
+        balance = balance + x
+	# note: you could also write this.balance = ...
+    def withdraw(x)
+        if balance >= x
+            balance = balance - x
+            return balance
+        else
+            return false
+

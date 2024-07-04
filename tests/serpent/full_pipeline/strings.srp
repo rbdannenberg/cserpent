@@ -1,0 +1,25 @@
+require "debug"
+
+# 
+def chars()
+    # make characters from numbers
+    var char_a = ord("a") // ascii code for "a"
+    var alphabet = ""
+    for i = 0 to 26
+        alphabet = alphabet + chr(char_a + i)
+    print alphabet
+
+    # strings can be accessed as arrays
+    display "string access", "abcd"[2]
+
+    # some more string functions (apply to chars too of course)
+    display "string fns", toupper("abcd"), tolower("NeXT")
+
+    # find a substring
+    display "find", find(alphabet, "qrst"), find(alphabet, "qed")
+
+# test it
+#
+chars()
+exit()
+

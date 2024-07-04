@@ -1,0 +1,23 @@
+require "account.srp"
+require "named_account.srp"
+
+# test it
+#
+def account_test()
+    account = Account(0)
+    account.deposit(5)
+    display "account_test", account, account.balance
+    if not account.withdraw(10)
+        print "don't have $10"
+
+def named_account_test()
+    named_account = Named_account("Klaatu", 1000)
+    named_account.show()
+    named_account.withdraw(300) // inherited method
+    named_account.show()
+
+# run it ...
+account_test()
+named_account_test()
+
+exit()

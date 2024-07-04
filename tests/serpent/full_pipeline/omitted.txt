@@ -1,0 +1,41 @@
+runtime exceptions (invoking the debugger)
+- bad key
+
+repr
+File, Frame, Thread
+
+All of Math, All operators
+
+Strings
+- Escape characters, unicode
+- Every function except:
+    - ord
+    - toupper
+    - tolower
+    - find
+    - chr
+Lists
+- List comprehension
+- array
+- isarray
+- clear
+- count
+- flatten
+- index
+- last
+- set_len
+- sort
+- resort
+
+Dictionaries
+- clear
+- dict
+- isdict
+- has_key
+- values
+All of types (e.g. id, intern, ...)
+
+if else, if, else, while
+complex functions
+
+conditional compilation
