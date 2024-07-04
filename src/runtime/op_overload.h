@@ -49,17 +49,23 @@ int64_t operator&= (int64_t lhs, Any rhs);
 int64_t operator&= (Any lhs, int64_t rhs);
 int64_t operator&= (Any lhs, Any rhs);
 
-int64_t operator& (Any lhs, int rhs);
 int64_t operator& (int64_t lhs, Any rhs);
 int64_t operator& (Any lhs, int64_t rhs);
+int64_t operator& (Any lhs, Any rhs);
 
 int64_t operator<< (int64_t lhs, Any rhs);
 int64_t operator<< (int lhs, Any rhs);
+int64_t operator<< (Any lhs, int64_t rhs);
+int64_t operator<< (Any lhs, int rhs);
+int64_t operator<< (Any lhs, Any rhs);
 
 int64_t operator| (Any lhs, Any rhs);
 int64_t operator| (int64_t lhs, Any rhs);
+int64_t operator| (Any lhs, int64_t rhs);
 
 int64_t operator^ (Any lhs, Any rhs);
+int64_t operator^ (int64_t lhs, Any rhs);
+int64_t operator^ (Any lhs, int64_t rhs);
 
 int64_t operator>> (int64_t lhs, Any rhs);
 int64_t operator>> (Any lhs, int rhs);

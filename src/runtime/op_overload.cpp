@@ -244,12 +244,6 @@ int64_t operator&= (Any& lhs, Any rhs) {
 }
 
 // & operators
-int64_t operator& (Any lhs, int rhs) {
-    if (is_int(lhs)) {
-        return to_int(lhs) & static_cast<int64_t>(rhs);
-    }
-    else type_error(lhs);
-}
 
 int64_t operator& (int64_t lhs, Any rhs) {
     if (is_int(rhs)) {
@@ -260,6 +254,12 @@ int64_t operator& (int64_t lhs, Any rhs) {
 int64_t operator& (Any lhs, int64_t rhs) {
     if (is_int(lhs)) {
         return to_int(lhs) & rhs;
+    } else type_error(lhs);
+}
+
+int64_t operator& (Any lhs, Any rhs) {
+    if (is_int(lhs) && is_int(rhs)) {
+        return to_int(lhs) & to_int(rhs);
     } else type_error(lhs);
 }
 
@@ -276,6 +276,24 @@ int64_t operator<< (int lhs, Any rhs) {
     } else type_error(rhs);
 }
 
+int64_t operator<< (Any lhs, int64_t rhs) {
+    if (is_int(lhs)) {
+        return to_int(lhs) << rhs;
+    } else type_error(lhs);
+}
+
+int64_t operator<< (Any lhs, int rhs) {
+    if (is_int(lhs)) {
+        return to_int(lhs) << static_cast<int64_t>(rhs);
+    } else type_error(lhs);
+}
+
+int64_t operator<< (Any lhs, Any rhs) {
+    if (is_int(lhs) && is_int(rhs)) {
+        return to_int(lhs) << to_int(rhs);
+    } else type_error(lhs);
+}
+
 int64_t operator| (Any lhs, Any rhs) {
     if (is_int(lhs) && is_int(rhs)) {
         return to_int(lhs) | to_int(rhs);
@@ -288,9 +306,27 @@ int64_t operator| (int64_t lhs, Any rhs) {
     } else type_error(rhs);
 }
 
+int64_t operator| (Any lhs, int64_t rhs) {
+    if (is_int(lhs)) {
+        return to_int(lhs) | rhs;
+    } else type_error(lhs);
+}
+
 int64_t operator^ (Any lhs, Any rhs) {
     if (is_int(lhs) && is_int(rhs)) {
         return to_int(lhs) ^ to_int(rhs);
+    } else type_error(lhs);
+}
+
+int64_t operator^ (int64_t lhs, Any rhs) {
+    if (is_int(rhs)) {
+        return lhs ^ to_int(rhs);
+    } else type_error(rhs);
+}
+
+int64_t operator^ (Any lhs, int64_t rhs) {
+    if (is_int(lhs)) {
+        return to_int(lhs) ^ rhs;
     } else type_error(lhs);
 }
 
