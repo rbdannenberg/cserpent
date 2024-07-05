@@ -5,11 +5,9 @@
 #include "any.h"
 #include "gc.h"
 #include "obj.h"
-#include "csstring.h"
-#include "array.h"
-#include "symbol.h"
 #include "any_utils.h"
-#include "dictionary.h"
+#include "data_structures/array.h"
+#include "data_structures/dictionary.h"
 
 constexpr uint64_t BIAS         =    0x1000000000000uLL;
 constexpr uint64_t INT_TAG      = 0xFFFC000000000000uLL;
@@ -236,7 +234,7 @@ Any::operator double() {
 void Any::append(Any x) {
     if (is_ptr(*this)) {
         Basic_obj *basic_ptr = to_ptr(*this);
-        if (basic_ptr->get_tag() == tag_arraydata) {
+        if (basic_ptr->get_tag() == tag_array) {
             Array *arr(static_cast<Array *>(basic_ptr));
             arr->append(x);
         }

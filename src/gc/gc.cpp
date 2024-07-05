@@ -6,8 +6,8 @@
 #include "any.h"
 #include "gc.h"
 #include "obj.h"
-#include "array.h"
-#include "symbol.h"
+#include "data_structures/array.h"
+#include "data_structures/symbol.h"
 #include "csmem.h"
 
 enum {
@@ -81,9 +81,6 @@ void gc_poll()
                 
                 switch (obj->get_tag()) {
                 case tag_free:
-                case tag_arraydata:
-                    assert(false);
-                    break;
                 case tag_symbol:
                     // since this is a Symbol, we know the 3 slots are pointers
                     // or nil, so we don't have to decode Any to see if it is

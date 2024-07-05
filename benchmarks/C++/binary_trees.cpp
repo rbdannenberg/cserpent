@@ -12,7 +12,7 @@ public:
     Any left;
     Any right;
 
-    Any& get(const std::string& member_name) override {
+    Any& get(const std::string& member_name) {
         if (member_name == "left") {
             return left;
         }
@@ -21,7 +21,7 @@ public:
         }
     }
 
-    Any call(const std::string& member_name, const Array& args, const Dictionary& kwargs) override {
+    Any call(const std::string& member_name, const Array& args, const Dictionary& kwargs) {
         std::cout << "no member functions" << std::endl;
     }
 };

@@ -6,10 +6,7 @@
 
 class Array;
 
-// Array is a header for Array_data, which stores data
-// The object contains:
-//     slots[0] - Array length
-//     slots[1] - Array_data
+
 class Array : public Basic_obj {
 public:
     // vector takes 24 bytes, so we need 3 slots. Basic_obj has 1, so
@@ -17,7 +14,6 @@ public:
     int64_t more_slots[((sizeof(std::vector<Any>) + sizeof(int64_t) - 1) /
                         sizeof(int64_t)) - 1];
     Array();
-    // explicit Array(Array_heap *hptr); // make this private?
     // Array(std::initializer_list<Any> l);
     Array(int64_t size, Any value);
     // int64_t available_len();
@@ -33,12 +29,5 @@ public:
     // important: use brackets for read only
     Any& operator[](int64_t i);
     Any operator[](int64_t i) const;
-    friend int64_t len(Array x);
+    friend int64_t len(const Array& x);
 };
-
-
-/*
-class Array_data : public Basic_obj {
-  public:
-};
-*/

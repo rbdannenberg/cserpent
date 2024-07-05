@@ -9,7 +9,10 @@
 // These return strings to be printed to check for correctness
 extern std::string test_matmul(Any n);
 extern std::string nq_solve(Any n);
-extern std::string test_trees(Any n);
+//extern std::string test_trees(Any n);
+std::string test_trees(Any n) {
+    return "Not implemented.";
+}
 extern std::string test_matmul_c(int n);
 extern std::string nq_solve_c(int n);
 extern std::string test_trees_c(int n);
@@ -25,7 +28,7 @@ static std::string nq_solve_c_any(Any n) {
 
 typedef std::string (*BenchmarkFunction)(Any);
 static constexpr bool checkCorrectness = true;
-static constexpr bool writeToFile = true;
+static constexpr bool writeToFile = false;
 static const std::string filename = "../benchmarks/benchmarks.csv";
 static const std::string optimization = "Initial";
 
@@ -125,7 +128,7 @@ void benchmarkC() {
 }
 
 int main() {
-    benchmarkC();
+//    benchmarkC();
     benchmarkCSerpent();
     std::cout << "Done." << std::endl;
     return 0;

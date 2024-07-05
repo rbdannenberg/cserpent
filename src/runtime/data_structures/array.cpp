@@ -6,27 +6,6 @@
 #include "array.h"
 #include "csmem.h"
 
-/* create_array_data for Array_data as subclass of Basic_obj
-Array_data *create_array_data(int64_t size, Any value) {
-    // zero-length array should be represented by null Array_data
-    assert(size > 0);
-    // number of slots will be size + 1 (first slot is slot count)
-    Array_data *data = reinterpret_cast<Array_data *>(
-            CSMALLOCTN(char, slot_count_to_size(size + 1)));
-    data->header = 0;
-    data->set_tag(tag_array_data);
-    data->set_color(initial_color);
-    // leave #slots = 0, so we always get the size from slots[0]
-    data->slot[0] = size + 1;
-    data->set_slot(1, value);  // handles color and write_block for GC
-    for (int64_t i = 1; i < size; i++) {  // fill the rest with value
-        data->slot[i + 1].integer = value.integer;
-    }
-    return data;
-}
-*/
-
-
 Array::Array() {
     this->set_tag(tag_array);
     // use placement new to create vector at &slots[0]:
@@ -98,18 +77,8 @@ Any Array::operator[](int64_t i) const {
 }
 
 
-int64_t len(Array *x) {
-    std::vector<Any> *data = (std::vector<Any> *) x->slots;
+int64_t len(const Array& x) {
+    std::vector<Any> *data = (std::vector<Any> *) x.slots;
     return data->size();
 }
 
-
-/*
-int64_t Array::available_len(); {
-    if (len(this) > 0)
-        return reinterpret_cast<Array_data>(slot[1])->slot[0].integer;
-    } else {
-        return 0;
-    }
-}
-*/

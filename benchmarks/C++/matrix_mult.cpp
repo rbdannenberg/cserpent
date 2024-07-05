@@ -42,7 +42,7 @@ Any matmul(Any a, Any b) {
             Any aik = a[i][k];
             Any bk = b[k];
             for (int64_t j = 0; j < m; j++) {
-                ci[j] = ci[j] + (aik * bk[j]);
+                ci.set(j, ci[j] + (aik * bk[j]));
             }
         }
         c.append(ci);

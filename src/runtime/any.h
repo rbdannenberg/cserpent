@@ -2,6 +2,7 @@
 #include <cstdint>
 #include <functional>
 #include <utility>
+#include <cassert>
 
 #pragma once
 
@@ -56,8 +57,10 @@ public:
     operator int64_t();
     operator double();
 
-    Any& operator[](int64_t i);
+//    Any& operator[](int64_t i);
+    void set(int64_t i, Any val); // Use this instead of assignment through [] (gc reasons).
     Any operator[](int64_t i) const; // return-by-value is faster
+
 
     void append(Any x);
     void append(int64_t x);

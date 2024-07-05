@@ -5,6 +5,7 @@
 #include <cstdint>
 #include <string>
 #include <iostream>
+#include "gc.h"
 
 union Any;
 class Dictionary;
@@ -16,7 +17,6 @@ enum Tag {
     tag_integer,
     tag_string,
     tag_array,
-    tag_arraydata,
     tag_dict,
     tag_object,
     tag_file };
@@ -97,16 +97,11 @@ public:
     uint64_t get_any_slots();
     
     //Symbol& name;  // symbol denoting class name
-    /* For now, I'm removing these to enable compilation of subclasses without
-     * defining call and get methods. I now think these should be implemented
-     * by attaching a dictionary to every Cs_class object where you can look
-     * up fields and methods. Then call can be non-virtual since slot[0]
-     * points to the Cs_class (similar to a vtable).
-     *
-    virtual Any call(const std::string& member_name, const Array& args, const Dictionary& kwargs) =0;
-    virtual Any& get(const std::string& member_name)=0;
-    // probably need a const version of get
+    /* There used to be pure virtual functions here call and get, but because of issues with memory management,
+     * we will move towards attaching a dictionary to every Cs_class object that maps Symbols to fields and methods.
+     * In essence, this is a custom vtable implementation that gives us more control over memory layout.
      */
+
 };
 
 void check_dispatch(const std::string& method, const Array& args, const Dictionary& kwargs, size_t args_len, size_t kwargs_len);

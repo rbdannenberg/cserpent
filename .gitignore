@@ -93,6 +93,7 @@ benchmarks/mypyc-benchmarks
 /cmake-build-release/
 /build
 /.idea
+/.vscode
 /**/__pycache__/
 
 /Debug/

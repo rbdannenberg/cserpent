@@ -10,7 +10,7 @@
 int64_t len(Any x) {
     if (is_ptr(x)) {
         Basic_obj *basic_ptr= to_ptr(x);
-        if (basic_ptr->get_tag() == tag_arraydata) {
+        if (basic_ptr->get_tag() == tag_array) {
             return len(to_array(x));
         }
     }

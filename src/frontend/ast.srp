@@ -8,6 +8,7 @@
 
 require "debug"
 
+# Abstract base class for all
 class Expression:
     def init():
         pass

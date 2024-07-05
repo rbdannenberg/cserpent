@@ -371,37 +371,46 @@ bool operator!=(Any lhs, Any rhs) {
     return !(lhs == rhs);
 }
 
-Any& Any::operator[](int64_t i) {
-    if (is_ptr(*this)) {
-        Basic_obj *basic_ptr= to_ptr(*this);
-        if (basic_ptr->get_tag() == tag_arraydata) {
-            assert(false);  // do not use a[i] = x; instead use a.set(i, x);
-//            std::vector<Any> *data = (std::vector<Any> *) basic_ptr->slots;
-//            return data->at(i);
-//            Array arr (static_cast<Array_heap*>(basic_ptr));
-//            return arr[i];
-        }
-    }
-//    else if (is_shortstr(*this)) {
-//        std::string str = to_shortstr(*this);
-//        if (i < str.length()) {
-//            // doesn't this defeat the purpose
-//            // return a char?
-//            return Any {str[i]};
+//Any& Any::operator[](int64_t i) {
+//    if (is_ptr(*this)) {
+//        Basic_obj *basic_ptr= to_ptr(*this);
+//        if (basic_ptr->get_tag() == tag_array) {
+//            assert(false);  // do not use a[i] = x; instead use a.set(i, x);
+////            std::vector<Any> *data = (std::vector<Any> *) basic_ptr->slots;
+////            return data->at(i);
+////            Array arr (static_cast<Array_heap*>(basic_ptr));
+////            return arr[i];
 //        }
 //    }
-// Note: This is because strings should be immutable
-    else {
-        type_error(*this);
+////    else if (is_shortstr(*this)) {
+////        std::string str = to_shortstr(*this);
+////        if (i < str.length()) {
+////            // doesn't this defeat the purpose
+////            // return a char?
+////            return Any {str[i]};
+////        }
+////    }
+//// Note: This is because strings should be immutable
+//    else {
+//        type_error(*this);
+//    }
+//}
+void Any::set(int64_t i, Any val) {
+    if (is_ptr(*this)) {
+        Basic_obj *basic_ptr = to_ptr(*this);
+        if (basic_ptr->get_tag() == tag_array) {
+            (static_cast<Array*>(basic_ptr))->set(i, val);
+            return;
+        }
     }
+    type_error(*this);
 }
 
 Any Any::operator[](int64_t i) const {
     if (is_ptr(*this)) {
         Basic_obj *basic_ptr= to_ptr(*this);
-        if (basic_ptr->get_tag() == tag_arraydata) {
-            std::vector<Any> *data = (std::vector<Any> *) basic_ptr->slots;
-            return data->at(i);
+        if (basic_ptr->get_tag() == tag_array) {
+            return (*(static_cast<Array*>(basic_ptr)))[i];
         }
     } else if (is_shortstr(*this)) {
         std::string str = to_shortstr(*this);

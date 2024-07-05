@@ -3,9 +3,9 @@
 //
 #include <iostream>
 #include <cassert>
-#include <data_structures/csstring.h>  // Assuming this is the file where your String class is defined
+#include "data_structures/csstring.h"  // Assuming this is the file where your String class is defined
 
-int main() {
+void test_string() {
     // Test initialization
 
     String s1 {"Hello, World!"};
@@ -56,6 +56,6 @@ int main() {
 
     // Add more tests!
     std::cout << "All tests passed!\n";
-    return 0;
+//    return 0;
 }
 

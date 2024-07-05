@@ -1,18 +1,18 @@
 //
 // Created by anthony on 6/5/24.
 //
-#include "any.h"
-#include "gc.h"
 #include "obj.h"
-#include "csstring.h"
-#include "array.h"
-#include "symbol.h"
+#include "any.h"
+#include "data_structures/csstring.h"
+#include "data_structures/array.h"
+#include "data_structures/symbol.h"
+#include "gc.h"
 #include "csmem.h"
 #include <utility>
 
 Cs_class *Cs_class_class = nullptr;
 
-#ifdef CSMALLLOC
+#ifdef CSMALLOC
 void *Basic_obj::operator new(size_t size) {
     return csmalloc(size);
 }

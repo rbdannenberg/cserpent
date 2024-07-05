@@ -1,7 +1,7 @@
 //
 // Created by anthony on 6/4/24.
 //
-/* TODO: dictionary_tst
+/* TODO: dictionary_test
  
  #include "any.h"
  #include "dictionary.h"

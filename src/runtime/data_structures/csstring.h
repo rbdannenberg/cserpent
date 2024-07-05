@@ -16,6 +16,8 @@
  * purview of the garbage collector.
  * Reference counting is not needed because every allocated std::string should only have 1 reference.
  */
+
+
 union String {
     struct {
         // short string

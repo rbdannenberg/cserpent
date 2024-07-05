@@ -31,17 +31,22 @@ std::string nq_solve(Any n) {
             }
             if (k < n - 1) {
                 Any z = 1 << i;
-                a[k] = i;
+                a.set(k, i);
+//                a[k] = i;
                 k = k + 1;
-                l[k] = (l[k - 1] | z) << 1;
-                c[k] = c[k - 1] | z;
-                r[k] = (r[k - 1] | z) >> 1;
+                l.set(k, (l[k - 1] | z) << 1);
+                c.set(k, c[k - 1] | z);
+                r.set(k, (r[k - 1] | z) >> 1);
+//                l[k] = (l[k - 1] | z) << 1;
+//                c[k] = c[k - 1] | z;
+//                r[k] = (r[k - 1] | z) >> 1;
             } else {
                 m = m + 1;
                 k = k - 1;
             }
         } else {
-            a[k] = -1;
+            a.set(k, -1);
+//            a[k] = -1;
             k = k - 1;
         }
         loops = loops + 1;
