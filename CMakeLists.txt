@@ -39,6 +39,8 @@ add_library(runtime STATIC
         src/runtime/data_structures/symbol.cpp
         src/gc/gc.h
         src/gc/gc.cpp
+        src/runtime/basic_obj.cpp
+        src/runtime/basic_obj.h
 )
 
 
@@ -72,3 +74,9 @@ target_include_directories(mem_test PUBLIC ${CS_INCLUDES})
 target_link_libraries(mem_test runtime)
 
 add_executable(cpptest tests/c++/runtime/cpptest.cpp)
+
+add_executable(reprtest
+    tests/c++/reprtest/any_compare.h
+    tests/c++/reprtest/any_compare.cpp
+    tests/c++/reprtest/addone.cpp
+)

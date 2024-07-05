@@ -3,6 +3,7 @@
 #include <functional>
 #include <utility>
 #include <cassert>
+// Any should be the root of all includes. Therefore it should not include any other project file.
 
 #pragma once
 

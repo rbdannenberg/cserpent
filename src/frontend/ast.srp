@@ -17,8 +17,8 @@ class Expression:
         pass
 
 class Literal(Expression):
-    var value # a value of type object_type
-    var object_type
+    var value # a value of type object_type e.g. 5, "hello", etc.
+    var object_type # : string
 
     def init(_value, _object_type):
         super.init()
@@ -29,7 +29,7 @@ class Literal(Expression):
         visitor.visitLiteral(this)
 
 class Identifier(Expression):
-    var value # a string
+    var value # : string
 
     def init(_value):
         super.init()
@@ -39,9 +39,9 @@ class Identifier(Expression):
         visitor.visitIdentifier(this)
 
 class BinOp(Expression):
-    var left
-    var op  # +, -, *, /, %, &, |, ^, <<, >>, **
-    var right
+    var left # : Expression
+    var op  # : string (one of +, -, *, /, %, &, |, ^, <<, >>, **)
+    var right # : Expression
     def init(_left, _op, _right):
         super.init()
         left = _left
@@ -52,8 +52,8 @@ class BinOp(Expression):
         visitor.visitBinOp(this)
 
 class UnaryOp(Expression):
-    var op # +, -, not, ~
-    var value
+    var op # : string (one of +, -, not, ~)
+    var value : Expression
     def init(_op, _value):
         super.init()
         op = _op
@@ -63,7 +63,7 @@ class UnaryOp(Expression):
         visitor.visitUnaryOp(this)
 
 class Array(Expression):
-    var elements # a list of expressions
+    var elements # : Array[Expression]
     def init(_elements):
         super.init()
         elements = _elements
@@ -72,7 +72,7 @@ class Array(Expression):
         visitor.visitArray(this)
 
 class Dictionary(Expression):
-    var pairs # a list of key-value pairs
+    var pairs # : Array[Array[Expression, Expression]], no tuples
     def init(_pairs):
         super.init()
         pairs = _pairs
@@ -179,7 +179,7 @@ class StandaloneExpression(Statement):
         visitor.visitStandaloneExpression(this)
 
 class Declaration(Statement):
-    var declared_type # : Identifier?
+    var declared_type # : string
     var identifier # : Identifier
     def init(_identifier, optional _declared_type = "Any"):
         super.init()
@@ -190,7 +190,7 @@ class Declaration(Statement):
         visitor.visitDeclaration(this)
 
 class DeclarationNAssignment(Statement):
-    var declared_type # : Identifier?
+    var declared_type # : string
     var identifier # : Identifier
     var expression # : Expression
     def init(_declared_type, _identifier, _expression):
@@ -281,7 +281,7 @@ class ForEach(ControlFlow):
 
 
 class Function:
-    var name # : Identifie
+    var name # : string
     # Note: no type definitions yet
     var positional # : List[Identifier]
     var optional   # : List[Identifier + Default]
@@ -296,7 +296,7 @@ class Function:
         visitor.visitFunction(this)
 
 class Class:
-    var name # : Identifier
+    var name # : string
     var member_variables # : List[Declaration]
     var member_functions # : List[Function]
     def init(_name, _member_variables, _member_functions):

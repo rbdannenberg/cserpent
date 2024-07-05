@@ -57,21 +57,21 @@ benchmarks/mypyc-benchmarks
 
 /rbd-notes.txt
 
-/reprtest/CMakeCache.txt
+/tests/c++/reprtest/CMakeCache.txt
 
-/reprtest/CMakeFiles/
+/tests/c++/reprtest/CMakeFiles/
 
-/reprtest/CMakeScripts/
+/tests/c++/reprtest/CMakeScripts/
 
-/reprtest/Debug/
+/tests/c++/reprtest/Debug/
 
-/reprtest/Release/
+/tests/c++/reprtest/Release/
 
-/reprtest/build/
+/tests/c++/reprtest/build/
 
-/reprtest/cmake_install.cmake
+/tests/c++/reprtest/cmake_install.cmake
 
-/reprtest/reprtest.xcodeproj/
+/tests/c++/reprtest/reprtest.xcodeproj/
 
 /src/runtime/test/cmake_install.cmake
 
