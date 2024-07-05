@@ -94,3 +94,7 @@ benchmarks/mypyc-benchmarks
 /build
 /.idea
 /**/__pycache__/
+
+/Debug/
+
+/cserpent.xcodeproj/

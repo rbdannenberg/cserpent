@@ -7,7 +7,7 @@
 
 // forward declaration of Array and Dictionary for call()
 
-class String;
+union String;
 class Array;
 class Symbol;
 class Dictionary;

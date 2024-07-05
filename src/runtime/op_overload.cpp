@@ -204,7 +204,7 @@ bool operator>= (Any lhs, int rhs) {
 }
 
 bool operator>= (Any lhs, Any rhs) {
-    ! (lhs < rhs);
+    return ! (lhs < rhs);
 }
 
 bool operator<= (Any lhs, Any rhs) {
@@ -375,8 +375,9 @@ Any& Any::operator[](int64_t i) {
     if (is_ptr(*this)) {
         Basic_obj *basic_ptr= to_ptr(*this);
         if (basic_ptr->get_tag() == tag_arraydata) {
-            // consider using dynamic_cast instead of static_cast
-            return (static_cast<Array*>(basic_ptr))->data.at(i);
+            assert(false);  // do not use a[i] = x; instead use a.set(i, x);
+//            std::vector<Any> *data = (std::vector<Any> *) basic_ptr->slots;
+//            return data->at(i);
 //            Array arr (static_cast<Array_heap*>(basic_ptr));
 //            return arr[i];
         }
@@ -399,19 +400,17 @@ Any Any::operator[](int64_t i) const {
     if (is_ptr(*this)) {
         Basic_obj *basic_ptr= to_ptr(*this);
         if (basic_ptr->get_tag() == tag_arraydata) {
-            // consider using dynamic_cast instead of static_cast
-            return (static_cast<Array*>(basic_ptr))->data.at(i);
+            std::vector<Any> *data = (std::vector<Any> *) basic_ptr->slots;
+            return data->at(i);
         }
-    }
-    else if (is_shortstr(*this)) {
+    } else if (is_shortstr(*this)) {
         std::string str = to_shortstr(*this);
         if (i < str.length()) {
             // doesn't this defeat the purpose
             // return a char?
             return Any {str[i]};
         }
-    }
-    else {
+    } else {
         type_error(*this);
     }
 }

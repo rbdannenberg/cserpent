@@ -1,5 +1,5 @@
 // gc.h - garbage collection declarations
-
+#pragma once
 enum Gc_color {
     GC_FREE = 0,
     GC_BLACK = 1,

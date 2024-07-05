@@ -1,5 +1,7 @@
 #pragma once
 #include "any.h"
+#include "gc.h"
+#include "obj.h"
 #include <vector>
 
 class Array;
