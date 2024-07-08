@@ -6,25 +6,57 @@
 #include "benchmarking_utils.h"
 #include <sstream>
 
+extern Cs_class * Tree_class;
 
 class Tree : public Obj {
 public:
-    Any left;
-    Any right;
-
-    Any& get(const std::string& member_name) {
-        if (member_name == "left") {
-            return left;
-        }
-        else if (member_name == "right") {
-            return right;
-        }
+    Any more_slots[2];
+    Tree() : Obj {Tree_class} {}
+    Tree(Any left, Any right) : Obj {Tree_class} {
+        set_left(left);
+        set_right(right);
     }
 
-    Any call(const std::string& member_name, const Array& args, const Dictionary& kwargs) {
-        std::cout << "no member functions" << std::endl;
+    Any get_left() {
+        return slots[1];
+    }
+    Any get_right() {
+        return slots[2];
+    }
+    void set_left(Any x) {
+        set_slot(1, x);
+    }
+    void set_right(Any x) {
+        set_slot(2, x);
     }
 };
+
+Any Tree_get_left(Obj* self, const Array& args, const Dictionary& kwargs) {
+    check_dispatch("get_left", args, kwargs, 0, 0);
+    return reinterpret_cast<Tree*>(self)->get_left();
+}
+Any Tree_get_right(Obj* self, const Array& args, const Dictionary& kwargs) {
+    check_dispatch("get_right", args, kwargs, 0, 0);
+    return reinterpret_cast<Tree*>(self)->get_right();
+}
+Any Tree_set_left(Obj* self, const Array& args, const Dictionary& kwargs) {
+    check_dispatch("set_left", args, kwargs, 1, 0);
+    reinterpret_cast<Tree*>(self)->set_left(args[0]);
+    return nil;
+}
+Any Tree_set_right(Obj* self, const Array& args, const Dictionary& kwargs) {
+    check_dispatch("set_right", args, kwargs, 1, 0);
+    reinterpret_cast<Tree*>(self)->set_right(args[0]);
+    return nil;
+}
+MemberTable Tree_table {
+        {Symbol{"get_left"}, Tree_get_left},
+        {Symbol{"get_right"}, Tree_get_right},
+        {Symbol{"set_left"}, Tree_set_left},
+        {Symbol{"set_right"}, Tree_set_right},
+};
+
+Cs_class * Tree_class = new Cs_class {Symbol {"Tree"}, 2, 0b0, &Tree_table};
 
 Any make_tree(Any depth) {
     if (depth == 0) {
@@ -33,16 +65,18 @@ Any make_tree(Any depth) {
     depth = depth - 1;
     Any new_tree = *(new Tree {});
 
-    new_tree.get("left") = make_tree(depth);
-    new_tree.get("right") = make_tree(depth);
+    new_tree.call("set_left", Array {make_tree(depth)}, empty_dict);
+    new_tree.call("set_right", Array {make_tree(depth)}, empty_dict);
+
     return new_tree;
 }
 
 Any check_tree(Any tree) {
-    if (tree.get("left") == Any {}) {
+    if (tree.call("get_left", empty_array, empty_dict) == nil) {
         return 1;
     }
-    return check_tree(tree.get("left")) + check_tree(tree.get("right")) + 1;
+    return check_tree(tree.call("get_left", empty_array, empty_dict)) +
+           check_tree(tree.call("get_right", empty_array, empty_dict)) + 1;
 }
 
 std::string check_tree_str(Any tree) {
@@ -51,10 +85,10 @@ std::string check_tree_str(Any tree) {
 }
 
 void free_tree(Any tree) {
-    Any left = tree.get("left");
+    Any left = tree.call("get_left", empty_array, empty_dict);
     if (left != Any {}) {
         free_tree(left);
-        free_tree(tree.get("right"));
+        free_tree(tree.call("get_right", empty_array, empty_dict));
     }
     delete reinterpret_cast<Tree*>(to_ptr(tree));
 }

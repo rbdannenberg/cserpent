@@ -30,6 +30,7 @@ union String {
     uint64_t data; // long string
 
     String(); // default constructor: the empty string
+    String(char c);
     String(const char * literal); // from string literals, consider making explicit and wrap every literal in String()
     explicit String(const std::string& s); // this should only be called internally, hence explicit
 

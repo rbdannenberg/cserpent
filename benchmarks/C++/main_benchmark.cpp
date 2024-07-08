@@ -9,10 +9,10 @@
 // These return strings to be printed to check for correctness
 extern std::string test_matmul(Any n);
 extern std::string nq_solve(Any n);
-//extern std::string test_trees(Any n);
-std::string test_trees(Any n) {
-    return "Not implemented.";
-}
+extern std::string test_trees(Any n);
+//std::string test_trees(Any n) {
+//    return "Not implemented.";
+//}
 extern std::string test_matmul_c(int n);
 extern std::string nq_solve_c(int n);
 extern std::string test_trees_c(int n);

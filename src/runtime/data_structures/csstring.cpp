@@ -50,6 +50,13 @@ static std::string temp_str(const String& s) {
 }
 
 String::String() : data {empty_string} {}
+String::String(char c) {
+    tag = string_tag;
+    chars[0] = c;
+    chars[1] = '\0';
+    chars[5] = '\0';
+}
+
 String::String(const char* literal) {
     if (is_short_literal(literal)) {
         for (int64_t i = 0; i < max_short_size; i++) {

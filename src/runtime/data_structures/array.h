@@ -14,7 +14,7 @@ public:
     int64_t more_slots[((sizeof(std::vector<Any>) + sizeof(int64_t) - 1) /
                         sizeof(int64_t)) - 1];
     Array();
-    // Array(std::initializer_list<Any> l);
+    Array(std::initializer_list<Any> l);
     Array(int64_t size, Any value);
     // int64_t available_len();
     // void expand();
@@ -31,3 +31,6 @@ public:
     Any operator[](int64_t i) const;
     friend int64_t len(const Array& x);
 };
+
+Array subseq(const Array& x, int64_t start, int64_t end = std::numeric_limits<int64_t>::max());
+inline const Array empty_array {};
