@@ -1,47 +1,59 @@
 //
-// Created by anthony on 6/4/24.
+// Created by anthony on 7/7/24.
 //
+
+
 #pragma once
-#include <utility>
+#include <string>
+#include <cstdint>
+#include <limits>
 
-typedef std::function<Any(Obj*, const std::string&, const Array&, const Dictionary&)> CallFn;
-typedef std::function<Any(Obj*, const std::string&)> GetFn;
+/**
+ * @brief Symbols implemented with value semantics. The reason we can (and should) do this is because
+ * strings are immutable, unlike other data structures on the heap.
+ * In short, define Symbol to be a class that fits within 64 bits, specifically as a union between a
+ * fixed-length char array (for short strings) and a pointer to a heap-allocated std::string (for long strings).
+ * Symbol will manage the memory of its member std::string exclusively, so we remove it from the
+ * purview of the garbage collector.
+ * Reference counting is not needed because every allocated std::string should only have 1 reference.
+ */
 
-// Symbol is a built-in class with the following:
-//     slot[0] - the string name of the symbol, a (CSerpent) String
-//     slot[1] - global value (type Any)
-//     slot[2] - global function (not type Any)
-class Symbol : public Basic_obj {
-public:
-    // make sure object gets allocated with enough space for 3 slots:
-    int64_t more_slots[2];
-    
-    // void *fn_ptr;
-    // add type information here?
-    // CallFn call_ptr;
-//    GetFn get_ptr;
 
-    Symbol(String *name, CallFn call_ptr /*, GetFn get_ptr */) {
-        slots[0] = name;
-        slots[1] = nullptr;  // initial global value (should be special UNDEFINED value)
-        slots[2].integer = 0;
-        // TODO: need to assign representation of function to slots[32]
-        // reinterpret_cast<unint64_t>(call_ptr); ?
-    }
-    //Symbol(std::string name, Any value, void *ptr) :
-    //  name {std::move(name)}, value {value}, fn_ptr {ptr} {}
+union Symbol {
+    struct {
+        // short string
+        // "wrong" way round because I hate little endian
+        // tag must be last so it lines up with the most significant bytes of data/the pointer
+        // nul terminator (chars[5]) is bits 44-47, tag is bits 48-63
+        char chars[6];
+        uint16_t tag;
+    };
+    uint64_t data; // long string
+
+    //TODO: upon construction of a symbol, we should check if it's already in the symbol table
+    Symbol(); // default constructor: the empty string
+    Symbol(const char * literal); // from string literals, consider making explicit and wrap every literal in Symbol()
+    explicit Symbol(const std::string& s); // this should only be called internally, hence explicit
+
+    // rule of 3 goes here
+    friend void swap(Symbol& first, Symbol& second) noexcept;
+    ~Symbol();
+    Symbol(const Symbol& other);
+    Symbol(Symbol&& other);
+    Symbol& operator=(Symbol other); // covers both copy and move assignment
+
+    char operator[](int64_t i) const;
 };
 
+std::string temp_str(const Symbol& s);
+bool operator==(const Symbol& a, const Symbol& b);
+Symbol operator+(const Symbol& a, const Symbol& b);
+std::ostream& operator<<(std::ostream& os, const Symbol& x);
 
-// global symbol table (this should be a dictionary when they are implemented):
-extern Array *cs_symbols;
-
-// initialize this module
-void symbol_init();
-
-//template<class T>
-//Any call_object_method(Any(T::*func), T& obj
-//                       , const std::string& method_name, Array& args, Dictionary& kwargs) {
-//    return std::invoke(func, obj, method_name, args, kwargs);
-//}
+template <>
+struct std::hash<Symbol> {
+    std::size_t operator()(Symbol x) const noexcept {
+        return std::hash<std::string>{}(temp_str(x));
+    }
+};
 
