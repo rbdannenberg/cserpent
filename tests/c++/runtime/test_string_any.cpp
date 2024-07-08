@@ -3,27 +3,30 @@
 //
 #include <iostream>
 #include <cassert>
-#include <csstring.h>  // Assuming this is the file where your String class is defined
+#include <csstring.h>  // Assuming this is the file where your Any class is defined
+#include "any.h"
+#include "builtin_functions.h"
+#include "op_overload.h"
 
-int test_string() {
+int test_string_any() {
     // Test memory layout
-    static_assert(sizeof(String) == sizeof(uint64_t));
+    static_assert(sizeof(Any) == sizeof(String));
     // Test initialization
 
-    String s1 {"Hello, World!"};
-    assert(s1 == "Hello, World!");
+    Any s1 {String("Hello, World!")};
+    assert(s1 == String("Hello, World!"));
 
     // Test copying
-    String s2 = s1;
+    Any s2 = s1;
     assert(s2 == s1);
 
     // Test indexing
-    assert(s1[0] == 'H');
-    assert(s1[1] == 'e');
+    assert(s1[0] == String('H'));
+    assert(s1[1] == String('e'));
 
     // Test immutability
     // s1[0] = 'h';  // This should cause a compile error
-    String s11 = "World";
+    Any s11 = String("World");
     assert(len(s11) == 5);
 
     // Test find
@@ -38,22 +41,21 @@ int test_string() {
     assert(subseq(s1, -5, -1) == "orld");
 
     // Test concatenation
-    String s1_cat = s1 + " How are you?";
+    Any s1_cat = s1 + String(" How are you?");
     assert(s1_cat == "Hello, World! How are you?");
-    String *s1_ptr = &s1;
-    s1 = s1 + " What's up?";
+    s1 = s1 + String(" What's up?");
     assert(s1 == "Hello, World! What's up?");
     // assert modifying in-place is not allowed
 
     /// ISSUE SOLVED!
-    String t1 = "Hello";
-    String t2 = t1;
+    Any t1 = String("Hello");
+    Any t2 = t1;
     t1 = toupper(t1);
     assert(t2 == "Hello");
     assert(t1 == "HELLO");
 
     // Test toupper
-    String s3 {"hello, world!"};
+    Any s3 {"hello, world!"};
     assert(toupper(s3) == "HELLO, WORLD!");
 
     // Add more tests!

@@ -18,3 +18,4 @@ struct std::hash<Any> {
 class Dictionary : public Basic_obj, std::unordered_map<Any, Any> {
 };
 
+inline const Dictionary empty_dict {};
