@@ -68,8 +68,8 @@ class Cs_class : public Obj {
 };
 
 // global symbol table (this should be a dictionary when they are implemented):
-
-extern Array *cs_symbols;
+//extern Array *cs_symbols;
+// look for globals::cs_symbol_table in the globals directory
 
 // initialize this module
 void main_init();

@@ -29,9 +29,9 @@ static std::string nq_solve_c_any(Any n) {
 
 typedef std::string (*BenchmarkFunction)(Any);
 static constexpr bool checkCorrectness = true;
-static constexpr bool writeToFile = false;
+static constexpr bool writeToFile = true;
 static const std::string filename = "../benchmarks/benchmarks.csv";
-static const std::string optimization = "Initial";
+static const std::string optimization = "New Dynamic Dispatch";
 
 /**
  * Benchmark times for binary trees for n = 10, 15, 17, iterations = 100. Print average and highest time.

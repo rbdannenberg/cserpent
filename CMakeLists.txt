@@ -4,7 +4,7 @@ project(cserpent)
 set(CMAKE_CXX_STANDARD 17)
 add_compile_options(-Wno-return-type -Wplacement-new=0) # suppress warnings about type_error (NOT A FULL SOLUTION)
 set(CMAKE_INTERPROCEDURAL_OPTIMIZATION_RELEASE TRUE)
-add_definitions(-DFREE -DCSMALLOC)
+add_definitions(-DFREE)
 
 # normal set of include paths:
 set(CS_INCLUDES src/runtime src/runtime/data_structures src/runtime/builtin_functions src/gc)
