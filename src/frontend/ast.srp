@@ -53,7 +53,7 @@ class BinOp(Expression):
 
 class UnaryOp(Expression):
     var op # : string (one of +, -, not, ~)
-    var value : Expression
+    var value # : Expression
     def init(_op, _value):
         super.init()
         op = _op

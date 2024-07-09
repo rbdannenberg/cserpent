@@ -30,7 +30,7 @@ class ParseContext:
 
     ### SETUPS ###
 
-    def init(input, file):
+    def init(input):
         this.pos = 0
         this.input = input
         this.error = nil
@@ -49,36 +49,38 @@ class ParseContext:
     def peek():
         return this.input[pos]
 
-    def get(predicate, should_err = True):
+    def get(predicate, optional should_err = true):
         if this.should_ignore_whitespace:
-            this.skip_whitespace()
+            before_whitespace = this.skip_whitespace()
 
         if this.at_eof():
             if should_err:
-                this.error_eof_with(predicate):
+                this.error_eof_with(predicate)
             return nil
         
         tok = this.peek()
         if not match(tok, predicate):
             if should_err:
-                this.error_expect(tok, predicate)
+                this.err_expect(tok, predicate)
+            if this.should_ignore_whitespace:
+                this.pos = before_whitespace
             return nil
 
         return tok
 
-    def skip(predicate, should_err = True):
+    def skip(predicate, optional should_err = true):
         if this.get(predicate, should_err) == nil:
             return false
 
         this.pos = this.pos + 1
         return true
 
-    def skip_store(predicate, should_err = True):
+    def skip_store(predicate, optional should_err = true):
         tok = this.get(predicate, should_err)
-        this.partial.append(tok)
         if tok == nil:
             return false
 
+        this.partial.append(tok)
         this.pos = this.pos + 1
         return true
 
@@ -87,6 +89,9 @@ class ParseContext:
 
     def dedent():
         return this.skip(TK_DEDENT)
+
+    def br():
+        return this.skip(TK_BREAK)
 
 
     ### ERROR EMISSION AND HANDLING ###
@@ -116,10 +121,11 @@ class ParseContext:
     ### INDENTATION CONTEXT ###
 
     def skip_whitespace():
+        curr_pos = this.pos
         for i = this.pos to len(this.input):
             if not match(this.input[i], [TK_INDENT, TK_DEDENT, TK_BREAK]):
                 this.pos = i
-                return
+                return curr_pos
 
 
     def skip_eol():

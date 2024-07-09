@@ -47,7 +47,7 @@ KW_STR = [
 LITERAL_STR = ["true", "false", "nil"]
 
 SYMBOL_STR = [
-    "**", "<<", ">>", "<=", "!=", ">=",
+    "**", "<<", ">>", "<=", "!=", ">=", "==",
     "(", ")", "[", "]", "{", "}",
     ":", ",", "=",
     "<", ">",
@@ -274,7 +274,7 @@ def tokenize(source_file):
     stream = source_file.source
 
     while pos < len(stream):
-        print source_file.get_formatted_pos(pos)
+        // print source_file.get_formatted_pos(pos)
 
         # skip empty lines (that doesn't contribute to indentation levels)
         # TODO: find out why hashtag isnt skipped
@@ -340,7 +340,7 @@ def tokenize(source_file):
         elif tk_symbol(source_file, pos, new_pos): # symbol
             lit = subseq(stream, pos, new_pos[0])
             range = source_file.get_range(pos, new_pos[0])
-            tokens.append(Token(TK_LITERAL, lit, range))
+            tokens.append(Token(TK_SYMBOL, lit, range))
         
         elif tk_string(source_file, pos, new_pos): # string literal
             lit = subseq(stream, pos, new_pos[0])

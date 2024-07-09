@@ -1,4 +1,5 @@
-require "parser_ctx"
+require "src/frontend/parser_ctx"
+require "src/frontend/ast"
 
 
 ### FIRST SETS ###
@@ -26,7 +27,7 @@ PREC_TABLE = [
     ["and"],
     ["<", "<=", "==", "!=", ">", ">=", "is", "in"],
     ["+", "-", "|", "^", "<<", ">>"],
-    ["*", "/", "%", "&"],
+    ["*", "/", "%", "&"]
     // `**` not included as it has higher associativity that prefix operators
 ]
 
@@ -36,7 +37,7 @@ PREFIX_TABLE = ["+", "-", "~", "not"]
 ### MISC CONSTRUCTS ###
 
 def second_token_is_assign(ctx):
-    return ctx.pos + 1 < len(ctx.input) and ctx.input[ctx.pos + 1].content == "=":
+    return ctx.pos + 1 < len(ctx.input) and ctx.input[ctx.pos + 1].content == "="
 
 
 def add_to_arg_lists(val, args, kwargs):
@@ -216,23 +217,23 @@ def parse_term(ctx):
     if not parse_exponent(ctx):
         return false
     inner = ctx.pop_result()
-    for i = len(prec - 1) to -1 by -1:
+    for i = len(precs) - 1 to -1 by -1:
         inner = UnaryOp(precs[i].content, inner)
     
     ctx.set_result(inner)
     return true
 
 
-def parse_infix(ctx, level = 0):
+def parse_infix(ctx, optional level = 0):
 
     # If at end of recorded precedence table, use the term parser instead.
     if level == len(PREC_TABLE):
         return parse_term(ctx)
     
-    pred = PREC_TABLE[level]
     if not parse_infix(ctx, level + 1):
         return false
     ast = ctx.pop_result()
+    pred = PREC_TABLE[level]
 
     while ctx.skip_store(pred, false):
         symbol = ctx.pop_partial()
@@ -263,7 +264,7 @@ def parse_statement(ctx):
         if ctx.skip("=", false):
             if not parse_expression(ctx):
                 return false
-            ctx.set_result(DeclarationNAssignment("Any", iden, ctx.pop_result))
+            ctx.set_result(DeclarationNAssignment("Any", iden, ctx.pop_result()))
         else:
             ctx.set_result(Declaration(iden))
     
@@ -282,7 +283,7 @@ def parse_statement(ctx):
     # return
     elif ctx.skip("return", false):
         if ctx.get(FS_EXPRESSION, false) != nil:
-            if not parse_expression:
+            if not parse_expression(ctx):
                 return false
             ctx.set_result(ReturnStatement(ctx.pop_result()))
         
@@ -312,7 +313,9 @@ def parse_block(ctx):
         return false
 
     stmts = []
+    skip_linebreaks(ctx)
     while ctx.get(TK_DEDENT, false) == nil:
+        skip_linebreaks(ctx)
         if ctx.get(FS_CONTROL, false) != nil:
             if not parse_control(ctx):
                 return false
@@ -320,6 +323,7 @@ def parse_block(ctx):
             if not parse_statement(ctx):
                 return false
         stmts.append(ctx.pop_result())
+        skip_linebreaks(ctx)
 
     if not ctx.dedent():
         return false
@@ -338,14 +342,17 @@ def parse_if(ctx):
 
     if_block = ctx.pop_result()
     elifs = []
+    skip_linebreaks(ctx)
     while ctx.skip("elif", false):
-        if not (parse_expression(ctx) and ctx.skip(:)):
+        skip_linebreaks(ctx)
+        if not (parse_expression(ctx) and ctx.skip(":")):
             return false
         cond = ctx.pop_result()
         if not parse_block(ctx):
             return false
         block = ctx.pop_result()
         elifs.append([cond, block])
+        skip_linebreaks(ctx)
     
     var else_block
     if ctx.skip("else", false):
@@ -360,7 +367,7 @@ def parse_if(ctx):
         curr = elifs[i]
         acc = If(elifs[0], elifs[1], acc)
     
-    ctx.set_result(If(if_cont, if_block, acc))
+    ctx.set_result(If(if_cond, if_block, acc))
     return true
 
 
@@ -409,6 +416,11 @@ def parse_control(ctx):
     return false
 
 
+def skip_linebreaks(ctx):
+    while ctx.skip(TK_BREAK, false):
+        pass = 1
+
+
 ### DECL STUFF ###
 
 def parse_function(ctx):
@@ -434,7 +446,7 @@ def parse_function(ctx):
 
 
 def parse_class(ctx):
-    if not (ctx.skip_store(TK_IDENTIFIER) and ctx.skip(":") and ctx.indent()):
+    if not (ctx.skip_store(TK_IDENTIFIER) and ctx.skip(":") and ctx.br() and ctx.indent()):
         return false
 
     name = ctx.pop_partial().content
@@ -466,32 +478,38 @@ def parse_class(ctx):
 def parse_load_req(ctx):
     if not ctx.skip_store(TK_LITERAL):
         return false
+    
+    return true
         
-        # TODO: this is ignored for now; handle import dependencies
+    # TODO: this is ignored for now; handle import dependencies
 
 
 def parse_global_decls(ctx):
     decls = []
-    if ctx.skip("class", false):
-        if not parse_class(ctx):
-            return false
+    while not ctx.at_eof():
+        skip_linebreaks(ctx)
+
+        if ctx.skip("class", false):
+            if not parse_class(ctx):
+                return false
+            
+            decls.append(ctx.pop_result())
         
-        decls.append(ctx.pop_result())
-    
-    elif ctx.skip("load", false) or ctx.skip("require", false):
-        return parse_load_req(ctx)
-    
-    elif ctx.skip("def", false):
-        if not parse_function(ctx):
-            return false
+        elif ctx.skip("load", false) or ctx.skip("require", false):
+            if not parse_load_req(ctx):
+                return false
+        
+        elif ctx.skip("def", false):
+            if not parse_function(ctx):
+                return false
 
-        decls.append(ctx.pop_result())
-    
-    else:
-        if not parse_statement(ctx):
-            return false
+            decls.append(ctx.pop_result())
+        
+        else:
+            if not parse_statement(ctx):
+                return false
 
-        decls.append(ctx.pop_result())
+            decls.append(ctx.pop_result())
     
     ctx.set_result(File(decls))
     return true

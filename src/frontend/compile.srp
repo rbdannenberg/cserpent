@@ -1,6 +1,8 @@
 require "src/frontend/file"
 require "src/frontend/token"
 require "src/frontend/utils"
+require "src/frontend/parser"
+require "src/frontend/parser_ctx"
 
 
 def parse_ast(path):
@@ -14,4 +16,9 @@ def parse_ast(path):
         print "lex error:", file.get_formatted_pos(tokens.error.range.start)
         return tokens
 
-    return tokens    
+    ctx = ParseContext(tokens.result)
+    if not parse_global_decls(ctx):
+        print "parse error:", file.get_formatted_pos(ctx.error.range.start)
+        return Result(false, ctx.error)
+
+    return res(ctx.pop_result())

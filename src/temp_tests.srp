@@ -4,5 +4,3 @@ load "debug"
 res = parse_ast("benchmarks/srp/binary-trees.srp")
 if not res.ok:
     print format_error(res.error)
-else:
-    pretty_print_tokenize_result(res)
