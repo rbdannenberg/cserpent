@@ -103,7 +103,6 @@ Any::Any(Symbol x) {
 
 Any::Any(const Array& x) {
     integer = reinterpret_cast<uint64_t>(&x);
-    //TODO: &(x.data)?
 }
 
 Any::Any(const Dictionary &x) {

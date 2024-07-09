@@ -66,7 +66,8 @@ void gc_poll()
         case GC_START:
             initial_color = GC_WHITE;
             write_block = true;
-            basic_obj_make_gray(cs_symbols);
+//            basic_obj_make_gray(cs_symbols); I think this is no longer necessary because the symbol table is in
+//            global memory, not on either heap
             gc_state = GC_MARK;
             break;
         case GC_MARK:

@@ -106,14 +106,6 @@ Symbol& Symbol::operator=(Symbol other) {
     return *this;
 }
 
-char Symbol::operator[](int64_t i) const {
-    if (is_short_string(*this)) {
-        return chars[i];
-    } else {
-        return (*get_str_ptr(data))[i];
-    }
-}
-
 bool operator==(const Symbol& a, const Symbol& b) {
     return temp_str(a) == temp_str(b);
 }

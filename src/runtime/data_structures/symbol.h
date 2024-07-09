@@ -41,8 +41,6 @@ union Symbol {
     Symbol(const Symbol& other);
     Symbol(Symbol&& other);
     Symbol& operator=(Symbol other); // covers both copy and move assignment
-
-    char operator[](int64_t i) const;
 };
 
 std::string temp_str(const Symbol& s);

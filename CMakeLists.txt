@@ -39,6 +39,8 @@ add_library(runtime STATIC
         src/runtime/basic_obj.h
         src/runtime/data_structures/symbol.cpp
         src/runtime/data_structures/symbol.h
+        src/runtime/globals/symbol_table.cpp
+        src/runtime/globals/symbol_table.h
 )
 
 

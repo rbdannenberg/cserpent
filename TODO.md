@@ -17,8 +17,6 @@ Backend/Code Generation
 Runtime
 ====================
 
-- Implement user-defined objects in ``obj.h/cpp`` using the ``Cs_class`` implementation. Validate with the binary trees benchmark.
-- Implement Symbols in the same fashion as Strings in ``data_structures/csstring.h/cpp``
 - Change dictionary implementation away from multiple inheritance.
 - *Low priority*: Incorporate unicode strings and different endian architectures.
 

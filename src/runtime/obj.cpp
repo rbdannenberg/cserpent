@@ -7,7 +7,6 @@
 #include "data_structures/symbol.h"
 #include "csmem.h"
 
-/// TODO: dynamic method calls
 void check_dispatch(const Symbol& method, const Array& args, const Dictionary& kwargs, size_t args_len, size_t kwargs_len) {
 #ifdef DEBUG
     if (len(args) != args_len || kwargs_len != 0) { /// change when kwargs are implemented
