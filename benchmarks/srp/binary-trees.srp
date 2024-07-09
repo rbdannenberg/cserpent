@@ -28,7 +28,7 @@ def make_tree(depth):
 
 def check_tree(node):
     if node.left == nil:
-       return 1
+        return 1
     return 1 + check_tree(node.left) + check_tree(node.right)
 
 

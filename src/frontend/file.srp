@@ -17,8 +17,18 @@ class SourceFile:
             if source[pos] == "\n":
                 this.source_map.append(pos + 1)
 
+        this.source_map.append(len(source) + 1)
+
     def get_range(start, end):
         return Range(this.file_path, start, end)
+
+    def get_formatted_pos(pos):
+        for line = 0 to len(source):
+            if this.source_map[line] > pos:
+                col = pos - this.source_map[line - 1]
+                return "(" + str(line) + ":" + str(col) + ")"
+
+        return -1
 
         
 def load_from_path(path):

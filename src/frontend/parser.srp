@@ -459,3 +459,39 @@ def parse_class(ctx):
 
     ctx.set_result(Class(name, vars, funcs))
     return true
+
+
+### GLOBAL ###
+
+def parse_load_req(ctx):
+    if not ctx.skip_store(TK_LITERAL):
+        return false
+        
+        # TODO: this is ignored for now; handle import dependencies
+
+
+def parse_global_decls(ctx):
+    decls = []
+    if ctx.skip("class", false):
+        if not parse_class(ctx):
+            return false
+        
+        decls.append(ctx.pop_result())
+    
+    elif ctx.skip("load", false) or ctx.skip("require", false):
+        return parse_load_req(ctx)
+    
+    elif ctx.skip("def", false):
+        if not parse_function(ctx):
+            return false
+
+        decls.append(ctx.pop_result())
+    
+    else:
+        if not parse_statement(ctx):
+            return false
+
+        decls.append(ctx.pop_result())
+    
+    ctx.set_result(File(decls))
+    return true

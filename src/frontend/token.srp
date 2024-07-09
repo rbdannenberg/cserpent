@@ -78,7 +78,6 @@ class Token:
 
 
 def tk_iden(source_file, pos, boxed_output):
-    print len(source_file.source), pos
     stream = source_file.source
     if not (isalpha(stream[pos]) or stream[pos] == "_"):
         return false
@@ -174,6 +173,21 @@ def tk_number(source_file, pos, boxed_output):
     return tk_hex(source_file, pos, boxed_output) or tk_dec(source_file, pos, boxed_output)
 
 
+def tk_string(source_file, pos, boxed_output):
+    stream = source_file.source
+    if stream[pos] != "\"":
+        return false
+    
+    pos = pos + 1
+    # TODO: handle string literals properly (add soundness)
+    while pos < len(stream) and stream[pos] != "\"":
+        pos = pos + 1
+    
+    # TODO: fix end of file str lit
+    boxed_output[0] = pos + 1
+    return true
+
+
 def strip_empty_lines(source_file, pos):
     stream = source_file.source
     ptr = pos
@@ -260,6 +274,7 @@ def tokenize(source_file):
     stream = source_file.source
 
     while pos < len(stream):
+        print source_file.get_formatted_pos(pos)
 
         # skip empty lines (that doesn't contribute to indentation levels)
         # TODO: find out why hashtag isnt skipped
@@ -321,6 +336,16 @@ def tokenize(source_file):
 
             range = source_file.get_range(pos, new_pos[0])
             tokens.append(Token(tk_type, iden, range))
+
+        elif tk_symbol(source_file, pos, new_pos): # symbol
+            lit = subseq(stream, pos, new_pos[0])
+            range = source_file.get_range(pos, new_pos[0])
+            tokens.append(Token(TK_LITERAL, lit, range))
+        
+        elif tk_string(source_file, pos, new_pos): # string literal
+            lit = subseq(stream, pos, new_pos[0])
+            range = source_file.get_range(pos, new_pos[0])
+            tokens.append(Token(TK_LITERAL, lit, range))
 
         if new_pos[0] == -1:
             range = source_file.get_range(pos, pos + 1)

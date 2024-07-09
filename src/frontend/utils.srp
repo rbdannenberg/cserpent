@@ -8,6 +8,7 @@ class Range:
     var end
 
     def init(file, start, end):
+        this.file = file
         this.start = start
         this.end = end
 
@@ -66,9 +67,21 @@ class Result:
         
         return Result(false, error)
 
+
 def res(val):
     return Result(true, val)
 
+
 def err_res(err, range):
     return Result(false, Error(range, err))
+
+
+def format_error(err):
+    if err.range == nil:
+        range_str = ""
+    else:
+        print err.range.file
+        range_str = err.range.file + "(" + str(err.range.start) + "-" + str(err.range.end) + ")"
+    
+    return range_str + ": " + err.msg
 

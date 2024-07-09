@@ -1,2 +1,17 @@
-require "file"
-require "token"
+require "src/frontend/file"
+require "src/frontend/token"
+require "src/frontend/utils"
+
+
+def parse_ast(path):
+    file = load_from_path(path)
+    if file == nil:
+        return err_res("file " + path + " cannot be opened", nil)
+    
+    tokens = tokenize(file)
+
+    if not tokens.ok:
+        print "lex error:", file.get_formatted_pos(tokens.error.range.start)
+        return tokens
+
+    return tokens    
