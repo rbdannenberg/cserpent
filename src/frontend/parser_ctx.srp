@@ -56,6 +56,8 @@ class ParseContext:
         if this.at_eof():
             if should_err:
                 this.error_eof_with(predicate)
+            if this.should_ignore_whitespace:
+                this.pos = before_whitespace
             return nil
         
         tok = this.peek()
@@ -106,10 +108,10 @@ class ParseContext:
         err(nil, "unexpected end of file")
 
     def err_eof_with(predicate):
-        err(nil, "unexpected end of file (expected " + predicate + ")")
+        err(nil, "unexpected end of file (expected " + str(predicate) + ")")
 
     def err_expect(tok, predicate):
-        err(tok.range, "expected " + predicate + ", got " + tok.render())
+        err(tok.range, "expected " + str(predicate) + ", got " + tok.render())
 
     def err_fset_miss(predicate):
         if this.at_eof():

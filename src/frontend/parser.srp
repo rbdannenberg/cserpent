@@ -41,7 +41,7 @@ def second_token_is_assign(ctx):
 
 
 def add_to_arg_lists(val, args, kwargs):
-    if val[0] == [0]:
+    if val[0] == 0:
         args.append(val[1])
     else:
         kwargs[val[1][0]] = val[1][1]
@@ -104,7 +104,6 @@ def parse_dict_entry(ctx):
 ### EXPRESSIONS ###
 
 def parse_inner(ctx):
-
     # array
     if ctx.skip("[", false):
         vals = []
@@ -241,15 +240,20 @@ def parse_infix(ctx, optional level = 0):
             return false
         rhs = ctx.pop_result()
         ast = BinOp(ast, symbol.content, rhs)
+        pred = PREC_TABLE[level]
     
     ctx.set_result(ast)
     return true
 
 
+# TODO: fix mutating vars in recursion
+prev_global_thing = []
 def parse_expression(ctx):
-    prev = ctx.ignore_whitespace(true)
+    prev_global_thing.append(ctx.ignore_whitespace(true))
+    // print prev_global_thing[len(prev_global_thing) - 1]
     ok = parse_infix(ctx)
-    ctx.ignore_whitespace(prev)
+    // print prev_global_thing[len(prev_global_thing) - 1]
+    ctx.ignore_whitespace(prev_global_thing.unappend())
     return ok
 
 
