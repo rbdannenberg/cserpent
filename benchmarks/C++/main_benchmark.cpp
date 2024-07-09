@@ -2,6 +2,7 @@
 // Created by anthony on 5/30/24.
 //
 #include <any.h>
+#include "obj.h"
 #include <iostream>
 #include <fstream>
 #include <chrono>
@@ -128,6 +129,7 @@ void benchmarkC() {
 }
 
 int main() {
+    main_init();
 //    benchmarkC();
     benchmarkCSerpent();
     std::cout << "Done." << std::endl;

@@ -72,7 +72,7 @@ class Cs_class : public Obj {
 extern Array *cs_symbols;
 
 // initialize this module
-void symbol_init();
+void main_init();
 
 
 /**

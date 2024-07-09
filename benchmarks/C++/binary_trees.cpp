@@ -67,11 +67,17 @@ Any make_tree(Any depth) {
 
     new_tree.call("set_left", Array {make_tree(depth)}, empty_dict);
     new_tree.call("set_right", Array {make_tree(depth)}, empty_dict);
+//    new_tree.call("set_left", Array {5}, empty_dict);
+//    new_tree.call("set_right", Array {7}, empty_dict);
 
     return new_tree;
 }
 
 Any check_tree(Any tree) {
+//    Any comp = tree.call("get_left", empty_array, empty_dict);
+//    if (comp == nil) {
+//        return 1;
+//    }
     if (tree.call("get_left", empty_array, empty_dict) == nil) {
         return 1;
     }
@@ -86,7 +92,7 @@ std::string check_tree_str(Any tree) {
 
 void free_tree(Any tree) {
     Any left = tree.call("get_left", empty_array, empty_dict);
-    if (left != Any {}) {
+    if (left != nil) {
         free_tree(left);
         free_tree(tree.call("get_right", empty_array, empty_dict));
     }

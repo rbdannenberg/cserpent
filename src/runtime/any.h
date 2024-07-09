@@ -11,7 +11,7 @@
 
 union String;
 class Array;
-class Symbol;
+union Symbol;
 class Dictionary;
 class Basic_obj;
 class Obj;
@@ -39,7 +39,8 @@ public:
     /**@brief OCCUPY: 0xFFFA
      * @pre x.length () <= 5
      */
-    Any(std::string x); // might need to change this to const reference
+    Any(String x); // take by value because we don't want aliasing
+    Any(Symbol x); // likewise no aliasing wanted
     Any(const Array& x);
     Any(const Dictionary& x);
     Any(const Obj& x);
@@ -49,7 +50,8 @@ public:
     Any& operator=(int64_t x);
     Any& operator=(int x);
     Any& operator=(double x);
-    Any& operator=(void* x);
+    Any& operator=(String x);
+    Any& operator=(Symbol x);
     Any& operator=(const Array& x);
     Any& operator=(const Dictionary& x);
     Any& operator=(const Obj& x);
@@ -62,21 +64,21 @@ public:
     void set(int64_t i, Any val); // Use this instead of assignment through [] (gc reasons).
     Any operator[](int64_t i) const; // return-by-value is faster
 
-
     void append(Any x);
     void append(int64_t x);
     void append(double x);
 
-    Any call(const std::string& method, const Array& args, const Dictionary& kwargs);
-    Any& get(const std::string& member);
+    Any call(const Symbol& method, const Array& args, const Dictionary& kwargs);
 };
+
+inline const Any nil = Any {nullptr};
 
 // should we consider creating an enum type for the various underlying types?
 
 bool is_int(Any x);
 bool is_real(Any x);
 bool is_ptr(Any x);
-bool is_shortstr(Any x);
+bool is_str(Any x);
 bool is_symbol(Any x);
 
 // these to_* functions do not check that the underlying type is correct
@@ -84,7 +86,8 @@ bool is_symbol(Any x);
 int64_t to_int(Any x);
 double to_real(Any x);
 Basic_obj *to_ptr(Any x);
-std::string to_shortstr(Any x);
+String to_str(Any x);
+Symbol to_symbol(Any x);
 Array& to_array(Any x);
 
 // as_* functions are used in compiled code to ensure that the type

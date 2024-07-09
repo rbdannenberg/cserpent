@@ -1,7 +1,8 @@
 #include "any.h"
 #include "any_utils.h"
 #include "op_overload.h"
-#include <data_structures/array.h>
+#include "array.h"
+#include "csstring.h"
 #include <iostream>
 
 // ARITHMETIC OPERATORS
@@ -25,12 +26,21 @@ Any operator+ (Any lhs, double rhs) {
     return { force_real(lhs) + rhs };
 }
 
+Any operator+ (Any lhs, String rhs) {
+    if (is_str(lhs)) {
+        return { to_str(lhs) + rhs};
+    }
+}
+
 Any operator+ (Any lhs, Any rhs) {
     if (is_int(rhs)) {
         return lhs + to_int(rhs);
     }
     else if (is_real(rhs)) {
         return lhs + to_real(rhs);
+    }
+    else if (is_str(rhs)) {
+        return lhs + to_str(rhs);
     }
     else type_error(rhs);
 }
@@ -364,7 +374,27 @@ bool operator==(Any lhs, int rhs) {
 }
 
 bool operator==(Any lhs, Any rhs) {
+    if (is_str(rhs)) {
+        return lhs == to_str(rhs);
+    }
+    else if (is_symbol(rhs)) {
+        return lhs == to_symbol(rhs);
+    }
     return lhs.integer == rhs.integer;
+}
+
+bool operator==(Any lhs, String rhs) {
+    if (is_str(lhs)) {
+        return to_str(lhs) == rhs;
+    }
+    else type_error(lhs, __func__);
+}
+
+bool operator==(Any lhs, Symbol rhs) {
+    if (is_symbol(lhs)) {
+        return to_symbol(lhs) == rhs;
+    }
+    else type_error(lhs, __func__);
 }
 
 bool operator!=(Any lhs, Any rhs) {
@@ -412,13 +442,8 @@ Any Any::operator[](int64_t i) const {
         if (basic_ptr->get_tag() == tag_array) {
             return (*(static_cast<Array*>(basic_ptr)))[i];
         }
-    } else if (is_shortstr(*this)) {
-        std::string str = to_shortstr(*this);
-        if (i < str.length()) {
-            // doesn't this defeat the purpose
-            // return a char?
-            return Any {str[i]};
-        }
+    } else if (is_str(*this)) {
+        return String {to_str(*this)[i]};
     } else {
         type_error(*this);
     }

@@ -80,7 +80,9 @@ String::String(const String& other) {
     if (is_short_string(other)) {
         data = other.data;
     } else {
-        data = get_str_data(new std::string(*get_str_ptr(other.data)));
+        auto new_str = new std::string {*get_str_ptr(other.data)};
+        data = get_str_data(new_str);
+//        data = get_str_data(new std::string(*get_str_ptr(other.data)));
     }
 }
 

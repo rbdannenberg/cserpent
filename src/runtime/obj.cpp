@@ -43,6 +43,7 @@ Any Obj::call(const Symbol& method, const Array &args, const Dictionary &kwargs)
 }
 
 
+Array *cs_symbols = nullptr;
 Cs_class *Cs_class_class = nullptr;
 inline Any Cs_class_get_name(Obj* self, const Array& args, const Dictionary& kwargs) {
     check_dispatch("get_name", args, kwargs, 0, 0);
@@ -68,14 +69,8 @@ MemberTable Cs_class_table {
 };
 
 // Cserpent initialization - must be called to create runtime structures
-void csobj_init()
+void main_init()
 {
     Cs_class_class = new Cs_class {Symbol {"Class"}, 5, 0b10001, &Cs_class_table};
-}
-
-Array *cs_symbols = nullptr;
-
-void symbol_init()
-{
     cs_symbols = new Array;
 }

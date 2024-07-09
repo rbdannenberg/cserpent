@@ -6,14 +6,16 @@
 #include "gc.h"
 #include "obj.h"
 #include "any_utils.h"
-#include "data_structures/array.h"
-#include "data_structures/dictionary.h"
+#include "array.h"
+#include "dictionary.h"
+#include "csstring.h"
 
 constexpr uint64_t BIAS         =    0x1000000000000uLL;
 constexpr uint64_t INT_TAG      = 0xFFFC000000000000uLL;
 constexpr uint64_t TAG_MASK     = 0xFFFF000000000000uLL;
 constexpr uint64_t PTR_TAG      = 0x0000000000000000uLL;
-constexpr uint64_t SHORTSTR_TAG = 0xFFFA000000000000uLL;
+constexpr uint64_t STR_TAG      = 0xFFFA000000000000uLL;
+constexpr uint64_t SYMBOL_TAG   = 0xFFFB000000000000uLL;
 constexpr size_t num_chars = 5; // 8 bytes - 2 (tag) - 1 (nul terminator)
 
 
@@ -68,21 +70,35 @@ Any::Any(void* x) {
     }
 #endif
 }
-Any::Any(std::string x) {
-    // 2 possible ways:
-    // 1: get 8 bytes starting from x, discard the last 2 bytes, shift right and add tag
-    // 2: insert tag bytes in front of string, get 8 bytes starting from front.
-    // The following is way no. 1:
+
+
+Any::Any(String x) {
 #ifdef DEBUG
-    if (x.length() > num_chars) {
-        std::cerr << "Precondition failed: string too long" << std::endl;
+    if (x.tag != static_cast<int16_t>(0xFFFA)) {
+        std::cerr << "Precondition failed: string corrupted" << std::endl;
         return {};
     }
 #endif
-    // reads 8 bytes
-    uint64_t tmp = *((uint64_t *) (x.c_str()));
-    integer = (tmp >> 16) | SHORTSTR_TAG;
-    // warning: this copies a lot of garbage after the nul terminator into the Any
+    integer = 0; // So the potential pointer does not get freed
+    std::swap(x.data, integer); // Any takes on the information in the String
+    // Any copies of the resulting Any will point to the same std::string - "controlled aliasing"
+    // This is fine since no operation modifies the contents of the std::string, only returning a new
+    // String, separating the aliasing and maintaining value semantics for both Any and String.
+    // This is similar to copy-on-write.
+    // Thus, only the String-to-Any constructor, String-to-Any assignment and Any-to-String to_str need
+    // special care. Default Any copy/move constructor/assignment are preserved.
+    // Currently, the only leaks are 1 per String to Any conversion. This is acceptable.
+}
+
+Any::Any(Symbol x) {
+#ifdef DEBUG
+    if (x.tag != static_cast<int16_t>(0xFFFB)) {
+        std::cerr << "Precondition failed: symbol corrupted" << std::endl;
+        return {};
+    }
+#endif
+    integer = 0;
+    std::swap(x.data, integer);
 }
 
 Any::Any(const Array& x) {
@@ -126,17 +142,29 @@ Any& Any::operator=(double x) {
     return *this;
 }
 
-Any& Any::operator=(void* x) {
-    // not integer = reinterpret_cast<uint64_t>(x);?
-    integer = *reinterpret_cast<uint64_t*>(&x);
-#ifdef DEBUG
-    if (integer & TAG_MASK) {
-        std::cerr << "Precondition failed: pointer corrupted" << std::endl;
-        return {};
-    }
-#endif
+Any& Any::operator=(String x) {
+    integer = 0;
+    std::swap(integer, x.data);
     return *this;
 }
+
+Any& Any::operator=(Symbol x) {
+    integer = 0;
+    std::swap(integer, x.data);
+    return *this;
+}
+
+//Any& Any::operator=(void* x) {
+//    // not integer = reinterpret_cast<uint64_t>(x);?
+//    integer = *reinterpret_cast<uint64_t*>(&x);
+//#ifdef DEBUG
+//    if (integer & TAG_MASK) {
+//        std::cerr << "Precondition failed: pointer corrupted" << std::endl;
+//        return {};
+//    }
+//#endif
+//    return *this;
+//}
 
 Any& Any::operator=(const Array& x) {
     integer = reinterpret_cast<uint64_t>(&x);
@@ -165,8 +193,12 @@ bool is_ptr(Any x) {
     return (x.integer & TAG_MASK) == PTR_TAG;
 }
 
-bool is_shortstr(Any x) {
-    return (x.integer & TAG_MASK) == SHORTSTR_TAG;
+bool is_str(Any x) {
+    return (x.integer & TAG_MASK) == STR_TAG;
+}
+
+bool is_symbol(Any x) {
+    return (x.integer & TAG_MASK) == SYMBOL_TAG;
 }
 
 int64_t to_int(Any x) {
@@ -182,10 +214,26 @@ Basic_obj* to_ptr(Any x) {
     return reinterpret_cast<Basic_obj*>(x.integer);
 }
 
-std::string to_shortstr(Any x) {
-    // copies from 3rd byte onwards (skips tag) until nul terminator is encountered
-    return std::string {&((char *) &(x.integer))[2]};
+String to_str(Any x) {
+    String result {};
+    result.data = x.integer;
+    String copy = result; // We want to invoke String's copy constructor so that the original Any isn't affected.
+    result.data = 0;
+    return copy;
 }
+
+Symbol to_symbol(Any x) {
+    Symbol result {};
+    result.data = x.integer;
+    Symbol copy = result;
+    result.data = 0;
+    return copy;
+}
+
+//std::string to_shortstr(Any x) {
+//    // copies from 3rd byte onwards (skips tag) until nul terminator is encountered
+//    return std::string {&((char *) &(x.integer))[2]};
+//}
 
 Array& to_array(Any x) {
     return *reinterpret_cast<Array*>(x.integer);
@@ -217,7 +265,8 @@ std::string get_type(Any x) {
     if (is_ptr(x)) return "pointer";
     else if (is_int(x)) return "integer";
     else if (is_real(x)) return "real";
-    else if (is_shortstr(x)) return "short string";
+    else if (is_str(x)) return "string";
+    else if (is_symbol(x)) return "symbol";
     else return "unknown";
 }
 
@@ -230,6 +279,15 @@ Any::operator int64_t() {
 Any::operator double() {
     return as_real(*this);
 }
+
+
+
+static bool is_string_or_symbol(Any x) {
+    uint64_t string_or_symbol_mask = 0xFFFE000000000000uLL;
+    // return (x.integer & string_or_symbol_mask) == STR_TAG;
+    return is_str(x) || is_symbol(x);
+}
+
 
 void Any::append(Any x) {
     if (is_ptr(*this)) {
@@ -256,37 +314,16 @@ void Any::append(double x) {
 //    integer = reinterpret_cast<uint64_t>(&x);
 //}
 
-/* TODO: implement calls to Obj methods
-Any Any::call(const std::string &method, const Array &args, const Dictionary &kwargs) {
+Any Any::call(const Symbol& method, const Array &args, const Dictionary &kwargs) {
     if (is_ptr(*this)) {
         Basic_obj *basic_ptr = to_ptr(*this);
-        if (true) {
-//        if (basic_ptr->get_tag() == tag_object) { /// @note: get_tag is not implemented
+        if (basic_ptr->get_tag() == tag_object) {
             Obj *obj_ptr = reinterpret_cast<Obj*>(basic_ptr);
             return obj_ptr->call(method, args, kwargs);
-//
-//            std::string name = obj_ptr->class_name;
-//            Symbol C = global::symbol_table[name];
-//            return std::invoke(C.call, obj_ptr, method, args, kwargs);
         }
     }
     else {
         type_error(*this);
     }
 }
- */
 
-/* TODO: implement field access from Obj
-Any& Any::get(const std::string &member) {
-    if (is_ptr(*this)) {
-        Basic_obj *basic_ptr = to_ptr(*this);
-        if (true) {
-            Obj *obj_ptr = reinterpret_cast<Obj*>(basic_ptr);
-            return obj_ptr->get(member);
-        }
-    }
-    else {
-        type_error(*this);
-    }
-}
-*/

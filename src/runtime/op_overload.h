@@ -78,4 +78,32 @@ std::ostream& operator<<(std::ostream& os, Any x);
 bool operator==(Any lhs, int64_t rhs);
 bool operator==(Any lhs, int rhs);
 bool operator==(Any lhs, Any rhs);
+bool operator==(Any lhs, String rhs);
+bool operator==(Any lhs, Symbol rhs);
 bool operator!=(Any lhs, Any rhs);
+
+#include <type_traits>
+
+// Define a variable template for checking supported types
+template<typename T>
+constexpr bool is_comparable = std::disjunction<
+        std::is_same<T, Any>,
+        std::is_same<T, int64_t>,
+        std::is_same<T, int>,
+        std::is_same<T, double>,
+        std::is_same<T, Symbol>,
+        std::is_same<T, String>
+>::value;
+
+// Use the variable template in static_assert
+template<typename T>
+bool operator!=(Any lhs, T rhs) {
+    static_assert(is_comparable<T>, "operator!= is not supported for the given type");
+    return !operator==(lhs, rhs);
+}
+
+template<typename T>
+bool operator!=(T lhs, Any rhs) {
+    static_assert(is_comparable<T>, "operator!= is not supported for the given type");
+    return !operator==(rhs, lhs);
+}
