@@ -20,7 +20,6 @@ def make_tree(depth):
     depth = depth - 1
 
     var new_tree = Tree()
-    // TODO: assignment to left vals with suffix
     // new_tree.left = make_tree(depth)
     // new_tree.right = make_tree(depth)
     
@@ -38,7 +37,7 @@ def main(arg):
     var max_depth = max(min_depth + 2, arg)
     var stretch_depth = max_depth + 1
 
-    print("stretch tree of depth " + str(stretch_depth) + " check: " + str(check_tree(make_tree(stretch_depth))))
+    print "stretch tree of depth " + str(stretch_depth) + " check: " + str(check_tree(make_tree(stretch_depth)))
 
 
     var long_lived_tree = make_tree(max_depth)

@@ -78,6 +78,9 @@ class ParseContext:
         return true
 
     def skip_store(predicate, optional should_err = true):
+        if len(this.partial) != 0:
+            runtime_exception("DUP", frame_get())
+
         tok = this.get(predicate, should_err)
         if tok == nil:
             return false
@@ -128,6 +131,8 @@ class ParseContext:
             if not match(this.input[i], [TK_INDENT, TK_DEDENT, TK_BREAK]):
                 this.pos = i
                 return curr_pos
+        
+        return curr_pos
 
 
     def skip_eol():
@@ -161,6 +166,8 @@ class ParseContext:
 
     def pop_result():
         out = this.res
+        if out == nil:
+            print "DEBUG ERROR: POPPING FROM EMPTY RESULT"
         this.res = nil
         return out
 
@@ -168,6 +175,10 @@ class ParseContext:
         return this.partial[idx]
 
     def pop_partial():
+        if len(this.partial) != 1:
+            print this.partial
+            print "DEBUG ERROR: POPPING FROM EMPTY PARTIAL"
+            runtime_exception("STOP", frame_get())
         part = this.partial[0]
         this.partial.clear()
         return part

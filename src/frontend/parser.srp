@@ -70,20 +70,35 @@ def parse_arg_list_entry(ctx):
     return true
 
 
+TEMP_GLOBAL_REC_PARSE_ARG_LIST = []
 def parse_arg_list(ctx):
-    args = []
-    kwargs = {}
+    TEMP_GLOBAL_REC_PARSE_ARG_LIST.append({"args": [], "kwargs": {}})
     if ctx.get(FS_EXPRESSION, false) != nil:
         if not parse_arg_list_entry(ctx):
+            TEMP_GLOBAL_REC_PARSE_ARG_LIST.unappend()
             return false
-        add_to_arg_lists(ctx.pop_result(), args, kwargs)
+
+        add_to_arg_lists(
+            ctx.pop_result(),
+            TEMP_GLOBAL_REC_PARSE_ARG_LIST.last()["args"],
+            TEMP_GLOBAL_REC_PARSE_ARG_LIST.last()["kwargs"]
+        )
 
         while ctx.skip(",", false):
             if not parse_arg_list_entry(ctx):
+                TEMP_GLOBAL_REC_PARSE_ARG_LIST.unappend()
                 return false
-            add_to_arg_lists(ctx.pop_result(), args, kwargs)
+            add_to_arg_lists(
+                ctx.pop_result(),
+                TEMP_GLOBAL_REC_PARSE_ARG_LIST.last()["args"],
+                TEMP_GLOBAL_REC_PARSE_ARG_LIST.last()["kwargs"]
+            )
 
-    ctx.set_result(ArgumentList(args, kwargs))
+    ctx.set_result(ArgumentList(
+        TEMP_GLOBAL_REC_PARSE_ARG_LIST.last()["args"],
+        TEMP_GLOBAL_REC_PARSE_ARG_LIST.last()["kwargs"]
+    ))
+    TEMP_GLOBAL_REC_PARSE_ARG_LIST.unappend()
     return true
 
 
@@ -211,7 +226,7 @@ def parse_exponent(ctx):
 def parse_term(ctx):
     precs = []
     while ctx.skip_store(PREFIX_TABLE, false):
-        precs.append(ctx.pop_partial())
+        precs.append(ctx.pop_partial().content)
 
     if not parse_exponent(ctx):
         return false
@@ -235,11 +250,11 @@ def parse_infix(ctx, optional level = 0):
     pred = PREC_TABLE[level]
 
     while ctx.skip_store(pred, false):
-        symbol = ctx.pop_partial()
+        symbol = ctx.pop_partial().content
         if not parse_infix(ctx, level + 1):
             return false
         rhs = ctx.pop_result()
-        ast = BinOp(ast, symbol.content, rhs)
+        ast = BinOp(ast, symbol, rhs)
         pred = PREC_TABLE[level]
     
     ctx.set_result(ast)
@@ -247,13 +262,13 @@ def parse_infix(ctx, optional level = 0):
 
 
 # TODO: fix mutating vars in recursion
-prev_global_thing = []
+TEMP_GLOBAL_REC_PARSE_EXPRESSION = []
 def parse_expression(ctx):
-    prev_global_thing.append(ctx.ignore_whitespace(true))
+    TEMP_GLOBAL_REC_PARSE_EXPRESSION.append(ctx.ignore_whitespace(true))
     // print prev_global_thing[len(prev_global_thing) - 1]
     ok = parse_infix(ctx)
     // print prev_global_thing[len(prev_global_thing) - 1]
-    ctx.ignore_whitespace(prev_global_thing.unappend())
+    ctx.ignore_whitespace(TEMP_GLOBAL_REC_PARSE_EXPRESSION.unappend())
     return ok
 
 
@@ -300,9 +315,25 @@ def parse_statement(ctx):
             return false
         
         ctx.set_result(StandaloneExpression(ctx.pop_result()))
+    
+    # print statements
+    # TODO: display
+    elif ctx.skip_store(["print"], false):
+        iden = ctx.pop_partial().content
+        exps = []
+        if not parse_expression(ctx):
+            return false
+        exps.append(ctx.pop_result())
+
+        while ctx.skip(",", false):
+            if not parse_expression(ctx):
+                return false
+            exps.append(ctx.pop_result())
+
+        ctx.set_result(FunctionCall(iden, exps))
 
     else:
-        ctx.err_fset_miss(FS_EXPRESSION + ["return", "var"])
+        ctx.err_fset_miss(FS_EXPRESSION + ["return", "var", "print"])
         return false
 
     if not ctx.skip_eol():
@@ -312,27 +343,31 @@ def parse_statement(ctx):
 
 ### MULTILINE ###
 
+TEMP_GLOBAL_REC_PARSE_BLOCK = []
 def parse_block(ctx):
     if not (ctx.skip(TK_BREAK) and ctx.indent()):
         return false
 
-    stmts = []
+    TEMP_GLOBAL_REC_PARSE_BLOCK.append([])
     skip_linebreaks(ctx)
     while ctx.get(TK_DEDENT, false) == nil:
         skip_linebreaks(ctx)
         if ctx.get(FS_CONTROL, false) != nil:
             if not parse_control(ctx):
+                TEMP_GLOBAL_REC_PARSE_BLOCK.unappend()
                 return false
         else:
             if not parse_statement(ctx):
+                TEMP_GLOBAL_REC_PARSE_BLOCK.unappend()
                 return false
-        stmts.append(ctx.pop_result())
+        TEMP_GLOBAL_REC_PARSE_BLOCK[len(TEMP_GLOBAL_REC_PARSE_BLOCK) - 1].append(ctx.pop_result())
         skip_linebreaks(ctx)
 
     if not ctx.dedent():
+        TEMP_GLOBAL_REC_PARSE_BLOCK.unappend()
         return false
 
-    res = ctx.pop_result()
+    stmts = TEMP_GLOBAL_REC_PARSE_BLOCK.unappend()
     ctx.set_result(Block(stmts))
     return true
 
@@ -396,7 +431,7 @@ def parse_for(ctx):
     if not parse_expression(ctx):
         return false
     end = ctx.pop_result()
-    amount = Literal("1")
+    amount = Literal("1", "int")
     if ctx.skip("by", false):
         if not parse_expression(ctx):
             return false
@@ -445,7 +480,8 @@ def parse_function(ctx):
 
     # TODO: optionals
 
-    ctx.set_result(Function(name, params, [], ctx.pop_result()))
+    stmts = ctx.pop_result()
+    ctx.set_result(Function(name, params, [], stmts))
     return true
 
 
@@ -483,6 +519,7 @@ def parse_load_req(ctx):
     if not ctx.skip_store(TK_LITERAL):
         return false
     
+    ctx.pop_partial()
     return true
         
     # TODO: this is ignored for now; handle import dependencies
@@ -507,6 +544,12 @@ def parse_global_decls(ctx):
             if not parse_function(ctx):
                 return false
 
+            decls.append(ctx.pop_result())
+
+        elif ctx.get(FS_CONTROL, false) != nil:
+            if not parse_control(ctx):
+                return false
+            
             decls.append(ctx.pop_result())
         
         else:
