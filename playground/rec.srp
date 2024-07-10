@@ -1,0 +1,9 @@
+def rec(temp):
+    if temp > 20:
+        return
+    a = temp + 1
+    print a
+    rec(a)
+    print a
+
+rec(10)
