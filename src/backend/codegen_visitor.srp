@@ -80,7 +80,7 @@ class ASTVisitor:
     def visitFile(file):
         pass
 
-require "../frontend/ast.srp"
+require "src/frontend/ast.srp"
 
 class CodegenVisitor(ASTVisitor):
     var code_lines
@@ -297,7 +297,7 @@ class CodegenVisitor(ASTVisitor):
 
 
     def visitClass(class_):
-        add_line("class " + class_.name.value + " : public Obj {")
+        add_line("class " + class_.name + " : public Obj {")
         indent_level = indent_level + 1
         get_override = "Any& get(const std::string& member_name) override {\n"
         for variable in class_.member_variables:

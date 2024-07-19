@@ -68,13 +68,14 @@ double benchmark(Any argument, int iterations=100, int warmup=3) {
 
 void benchmarkCSerpent() {
     if (checkCorrectness) {
-        std::cout << test_trees(10) << std::endl;
-        std::cout << test_trees_c(10) << std::endl;
-        std::cout << test_matmul(10) << std::endl;
-        std::cout << test_matmul_c(10) << std::endl;
+//        std::cout << test_trees(10) << std::endl;
+//        std::cout << test_trees_c(10) << std::endl;
+//        std::cout << test_matmul(10) << std::endl;
+//        std::cout << test_matmul_c(10) << std::endl;
         std::cout << nq_solve(10) << std::endl;
-        std::cout << nq_solve_c(10) << std::endl;
+//        std::cout << nq_solve_c(10) << std::endl;
     }
+    return;
     std::vector<double> times{};
     std::cout << "CSerpent++: " << std::endl;
     std::cout << "Benchmarking Matrix Multiplication..." << std::endl;
@@ -129,6 +130,7 @@ void benchmarkC() {
 }
 
 int main() {
+//    benchmarkC();
     main_init();
 //    benchmarkC();
     benchmarkCSerpent();

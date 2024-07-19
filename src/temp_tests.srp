@@ -6,3 +6,5 @@ if not res.ok:
     print format_error(res.error)
 
 print_ast(res.result)
+
+exit()
