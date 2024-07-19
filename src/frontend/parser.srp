@@ -55,12 +55,12 @@ def parse_arg_list_entry(ctx):
     if second_token_is_assign(ctx):
         if not ctx.skip_store(TK_IDENTIFIER):
             return false
-        key = ctx.pop_partial().content
+        var key = ctx.pop_partial().content
         if not ctx.skip("="):
             return false
         if not parse_expression(ctx):
             return false
-        value = ctx.pop_result()
+        var value = ctx.pop_result()
         ctx.set_result([1, [key, value]])
     else:
         if not parse_expression(ctx):
@@ -70,47 +70,33 @@ def parse_arg_list_entry(ctx):
     return true
 
 
-TEMP_GLOBAL_REC_PARSE_ARG_LIST = []
 def parse_arg_list(ctx):
-    TEMP_GLOBAL_REC_PARSE_ARG_LIST.append({"args": [], "kwargs": {}})
+    var args = []
+    var kwargs = {}
     if ctx.get(FS_EXPRESSION, false) != nil:
         if not parse_arg_list_entry(ctx):
-            TEMP_GLOBAL_REC_PARSE_ARG_LIST.unappend()
             return false
 
-        add_to_arg_lists(
-            ctx.pop_result(),
-            TEMP_GLOBAL_REC_PARSE_ARG_LIST.last()["args"],
-            TEMP_GLOBAL_REC_PARSE_ARG_LIST.last()["kwargs"]
-        )
+        add_to_arg_lists(ctx.pop_result(),args, kwargs)
 
         while ctx.skip(",", false):
             if not parse_arg_list_entry(ctx):
-                TEMP_GLOBAL_REC_PARSE_ARG_LIST.unappend()
                 return false
-            add_to_arg_lists(
-                ctx.pop_result(),
-                TEMP_GLOBAL_REC_PARSE_ARG_LIST.last()["args"],
-                TEMP_GLOBAL_REC_PARSE_ARG_LIST.last()["kwargs"]
-            )
+            add_to_arg_lists(ctx.pop_result(), args, kwargs)
 
-    ctx.set_result(ArgumentList(
-        TEMP_GLOBAL_REC_PARSE_ARG_LIST.last()["args"],
-        TEMP_GLOBAL_REC_PARSE_ARG_LIST.last()["kwargs"]
-    ))
-    TEMP_GLOBAL_REC_PARSE_ARG_LIST.unappend()
+    ctx.set_result(ArgumentList(args, kwargs))
     return true
 
 
 def parse_dict_entry(ctx):
     if not parse_expression(ctx):
         return false
-    key = ctx.pop_result()
+    var key = ctx.pop_result()
     if not ctx.skip(","):
         return false
     if not parse_expression(ctx):
         return false
-    value = ctx.pop_result()
+    var value = ctx.pop_result()
 
     ctx.set_result([key, value])
     return true
@@ -119,6 +105,9 @@ def parse_dict_entry(ctx):
 ### EXPRESSIONS ###
 
 def parse_inner(ctx):
+    var res = nil
+    var vals = nil
+
     # array
     if ctx.skip("[", false):
         vals = []
@@ -160,7 +149,7 @@ def parse_inner(ctx):
 
     # identifier
     elif ctx.skip_store(TK_IDENTIFIER, false):
-        iden = ctx.pop_partial().content
+        var iden = ctx.pop_partial().content
         if ctx.skip("(", false):
             if not parse_arg_list(ctx):
                 return false
@@ -184,7 +173,7 @@ def parse_inner(ctx):
 
     # postfix constructs
     while ctx.skip_store([".", "["], false):
-        fst = ctx.pop_partial().content
+        var fst = ctx.pop_partial().content
         if fst == ".":
             if not ctx.skip_store(TK_IDENTIFIER):
                 return false
@@ -211,12 +200,12 @@ def parse_inner(ctx):
 def parse_exponent(ctx):
     if not parse_inner(ctx):
         return false
-    ast = ctx.pop_result()
+    var ast = ctx.pop_result()
 
     while ctx.skip("**", false):
         if not parse_inner(ctx):
             return false
-        rhs = ctx.pop_result()
+        var rhs = ctx.pop_result()
         ast = BinOp(ast, "**", rhs)
     
     ctx.set_result(ast)
@@ -224,13 +213,13 @@ def parse_exponent(ctx):
 
 
 def parse_term(ctx):
-    precs = []
+    var precs = []
     while ctx.skip_store(PREFIX_TABLE, false):
         precs.append(ctx.pop_partial().content)
 
     if not parse_exponent(ctx):
         return false
-    inner = ctx.pop_result()
+    var inner = ctx.pop_result()
     for i = len(precs) - 1 to -1 by -1:
         inner = UnaryOp(precs[i].content, inner)
     
@@ -246,14 +235,14 @@ def parse_infix(ctx, optional level = 0):
     
     if not parse_infix(ctx, level + 1):
         return false
-    ast = ctx.pop_result()
-    pred = PREC_TABLE[level]
+    var ast = ctx.pop_result()
+    var pred = PREC_TABLE[level]
 
     while ctx.skip_store(pred, false):
-        symbol = ctx.pop_partial().content
+        var symbol = ctx.pop_partial().content
         if not parse_infix(ctx, level + 1):
             return false
-        rhs = ctx.pop_result()
+        var rhs = ctx.pop_result()
         ast = BinOp(ast, symbol, rhs)
         pred = PREC_TABLE[level]
     
@@ -261,14 +250,10 @@ def parse_infix(ctx, optional level = 0):
     return true
 
 
-# TODO: fix mutating vars in recursion
-TEMP_GLOBAL_REC_PARSE_EXPRESSION = []
 def parse_expression(ctx):
-    TEMP_GLOBAL_REC_PARSE_EXPRESSION.append(ctx.ignore_whitespace(true))
-    // print prev_global_thing[len(prev_global_thing) - 1]
+    var restore = ctx.ignore_whitespace(true)
     ok = parse_infix(ctx)
-    // print prev_global_thing[len(prev_global_thing) - 1]
-    ctx.ignore_whitespace(TEMP_GLOBAL_REC_PARSE_EXPRESSION.unappend())
+    ctx.ignore_whitespace(restore)
     return ok
 
 
@@ -276,6 +261,8 @@ def parse_expression(ctx):
 
 
 def parse_statement(ctx):
+    var iden = nil
+
     # val decl with `var`
     if ctx.skip("var", false):
         ctx.skip_store(TK_IDENTIFIER)
@@ -320,7 +307,7 @@ def parse_statement(ctx):
     # TODO: display
     elif ctx.skip_store(["print"], false):
         iden = ctx.pop_partial().content
-        exps = []
+        var exps = []
         if not parse_expression(ctx):
             return false
         exps.append(ctx.pop_result())
@@ -343,53 +330,48 @@ def parse_statement(ctx):
 
 ### MULTILINE ###
 
-TEMP_GLOBAL_REC_PARSE_BLOCK = []
 def parse_block(ctx):
     if not (ctx.skip(TK_BREAK) and ctx.indent()):
         return false
 
-    TEMP_GLOBAL_REC_PARSE_BLOCK.append([])
+    var content = []
     skip_linebreaks(ctx)
     while ctx.get(TK_DEDENT, false) == nil:
         skip_linebreaks(ctx)
         if ctx.get(FS_CONTROL, false) != nil:
             if not parse_control(ctx):
-                TEMP_GLOBAL_REC_PARSE_BLOCK.unappend()
                 return false
         else:
             if not parse_statement(ctx):
-                TEMP_GLOBAL_REC_PARSE_BLOCK.unappend()
                 return false
-        TEMP_GLOBAL_REC_PARSE_BLOCK[len(TEMP_GLOBAL_REC_PARSE_BLOCK) - 1].append(ctx.pop_result())
+        content.append(ctx.pop_result())
         skip_linebreaks(ctx)
 
     if not ctx.dedent():
-        TEMP_GLOBAL_REC_PARSE_BLOCK.unappend()
         return false
 
-    stmts = TEMP_GLOBAL_REC_PARSE_BLOCK.unappend()
-    ctx.set_result(Block(stmts))
+    ctx.set_result(Block(content))
     return true
 
 
 def parse_if(ctx):
     if not (parse_expression(ctx) and ctx.skip(":")):
         return false
-    if_cond = ctx.pop_result()
+    var if_cond = ctx.pop_result()
     if not parse_block(ctx):
         return false
 
-    if_block = ctx.pop_result()
-    elifs = []
+    var if_block = ctx.pop_result()
+    var elifs = []
     skip_linebreaks(ctx)
     while ctx.skip("elif", false):
         skip_linebreaks(ctx)
         if not (parse_expression(ctx) and ctx.skip(":")):
             return false
-        cond = ctx.pop_result()
+        var cond = ctx.pop_result()
         if not parse_block(ctx):
             return false
-        block = ctx.pop_result()
+        var block = ctx.pop_result()
         elifs.append([cond, block])
         skip_linebreaks(ctx)
     
@@ -401,10 +383,10 @@ def parse_if(ctx):
     else:
         else_block = Block([])
 
-    acc = else_block
+    var acc = else_block
     for i = len(elifs) - 1 to -1 by -1:
-        curr = elifs[i]
-        acc = If(elifs[0], elifs[1], acc)
+        var curr = elifs[i]
+        acc = If(curr[0], curr[1], acc)
     
     ctx.set_result(If(if_cond, if_block, acc))
     return true
@@ -413,7 +395,7 @@ def parse_if(ctx):
 def parse_while(ctx):
     if not (parse_expression(ctx) and ctx.skip(":")):
         return false
-    cond = ctx.pop_result()
+    var cond = ctx.pop_result()
     if not parse_block(ctx):
         return false
     
@@ -424,14 +406,14 @@ def parse_while(ctx):
 def parse_for(ctx):
     if not ctx.skip_store(TK_IDENTIFIER):
         return false
-    var_name = ctx.pop_partial().content
+    var var_name = ctx.pop_partial().content
     if not (ctx.skip("=") and parse_expression(ctx) and ctx.skip("to")):
         return false
-    start = ctx.pop_result()
+    var start = ctx.pop_result()
     if not parse_expression(ctx):
         return false
-    end = ctx.pop_result()
-    amount = Literal("1", "int")
+    var end = ctx.pop_result()
+    var amount = Literal("1", "int")
     if ctx.skip("by", false):
         if not parse_expression(ctx):
             return false
@@ -457,7 +439,7 @@ def parse_control(ctx):
 
 def skip_linebreaks(ctx):
     while ctx.skip(TK_BREAK, false):
-        pass = 1
+        var pass = 1
 
 
 ### DECL STUFF ###
@@ -466,8 +448,8 @@ def parse_function(ctx):
     if not (ctx.skip_store(TK_IDENTIFIER) and ctx.skip("(")):
         return false
 
-    name = ctx.pop_partial().content
-    params = []
+    var name = ctx.pop_partial().content
+    var params = []
     if ctx.skip_store(TK_IDENTIFIER, false):
         params.append(ctx.pop_partial().content)
         while ctx.skip(",", false):
@@ -480,7 +462,7 @@ def parse_function(ctx):
 
     # TODO: optionals
 
-    stmts = ctx.pop_result()
+    var stmts = ctx.pop_result()
     ctx.set_result(Function(name, params, [], stmts))
     return true
 
@@ -489,9 +471,9 @@ def parse_class(ctx):
     if not (ctx.skip_store(TK_IDENTIFIER) and ctx.skip(":") and ctx.br() and ctx.indent()):
         return false
 
-    name = ctx.pop_partial().content
-    vars = []
-    funcs = []
+    var name = ctx.pop_partial().content
+    var vars = []
+    var funcs = []
     while ctx.get(TK_DEDENT, false) == nil:
 
         if ctx.skip("var", false):
@@ -526,7 +508,7 @@ def parse_load_req(ctx):
 
 
 def parse_global_decls(ctx):
-    decls = []
+    var decls = []
     while not ctx.at_eof():
         skip_linebreaks(ctx)
 
