@@ -273,17 +273,6 @@ def parse_statement(ctx):
             ctx.set_result(DeclarationNAssignment("Any", iden, ctx.pop_result()))
         else:
             ctx.set_result(Declaration(iden))
-    
-    # assignment
-    // elif second_token_is_assign(ctx):
-    //     ctx.skip_store(TK_IDENTIFIER)
-    //     iden = ctx.pop_partial().content
-    //     if not ctx.skip("="):
-    //         return false
-    //     if not parse_expression(ctx):
-    //         return false
-    //     ctx.set_result(Assignment(iden, ctx.pop_result()))
-    # TODO: assignment on members such as `test.foo().bar = 12`
 
     # return
     elif ctx.skip("return", false):
@@ -370,8 +359,9 @@ def parse_block(ctx):
 
 
 def parse_if(ctx):
-    if not (parse_expression(ctx) and ctx.skip(":")):
+    if not parse_expression(ctx):
         return false
+    ctx.skip(":", false)
     var if_cond = ctx.pop_result()
     if not parse_block(ctx):
         return false
@@ -381,8 +371,9 @@ def parse_if(ctx):
     skip_linebreaks(ctx)
     while ctx.skip("elif", false):
         skip_linebreaks(ctx)
-        if not (parse_expression(ctx) and ctx.skip(":")):
+        if not parse_expression(ctx):
             return false
+        ctx.skip(":", false)
         var cond = ctx.pop_result()
         if not parse_block(ctx):
             return false
@@ -408,8 +399,9 @@ def parse_if(ctx):
 
 
 def parse_while(ctx):
-    if not (parse_expression(ctx) and ctx.skip(":")):
+    if not parse_expression(ctx):
         return false
+    ctx.skip(":", false)
     var cond = ctx.pop_result()
     if not parse_block(ctx):
         return false
@@ -434,7 +426,8 @@ def parse_for(ctx):
             return false
         amount = ctx.pop_result()
     
-    if not (ctx.skip(":") and parse_block(ctx)):
+    ctx.skip(":", false)
+    if not parse_block(ctx):
         return false
     
     ctx.set_result(ForRange(var_name, start, end, amount, ctx.pop_result()))
@@ -472,7 +465,10 @@ def parse_function(ctx):
                 return false
             params.append(ctx.pop_partial().content)
 
-    if not (ctx.skip(")") and ctx.skip(":") and parse_block(ctx)):
+    if not ctx.skip(")"):
+        return false
+    ctx.skip(":", false)
+    if not parse_block(ctx):
         return false
 
     # TODO: optionals
@@ -483,7 +479,10 @@ def parse_function(ctx):
 
 
 def parse_class(ctx):
-    if not (ctx.skip_store(TK_IDENTIFIER) and ctx.skip(":") and ctx.br() and ctx.indent()):
+    if not ctx.skip_store(TK_IDENTIFIER):
+        return false
+    ctx.skip(":", false)
+    if not (ctx.br() and ctx.indent()):
         return false
 
     var name = ctx.pop_partial().content
