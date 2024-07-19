@@ -83,16 +83,23 @@ class ASTVisitor:
 require "src/frontend/ast.srp"
 
 class CodegenVisitor(ASTVisitor):
-    var code_lines
+    var output_folder
+    var source_lines
+    var header_lines
+    var main_lines
     var curr_code_line
-    var indent_level
+    var indent_levels
     var include_list
 
-    def init():
+    def init(_output_folder):
         super.init()
-        code_lines = []
+        output_folder = _output_folder
+        source_lines = []
+        header_lines = []
+        main_lines = []
         curr_code_line = ""
-        indent_level = 0
+        indent_levels = [0, 0, 0]
+        context = 1
         include_list = 
             "#include <any.h>\n" + 
             "#include <op_overload.h>\n" + 
@@ -101,10 +108,38 @@ class CodegenVisitor(ASTVisitor):
             "#include <builtin_functions/builtin_functions.h>\n"
         indentation = "    "
 
-    def add_line(line):
-        for i = 0 to indent_level:
+    def reset():
+        source_lines = []
+        header_lines = []
+        main_lines = []
+        curr_code_line = ""
+        indent_levels = [0, 0, 0]
+
+    def add_source_line(line):
+        for i = 0 to source_indent_level:
             line = indentation + line
-        code_lines.append(line)
+        source_lines.append(line)
+
+    def add_header_line(line):
+        for i = 0 to header_indent_level:
+            line = indentation + line
+        header_lines.append(line)
+    
+    def add_main_line(line):
+        for i = 0 to main_indent_level:
+            line = indentation + line
+        main_lines.append(line)
+
+    def add_line(line):
+        for i = 0 to indent_levels[context]:
+            line = indentation + line
+        if context == 0:
+            source_lines.append(line)
+        elif context == 1:
+            header_lines.append(line)
+        else:
+            main_lines.append(line)
+
 
     def drop_comma(string):
         return subseq(string, 0, -2)
@@ -166,8 +201,8 @@ class CodegenVisitor(ASTVisitor):
                 curr_code_line = curr_code_line + ", "
 
     def visitFunctionCall(function_call):
-        function_call.function_name.accept(this)
-        curr_code_line = curr_code_line + "("
+        // function_call.function_name.accept(this)
+        curr_code_line = curr_code_line + function_call.function_name + "("
         function_call.parameters.accept(this)
         curr_code_line = curr_code_line + ")"
 
@@ -186,7 +221,7 @@ class CodegenVisitor(ASTVisitor):
 
     def visitGetAttribute(get_attribute):
         get_attribute.object.accept(this)
-        curr_code_line = curr_code_line + ".get(\"" + get_attribute.attribute.value + "\")"
+        curr_code_line = curr_code_line + ".call(\"get_" + get_attribute.attribute + "\", empty_array, empty_dict)"
 
     def visitIndex(index):
         index.object.accept(this)
@@ -210,8 +245,9 @@ class CodegenVisitor(ASTVisitor):
         add_line(declaration.declared_type + " " + declaration.identifier.value + ";")
 
     def visitDeclarationNAssignment(declaration_n_assignment):
-        declaration_n_assignment.identifier.accept(this)
-        curr_code_line = curr_code_line + " = "
+        # we don't use the declared type for now because we are using Any
+        // declaration_n_assignment.identifier.accept(this)
+        curr_code_line = curr_code_line + + declaration_n_assignment.identifier + " = "
         declaration_n_assignment.expression.accept(this)
         add_line("Any " + curr_code_line + ";")
         curr_code_line = ""
@@ -224,10 +260,10 @@ class CodegenVisitor(ASTVisitor):
 
     def visitBlock(block):
         add_line("{")
-        indent_level = indent_level + 1
+        indent_levels[context] = indent_levels[context] + 1
         for statement in block.statements:
             statement.accept(this)
-        indent_level = indent_level - 1
+        indent_levels[context] = indent_levels[context] - 1
         add_line("}")
 
     def visitIf(if_statement):
@@ -250,11 +286,11 @@ class CodegenVisitor(ASTVisitor):
         while_statement.block.accept(this)
 
     def visitForRange(for_statement):
-        curr_code_line = "for (int64_t " + for_statement.identifier.value + " = "
+        curr_code_line = "for (int64_t " + for_statement.identifier + " = "
         for_statement.start.accept(this)
-        curr_code_line = curr_code_line + "; " + for_statement.identifier.value + " < "
+        curr_code_line = curr_code_line + "; " + for_statement.identifier + " < "
         for_statement.end.accept(this)
-        curr_code_line = curr_code_line + "; " + for_statement.identifier.value + " += ";
+        curr_code_line = curr_code_line + "; " + for_statement.identifier + " += ";
         for_statement.by_amount.accept(this)
         curr_code_line = curr_code_line + ")"
         add_line(curr_code_line)
@@ -272,12 +308,13 @@ class CodegenVisitor(ASTVisitor):
 
     def visitFunction(function):
         num_args = len(function.positional)
-        curr_code_line = "Any " + function.name.value + "("
+        curr_code_line = "Any " + function.name + "("
         for i = 0 to num_args:
-            curr_code_line = curr_code_line + "Any "  # Change this once type inference exists
-            function.positional[i].accept(this)
+            curr_code_line = curr_code_line + "Any " + function.positional[i] # Change this once type inference exists
+            // function.positional[i].accept(this)
             if i < num_args - 1:
                 curr_code_line = curr_code_line + ", "
+        curr_code_line = curr_code_line + ")"
         add_line(curr_code_line)
         curr_code_line = ""
         function.block.accept(this)
@@ -297,46 +334,116 @@ class CodegenVisitor(ASTVisitor):
 
 
     def visitClass(class_):
+        var class_ptr = class_.name + "_class"
+        var function_list = []
+        add_line("extern Cs_class * " + class_ptr + ";")
         add_line("class " + class_.name + " : public Obj {")
-        indent_level = indent_level + 1
-        get_override = "Any& get(const std::string& member_name) override {\n"
-        for variable in class_.member_variables:
-            variable.accept(this)
-            get_override = get_override + "if (member_name == \"" + variable.identifier.value + "\") {\n"
-            get_override = get_override + indentation + "return " + variable.identifier.value + ";\n"
-            get_override = get_override + "} else "
-        get_override = get_override + "throw std::runtime_error(\"No such member variable: \" + member_name);\n"
-        call_override = "Any call(const std::string& member_name, const Array& args, const Dictionary& kwargs) override {\n"
+        add_line("public:")
+        indent_levels[context] = indent_levels[context] + 1
+        add_line("Any more_slots[" + str(len(class_.member_variables)) + "];")
+        add_line(class_.name + "() : Obj {" + class_ptr + "} {}")
+
+        for variable at index in class_.member_variables:
+            var variable_str = variable
+            var getter = "get_" + variable_str
+            var setter = "set_" + variable_str
+            
+            add_line("Any " + getter + "() {")
+            add_line(indentation + "return slots[" + str(index + 1) + "];") # since slot 0 is for class pointer
+            add_line("}")
+            add_line("void " + setter + "(Any value) {")
+            add_line(indentation + "set_slot(" + str(index + 1) + ", value);")
+            add_line("}")
+
+            function_list.append([getter, 0, 0])
+            function_list.append([setter, 1, 0])
+
+        indent_levels[context] = indent_levels[context] - 1
+        add_line("};")        
+
         for function in class_.member_functions:
             function.accept(this)
-            call_override = call_override + "if (member_name == \"" + variable.name.value + "\") {\n"
-            call_override = call_override + indentation + "if (len(args) == " + str(len(function.positional)) + ") {\n"
-            call_override = call_override + indentation + indentation + "return Any {"
-            call_override = call_override + function.name.value + "("
-            for i = 0 to len(function.positional):
-                call_override = call_override + "args[" + str(i) + "]"
-                if i < len(function.positional) - 1:
-                    call_override = call_override + ", "
-            call_override = call_override + ")\n"
-            call_override = call_override + "} else "
-        call_override = call_override + "throw std::runtime_error(\"No such member function: \" + member_name);\n"
-        indent_level = indent_level - 1
-        add_line("}")
+            function_list.append([function.name.value, len(function.positional), len(function.optional.keys())])
+    
+        # Define global functions for each class member function
+        for function in function_list:
+            var function_name = function[0]
+            add_line("Any " + class_.name + "_" + function_name + "(Obj* self, const Array& args, const Dictionary& kwargs) {")
+            indent_levels[context] = indent_levels[context] + 1
+            add_line("check_dispatch(\"" + function_name + "\", args, kwargs," + str(function[1]) + "," + str(function[2]) + ");")
+            var dispatch_line = "return reinterpret_cast<" + class_.name + "*>(self)->" + function_name + "("
+            for i = 0 to function[1]:
+                dispatch_line = dispatch_line + "args[" + str(i) + "]"
+                if i < function[1] - 1:
+                    dispatch_line = dispatch_line + ", "
+            dispatch_line = dispatch_line + ");"
+            add_line(dispatch_line)
+            indent_levels[context] = indent_levels[context] - 1
+            add_line("}")
+
+        # Create the MemberTable that maps symbols to function pointers
+        add_line("MemberTable " + class_.name + "_table  {")
+        indent_levels[context] = indent_levels[context] + 1
+        for function in function_list:
+            add_line("{Symbol{\"" + function[0] + "\"}, " + class_.name + "_" + function[0] + "},")
+        indent_levels[context] = indent_levels[context] - 1
+        add_line("};")
+
+        # NOTE: 0b0 should be changed once type inference is implemented and we have pointer types
+        var cs_class_init = "{Symbol {\"" + class_.name + "\"}, " + str(len(class_.member_variables)) + ", 0b0, &" + class_.name + "_table};"
+        add_line("Cs_class * " + class_ptr + " = new Cs_class " + cs_class_init)
+
+        // get_override = "Any& get(const std::string& member_name) override {\n"
+        // for variable in class_.member_variables:
+        //     variable.accept(this)
+        //     get_override = get_override + "if (member_name == \"" + variable.identifier.value + "\") {\n"
+        //     get_override = get_override + indentation + "return " + variable.identifier.value + ";\n"
+        //     get_override = get_override + "} else "
+        // get_override = get_override + "throw std::runtime_error(\"No such member variable: \" + member_name);\n"
+        // call_override = "Any call(const std::string& member_name, const Array& args, const Dictionary& kwargs) override {\n"
+        // for function in class_.member_functions:
+        //     function.accept(this)
+        //     call_override = call_override + "if (member_name == \"" + variable.name.value + "\") {\n"
+        //     call_override = call_override + indentation + "if (len(args) == " + str(len(function.positional)) + ") {\n"
+        //     call_override = call_override + indentation + indentation + "return Any {"
+        //     call_override = call_override + function.name.value + "("
+        //     for i = 0 to len(function.positional):
+        //         call_override = call_override + "args[" + str(i) + "]"
+        //         if i < len(function.positional) - 1:
+        //             call_override = call_override + ", "
+        //     call_override = call_override + ")\n"
+        //     call_override = call_override + "} else "
+        // call_override = call_override + "throw std::runtime_error(\"No such member function: \" + member_name);\n"
 
     def visitFile(file):
         add_line(include_list)
         for element in file.elements:
+            if isinstance(element, Class) or isinstance(element, Function):
+                context = 1
+            else:
+                context = 2
             element.accept(this)
 
 
-    def generate_code(filename, ast):
-        init()
+    def generate_code(filename, ast, keyword main):
+        reset()
         ast.accept(this)
-        var file = open(filename, "w")
-        for line in code_lines:
-            file.write(line + "\n")
-        file.close()
-        init()
+        var source_file = open(output_folder + "/" + filename + ".cpp", "w")
+        for line in source_lines:
+            source_file.write(line + "\n")
+        var header_file = open(output_folder + "/" + filename + ".h", "w")
+        for line in header_lines:
+            header_file.write(line + "\n")
+        source_file.close()
+        header_file.close()
+        if main:
+            var main_file = open(output_folder + "/main.cpp", "w")
+            for line in main_lines:
+                main_file.write(line + "\n")
+            main_file.close()
+        else:
+            print "Not implemented yet"
+        reset()
 
 
 

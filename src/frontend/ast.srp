@@ -91,7 +91,7 @@ class ArgumentList:
         visitor.visitArgumentList(this)
 
 class FunctionCall(Expression):
-    var function_name # : Identifier
+    var function_name # : string
     var parameters # : ArgumentList
     def init(_name, _parameters):
         super.init()
@@ -102,7 +102,7 @@ class FunctionCall(Expression):
         visitor.visitFunctionCall(this)
 
 class Constructor(Expression):
-    var class_name # : Identifier
+    var class_name # : string
     var parameters # : ArgumentList
     # this is isomorphic to FunctionCall
     def init(_class_name, _parameters):
@@ -128,7 +128,7 @@ class MethodCall(Expression):
 
 class GetAttribute(Expression):
     var object # : Expression
-    var attribute # : Identifier
+    var attribute # : string
     def init(_object, _attribute):
         super.init()
         object = _object
@@ -192,7 +192,7 @@ class Declaration(Statement):
 
 class DeclarationNAssignment(Statement):
     var declared_type # : string
-    var identifier # : Identifier
+    var identifier # : string
     var expression # : Expression
     def init(_declared_type, _identifier, _expression):
         super.init()
@@ -284,8 +284,8 @@ class ForEach(ControlFlow):
 class Function:
     var name # : string
     # Note: no type definitions yet
-    var positional # : List[Identifier]
-    var optional   # : List[Identifier + Default]
+    var positional # : List[string]
+    var optional   # : List[string + Expression]
     var block # : Block
     def init(_name, _positional, _optional, _block):
         name = _name
@@ -298,7 +298,7 @@ class Function:
 
 class Class:
     var name # : string
-    var member_variables # : List[Declaration]
+    var member_variables # : List[string] # but how to handle types?
     var member_functions # : List[Function]
     def init(_name, _member_variables, _member_functions):
         name = _name

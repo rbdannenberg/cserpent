@@ -14,7 +14,7 @@ if len(command_line_arguments) == 5:
     if command_line_arguments[3] != "-o":
         print "Needs -o flag"
         exit()
-    output_file = command_line_arguments[4]
+    output_folder = command_line_arguments[4]
 else:
     if len(command_line_arguments) != 4:
         print "Incorrect number of arguments"
@@ -23,9 +23,8 @@ else:
     if command_line_arguments[2] != "-o":
         print "Needs -o flag"
         exit()
-    output_file = command_line_arguments[3]
-output_file = change_file_suffix(output_file, ".cpp")
-
+    output_folder = command_line_arguments[3]
+output_folder = change_file_suffix(output_folder, nil)
 
 res = parse_ast(file_to_compile)
 if not res.ok:
@@ -35,7 +34,12 @@ if debug:
     print_ast(res.result)
 
 pass = 8 # so an error isn't thrown for empty base class
-visitor = CodegenVisitor()
-visitor.generate_code(output_file, res.result)
+visitor = CodegenVisitor(output_folder)
+visitor.generate_code(output_folder, res.result, main=true)
+
+# for include_path in res.includes:
+#    parse_result = parse_ast(include_path)
+#    filename = change_file_suffix(file_from_path(include_path), nil)
+#    visitor.generate_code(filename, parse_result.result, main=false)
 
 exit()
