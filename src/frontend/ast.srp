@@ -158,8 +158,9 @@ class Statement(BlockElement):
     def accept(visitor):
         pass
 
+# TODO: change name for `identifier` (currently preserved for compatibility)
 class Assignment(Statement):
-    var identifier # : Identifier
+    var identifier # : Expression
     var expression # : Expression
     def init(_identifier, _expression):
         super.init()
@@ -329,9 +330,10 @@ def print_ast(ast, optional prefix=""):
     if not isobject(ast):
         print(prefix + str(ast))
         return
-    class_name_plus = str(ast)
-    close_paren_idx = find(class_name_plus, ")")
-    class_name = subseq(class_name_plus, 5, close_paren_idx)
+    // class_name_plus = str(ast)
+    // close_paren_idx = find(class_name_plus, ")")
+    // class_name = subseq(class_name_plus, 5, close_paren_idx)
+    class_name = str(ast)
     print(prefix + class_name)
     for child in object_variables(ast).values():
         print_ast(child, prefix + "-----")

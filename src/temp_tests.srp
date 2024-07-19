@@ -1,7 +1,7 @@
 require "src/frontend/compile"
 load "debug"
 
-res = parse_ast("benchmarks/srp/binary-trees2.srp")
+res = parse_ast("benchmarks/srp/binary-trees.srp")
 if not res.ok:
     print format_error(res.error)
 

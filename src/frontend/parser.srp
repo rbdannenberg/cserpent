@@ -275,15 +275,14 @@ def parse_statement(ctx):
             ctx.set_result(Declaration(iden))
     
     # assignment
-    elif second_token_is_assign(ctx):
-        ctx.skip_store(TK_IDENTIFIER)
-        iden = ctx.pop_partial().content
-        if not ctx.skip("="):
-            return false
-        if not parse_expression(ctx):
-            return false
-        ctx.set_result(Assignment(iden, ctx.pop_result()))
-
+    // elif second_token_is_assign(ctx):
+    //     ctx.skip_store(TK_IDENTIFIER)
+    //     iden = ctx.pop_partial().content
+    //     if not ctx.skip("="):
+    //         return false
+    //     if not parse_expression(ctx):
+    //         return false
+    //     ctx.set_result(Assignment(iden, ctx.pop_result()))
     # TODO: assignment on members such as `test.foo().bar = 12`
 
     # return
@@ -301,7 +300,23 @@ def parse_statement(ctx):
         if not parse_expression(ctx):
             return false
         
-        ctx.set_result(StandaloneExpression(ctx.pop_result()))
+        var lhs = ctx.pop_result()
+        if ctx.skip_store("=", false):
+            eq = ctx.pop_partial()
+            if not parse_expression(ctx):
+                return false
+            
+            var rhs = ctx.pop_result()
+            if not (isinstance(lhs, Identifier) or isinstance(lhs, GetAttribute) or isinstance(lhs, Index)):
+                ctx.err(
+                    eq.range,
+                    "LHS of assignment must be identifier, attribute or index"
+                )
+                return false
+            ctx.set_result(Assignment(lhs, rhs))
+        
+        else:
+            ctx.set_result(StandaloneExpression(lhs))
     
     # print statements
     # TODO: display
