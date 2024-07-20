@@ -332,7 +332,7 @@ def parse_statement(ctx):
                 return false
             exps.append(ctx.pop_result())
 
-        ctx.set_result(FunctionCall(iden, ArgumentList(exps, {})))
+        ctx.set_result(StandaloneExpression(FunctionCall(iden, ArgumentList(exps, {}))))
 
     else:
         ctx.err_fset_miss(FS_EXPRESSION + ["return", "var", "print"])

@@ -59,6 +59,7 @@ public:
     /// Implicit conversion: type-cast operator
     operator int64_t();
     operator double();
+    explicit operator String();
 
 //    Any& operator[](int64_t i);
     void set(int64_t i, Any val); // Use this instead of assignment through [] (gc reasons).

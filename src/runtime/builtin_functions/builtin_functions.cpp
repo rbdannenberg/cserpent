@@ -3,6 +3,7 @@
 //
 
 #include "builtin_functions.h"
+#include "op_overload.h"
 #include "any_utils.h"
 #include <data_structures/array.h>
 #include "csstring.h"
@@ -20,6 +21,15 @@ int64_t len(Any x) {
     }
     else {
         type_error(x);
+    }
+}
+
+Any max(Any lhs, Any rhs) {
+    if (lhs > rhs) {
+        return lhs;
+    }
+    else {
+        return rhs;
     }
 }
 

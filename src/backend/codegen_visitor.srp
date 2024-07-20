@@ -81,39 +81,45 @@ class ASTVisitor:
         pass
 
 require "src/frontend/ast.srp"
+function_corrections = {
+    "main": "main__",
+    "str": "force_str",
+    "int": "force_int"
+
+}
 
 class CodegenVisitor(ASTVisitor):
     var output_folder
     var source_lines
     var header_lines
     var main_lines
+    var main_includes
     var curr_code_line
     var indent_levels
     var include_list
+    var user_defined_classes
 
     def init(_output_folder):
         super.init()
         output_folder = _output_folder
         source_lines = []
         header_lines = []
-        main_lines = []
+        main_lines = ["int main() {"]
+        main_includes = []
         curr_code_line = ""
-        indent_levels = [0, 0, 0]
+        indent_levels = [0, 0, 1]
         context = 1
-        include_list = 
-            "#include <any.h>\n" + 
-            "#include <op_overload.h>\n" + 
-            "#include <data_structures/array.h>\n" +
-            "#include <data_structures/dictionary.h>\n" +
-            "#include <builtin_functions/builtin_functions.h>\n"
+        include_list =
+            "#pragma once\n" +
+            "#include <runtime.h>\n"
         indentation = "    "
+        user_defined_classes = []
 
     def reset():
         source_lines = []
         header_lines = []
-        main_lines = []
         curr_code_line = ""
-        indent_levels = [0, 0, 0]
+        indent_levels = [0, 0, 1]
 
     def add_source_line(line):
         for i = 0 to source_indent_level:
@@ -156,6 +162,13 @@ class CodegenVisitor(ASTVisitor):
         bool_op.right.accept(this)
 
     def visitBinOp(bin_op):
+        if bin_op.op == "**":
+            curr_code_line = curr_code_line + "pow("
+            bin_op.left.accept(this)
+            curr_code_line = curr_code_line + ", "
+            bin_op.right.accept(this)
+            curr_code_line = curr_code_line + ")"
+            return
         bin_op.left.accept(this)
         curr_code_line = curr_code_line + " " + bin_op.op + " "
         bin_op.right.accept(this)
@@ -201,13 +214,26 @@ class CodegenVisitor(ASTVisitor):
                 curr_code_line = curr_code_line + ", "
 
     def visitFunctionCall(function_call):
-        // function_call.function_name.accept(this)
-        curr_code_line = curr_code_line + function_call.function_name + "("
+        if function_call.name in user_defined_classes:
+            visitConstructor(function_call)
+            return
+        // function_call.name.accept(this)
+        if function_call.name in function_corrections.keys():
+            function_call.name = function_corrections[function_call.name]
+        
+        var header, footer
+        if function_call.name == "print":
+            header = "std::cout << "
+            footer = " << std::endl"
+        else:
+            header = function_call.name + "("
+            footer = ")"
+        curr_code_line = curr_code_line + header
         function_call.parameters.accept(this)
-        curr_code_line = curr_code_line + ")"
+        curr_code_line = curr_code_line + footer
 
     def visitConstructor(constructor):
-        curr_code_line = curr_code_line + "*(new " + constructor.class_name.value + " {"
+        curr_code_line = curr_code_line + "*(new " + constructor.name + " {"
         constructor.parameters.accept(this)
         curr_code_line = curr_code_line + "})"
 
@@ -230,11 +256,20 @@ class CodegenVisitor(ASTVisitor):
         curr_code_line = curr_code_line + "]"
 
     def visitAssignment(assignment):
-        assignment.identifier.accept(this)
-        curr_code_line = curr_code_line + " = "
-        assignment.expression.accept(this)
-        add_line(curr_code_line + ";")
-        curr_code_line = ""
+        if isinstance(assignment.identifier, GetAttribute):
+            get_attribute = assignment.identifier
+            get_attribute.object.accept(this)
+            curr_code_line = curr_code_line + ".call(\"set_" + get_attribute.attribute + "\", Array {"
+            assignment.expression.accept(this)
+            add_line(curr_code_line + "}, empty_dict);")
+            curr_code_line = ""
+        # same goes for index
+        else:
+            assignment.identifier.accept(this)
+            curr_code_line = curr_code_line + " = "
+            assignment.expression.accept(this)
+            add_line(curr_code_line + ";")
+            curr_code_line = ""
 
     def visitStandaloneExpression(standalone_expression):
         standalone_expression.expression.accept(this)
@@ -308,7 +343,9 @@ class CodegenVisitor(ASTVisitor):
 
     def visitFunction(function):
         num_args = len(function.positional)
-        curr_code_line = "Any " + function.name + "("
+        if function.name == "main":
+            function.name = "main__"
+        curr_code_line = "inline Any " + function.name + "("
         for i = 0 to num_args:
             curr_code_line = curr_code_line + "Any " + function.positional[i] # Change this once type inference exists
             // function.positional[i].accept(this)
@@ -334,6 +371,7 @@ class CodegenVisitor(ASTVisitor):
 
 
     def visitClass(class_):
+        user_defined_classes.append(class_.name)
         var class_ptr = class_.name + "_class"
         var function_list = []
         add_line("extern Cs_class * " + class_ptr + ";")
@@ -351,8 +389,9 @@ class CodegenVisitor(ASTVisitor):
             add_line("Any " + getter + "() {")
             add_line(indentation + "return slots[" + str(index + 1) + "];") # since slot 0 is for class pointer
             add_line("}")
-            add_line("void " + setter + "(Any value) {")
+            add_line("Any " + setter + "(Any value) {")
             add_line(indentation + "set_slot(" + str(index + 1) + ", value);")
+            add_line(indentation + "return nil;")
             add_line("}")
 
             function_list.append([getter, 0, 0])
@@ -371,13 +410,13 @@ class CodegenVisitor(ASTVisitor):
             add_line("Any " + class_.name + "_" + function_name + "(Obj* self, const Array& args, const Dictionary& kwargs) {")
             indent_levels[context] = indent_levels[context] + 1
             add_line("check_dispatch(\"" + function_name + "\", args, kwargs," + str(function[1]) + "," + str(function[2]) + ");")
-            var dispatch_line = "return reinterpret_cast<" + class_.name + "*>(self)->" + function_name + "("
+            var dispatch_line = "reinterpret_cast<" + class_.name + "*>(self)->" + function_name + "("
             for i = 0 to function[1]:
                 dispatch_line = dispatch_line + "args[" + str(i) + "]"
                 if i < function[1] - 1:
                     dispatch_line = dispatch_line + ", "
             dispatch_line = dispatch_line + ");"
-            add_line(dispatch_line)
+            add_line("return " + dispatch_line)
             indent_levels[context] = indent_levels[context] - 1
             add_line("}")
 
@@ -437,7 +476,12 @@ class CodegenVisitor(ASTVisitor):
         source_file.close()
         header_file.close()
         if main:
+            main_includes.append("#include \"" + filename + ".h\"")
+            main_lines.append(indentation + "return 0;")
+            main_lines.append("}")
             var main_file = open(output_folder + "/main.cpp", "w")
+            for line in main_includes:
+                main_file.write(line + "\n")
             for line in main_lines:
                 main_file.write(line + "\n")
             main_file.close()
@@ -446,6 +490,7 @@ class CodegenVisitor(ASTVisitor):
         reset()
 
 
+# TODO: Symbol table
 
-
+# Parser TODO: use StandaloneExpression
 

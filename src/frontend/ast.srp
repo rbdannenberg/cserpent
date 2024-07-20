@@ -91,23 +91,23 @@ class ArgumentList:
         visitor.visitArgumentList(this)
 
 class FunctionCall(Expression):
-    var function_name # : string
+    var name # : string
     var parameters # : ArgumentList
     def init(_name, _parameters):
         super.init()
-        function_name = _name
+        name = _name
         parameters = _parameters
 
     def accept(visitor):
         visitor.visitFunctionCall(this)
 
 class Constructor(Expression):
-    var class_name # : string
+    var name # : string
     var parameters # : ArgumentList
     # this is isomorphic to FunctionCall
-    def init(_class_name, _parameters):
+    def init(_name, _parameters):
         super.init()
-        class_name = _class_name
+        name = _name
         parameters = _parameters
 
     def accept(visitor):
@@ -129,10 +129,12 @@ class MethodCall(Expression):
 class GetAttribute(Expression):
     var object # : Expression
     var attribute # : string
+    var rhs # : bool
     def init(_object, _attribute):
         super.init()
         object = _object
         attribute = _attribute
+        rhs = true
 
     def accept(visitor):
         visitor.visitGetAttribute(this)

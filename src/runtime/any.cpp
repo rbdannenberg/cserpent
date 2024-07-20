@@ -281,6 +281,7 @@ Any::operator double() {
 
 
 
+
 static bool is_string_or_symbol(Any x) {
     uint64_t string_or_symbol_mask = 0xFFFE000000000000uLL;
     // return (x.integer & string_or_symbol_mask) == STR_TAG;
