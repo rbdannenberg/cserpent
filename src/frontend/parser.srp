@@ -320,7 +320,7 @@ def parse_statement(ctx):
                 return false
             exps.append(ctx.pop_result())
 
-        ctx.set_result(FunctionCall("print", exps))
+        ctx.set_result(StandaloneExpression(FunctionCall("print", ArgumentList(exps, {}))))
 
     # display statements
     elif ctx.skip_store("display", false):
@@ -409,7 +409,7 @@ def parse_if(ctx):
             return false
         else_block = ctx.pop_result()
     else:
-        else_block = Block([])
+        else_block = nil
 
     var acc = else_block
     for i = len(elifs) - 1 to -1 by -1:

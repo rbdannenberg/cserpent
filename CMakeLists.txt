@@ -41,6 +41,7 @@ add_library(runtime STATIC
         src/runtime/data_structures/symbol.h
         src/runtime/globals/symbol_table.cpp
         src/runtime/globals/symbol_table.h
+        src/runtime/runtime.h
 )
 
 
@@ -87,3 +88,12 @@ add_executable(stringtest
     src/runtime/data_structures/csstring.cpp
     tests/c++/runtime/test_string.cpp)
 target_include_directories(stringtest PUBLIC ${CS_INCLUDES})
+
+
+add_executable(compilation_output
+    compilation_output/binary_trees.cpp
+    compilation_output/binary_trees.h
+    compilation_output/main.cpp
+)
+target_include_directories(compilation_output PUBLIC ${CS_INCLUDES})
+target_link_libraries(compilation_output runtime)

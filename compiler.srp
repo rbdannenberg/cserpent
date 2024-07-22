@@ -1,0 +1,45 @@
+# usage: serpent64 compiler.cpp [-d] <file-to-compile>.srp -o <output-file>[.cpp]
+
+require "src/frontend/compile"
+require "src/backend/codegen_visitor"
+require "utils"
+load "debug"
+
+if len(command_line_arguments) == 5:
+    if command_line_arguments[1] != "-d":
+        print "Incorrect number of arguments"
+        exit()
+    file_to_compile = command_line_arguments[2]
+    debug = true
+    if command_line_arguments[3] != "-o":
+        print "Needs -o flag"
+        exit()
+    output_folder = command_line_arguments[4]
+else:
+    if len(command_line_arguments) != 4:
+        print "Incorrect number of arguments"
+    file_to_compile = command_line_arguments[1]
+    debug = false
+    if command_line_arguments[2] != "-o":
+        print "Needs -o flag"
+        exit()
+    output_folder = command_line_arguments[3]
+output_folder = change_file_suffix(output_folder, nil)
+
+res = parse_ast(file_to_compile)
+if not res.ok:
+    print format_error(res.error)
+
+if debug:
+    print_ast(res.result)
+
+pass = 8 # so an error isn't thrown for empty base class
+visitor = CodegenVisitor(output_folder)
+visitor.generate_code(output_folder, res.result, main=true)
+
+# for include_path in res.includes:
+#    parse_result = parse_ast(include_path)
+#    filename = change_file_suffix(file_from_path(include_path), nil)
+#    visitor.generate_code(filename, parse_result.result, main=false)
+
+exit()

@@ -11,7 +11,7 @@ int64_t len(Any x);
 
 // int64_t len(Any x);
 // int64_t len(CSString x);
-
+Any max(Any lhs, Any rhs);
 int64_t pow(int base, Any exp);
 
 int64_t idiv(Any lhs, int rhs);
