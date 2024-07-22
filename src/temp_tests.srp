@@ -5,14 +5,16 @@ load "debug"
 # Passed:
 # account.srp
 # arrays.srp
-# classes_require
+# classes_require.srp
+# hofs.srp
+# strings.srp
 
-res = parse_ast("tests/serpent/full_pipeline/arrays.srp")
+res = parse_ast("tests/serpent/full_pipeline/named_account.srp")
 if not res.ok:
     print format_error(res.error)
 
 print_ast(res.result)
-visitor = CodegenVisitor("compilation_output")
-visitor.generate_code("binary_trees", res.result, main=true)
+// visitor = CodegenVisitor("compilation_output")
+// visitor.generate_code("binary_trees", res.result, main=true)
 
-exit()
+// exit()
