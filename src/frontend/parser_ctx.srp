@@ -139,7 +139,7 @@ class ParseContext:
         if this.pos == len(this.input):
             return true
         
-        return this.skip(TK_BREAK, ";")
+        return this.skip([TK_BREAK, ";"])
 
     
     ### MISC CONTEXT ###

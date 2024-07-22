@@ -30,6 +30,7 @@ KW_STR = [
     "else",
     "while",
     "print",
+    "display",
     "for",
     "in",
     "from",
@@ -181,6 +182,21 @@ def tk_string(source_file, pos, boxed_output):
     pos = pos + 1
     # TODO: handle string literals properly (add soundness)
     while pos < len(stream) and stream[pos] != "\"":
+        pos = pos + 1
+    
+    # TODO: fix end of file str lit
+    boxed_output[0] = pos + 1
+    return true
+
+
+def tk_symlit(source_file, pos, boxed_output):
+    stream = source_file.source
+    if stream[pos] != "'":
+        return false
+    
+    pos = pos + 1
+    # TODO: handle string literals properly (add soundness)
+    while pos < len(stream) and stream[pos] != "\'":
         pos = pos + 1
     
     # TODO: fix end of file str lit
@@ -343,6 +359,11 @@ def tokenize(source_file):
             tokens.append(Token(TK_SYMBOL, lit, range))
         
         elif tk_string(source_file, pos, new_pos): # string literal
+            lit = subseq(stream, pos, new_pos[0])
+            range = source_file.get_range(pos, new_pos[0])
+            tokens.append(Token(TK_LITERAL, lit, range))
+
+        elif tk_symlit(source_file, pos, new_pos): # symbol literal
             lit = subseq(stream, pos, new_pos[0])
             range = source_file.get_range(pos, new_pos[0])
             tokens.append(Token(TK_LITERAL, lit, range))

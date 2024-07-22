@@ -221,7 +221,7 @@ def parse_term(ctx):
         return false
     var inner = ctx.pop_result()
     for i = len(precs) - 1 to -1 by -1:
-        inner = UnaryOp(precs[i].content, inner)
+        inner = UnaryOp(precs[i], inner)
     
     ctx.set_result(inner)
     return true
@@ -262,6 +262,7 @@ def parse_expression(ctx):
 
 def parse_statement(ctx):
     var iden = nil
+    var exps = nil
 
     # val decl with `var`
     if ctx.skip("var", false):
@@ -308,10 +309,8 @@ def parse_statement(ctx):
             ctx.set_result(StandaloneExpression(lhs))
     
     # print statements
-    # TODO: display
-    elif ctx.skip_store(["print"], false):
-        iden = ctx.pop_partial().content
-        var exps = []
+    elif ctx.skip("print", false):
+        exps = []
         if not parse_expression(ctx):
             return false
         exps.append(ctx.pop_result())
@@ -321,10 +320,33 @@ def parse_statement(ctx):
                 return false
             exps.append(ctx.pop_result())
 
-        ctx.set_result(FunctionCall(iden, exps))
+        ctx.set_result(FunctionCall("print", exps))
+
+    # display statements
+    elif ctx.skip_store("display", false):
+        iden = ctx.pop_partial()
+        exps = []
+        if not parse_expression(ctx):
+            return false
+        exps.append(ctx.pop_result())
+
+        while ctx.skip(",", false):
+            if not parse_expression(ctx):
+                return false
+            exps.append(ctx.pop_result())
+
+        # first exp must be a string literal
+        if not isinstance(exps[0], Literal) or exps[0].value[0] != "\"":
+            ctx.err(
+                iden.range,
+                "First parameter to display must be a string literal"
+            )
+            return false
+
+        ctx.set_result(FunctionCall("display", exps))
 
     else:
-        ctx.err_fset_miss(FS_EXPRESSION + ["return", "var", "print"])
+        ctx.err_fset_miss(FS_EXPRESSION + ["return", "var", "print", "display"])
         return false
 
     if not ctx.skip_eol():
