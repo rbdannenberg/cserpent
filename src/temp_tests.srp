@@ -9,7 +9,16 @@ load "debug"
 # hofs.srp
 # strings.srp
 
-res = parse_ast("tests/serpent/full_pipeline/named_account.srp")
+# Passed:
+# binary-trees.srp
+# binary-trees2.srp
+# mini-tree.srp
+# symbols.srp
+
+
+
+// res = parse_ast("tests/serpent/full_pipeline/named_account.srp")
+res = parse_ast("benchmarks/srp/symbols.srp")
 if not res.ok:
     print format_error(res.error)
 

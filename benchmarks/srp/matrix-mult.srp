@@ -1,31 +1,31 @@
 def matmul(a, b):
-        var n = len(a)
-        var m = len(b[0])
-        var p = len(a[0])
+    var n = len(a)
+    var m = len(b[0])
+    var p = len(a[0])
 
-        var c = []
-        
-        for i = 0 to n
-            var ci = array(m, 0.0)
-            for k = 0 to p
-                var aik = a[i][k]
-                var bk = b[k]
+    var c = []
+    
+    for i = 0 to n
+        var ci = array(m, 0.0)
+        for k = 0 to p
+            var aik = a[i][k]
+            var bk = b[k]
 
-                for j = 0 to m
-                    ci[j] = ci[j] + (aik * bk[j])                    
-            c.append(ci)
+            for j = 0 to m
+                ci[j] = ci[j] + (aik * bk[j])                    
+        c.append(ci)
 
-        return c
+    return c
             
 def main(n):
-        var tmp = 1./n/n
-        var a = [[tmp * (i - j) * (i + j) for j=0 to n] for i=0 to n]
-        var b = [[tmp * (i - j) * (i + j) for j=0 to n] for i=0 to n]
+    var tmp = 1./n/n
+    var a = [[tmp * (i - j) * (i + j) for j=0 to n] for i=0 to n]
+    var b = [[tmp * (i - j) * (i + j) for j=0 to n] for i=0 to n]
 
-        var d = matmul(a, b)
+    var d = matmul(a, b)
 
 
-        print(d[idiv(n, 2)][idiv(n, 2)])
+    print(d[idiv(n, 2)][idiv(n, 2)])
 
 
 # Input size: 10, 50, and 100 
