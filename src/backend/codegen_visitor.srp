@@ -1,86 +1,6 @@
-class ASTVisitor:
-    def visitLiteral(literal):
-        pass
-
-    def visitIdentifier(identifier):
-        pass
-
-    def visitBoolOp(bool_op):
-        pass
-
-    def visitBinOp(bin_op):
-        pass
-
-    def visitUnaryOp(unary_op):
-        pass
-
-    def visitArray(array_node):
-        pass
-
-    def visitDictionary(dictionary_node):
-        pass
-
-    def visitArgumentList(argument_list):
-        pass
-
-    def visitFunctionCall(function_call):
-        pass
-
-    def visitConstructor(constructor):
-        pass
-
-    def visitMethodCall(method_call):
-        pass
-
-    def visitGetAttribute(get_attribute):
-        pass
-
-    def visitIndex(index):
-        pass
-
-    def visitAssignment(assignment):
-        pass
-
-    def visitStandaloneExpression(standalone_expression):
-        pass
-
-    def visitDeclaration(declaration):
-        pass
-
-    def visitDeclarationNAssignment(declaration_n_assignment):
-        pass
-
-    def visitReturnStatement(return_statement):
-        pass
-
-    def visitBlock(block):
-        pass
-
-    def visitIf(if_statement):
-        pass
-
-    def visitWhile(while_statement):
-        pass
-
-    def visitFor(for_statement):
-        pass
-
-    def visitFunction(function):
-        pass
-
-    def visitMemberVariables(member_variables):
-        pass
-
-    def visitMemberFunctions(member_functions):
-        pass
-
-    def visitClass(class_):
-        pass
-
-    def visitFile(file):
-        pass
-
+require "src/backend/visitor.srp"
 require "src/frontend/ast.srp"
+
 function_corrections = {
     "main": "main__",
     "str": "force_str",
@@ -98,6 +18,7 @@ class CodegenVisitor(ASTVisitor):
     var indent_levels
     var include_list
     var user_defined_classes
+    var global_variables
 
     def init(_output_folder):
         super.init()
@@ -114,6 +35,7 @@ class CodegenVisitor(ASTVisitor):
             "#include <runtime.h>\n"
         indentation = "    "
         user_defined_classes = []
+        global_variables = {}
 
     def reset():
         source_lines = []
@@ -151,10 +73,18 @@ class CodegenVisitor(ASTVisitor):
         return subseq(string, 0, -2)
 
     def visitLiteral(literal):
-        curr_code_line = curr_code_line + str(literal.value)
+        # print literal.value, type(literal.value), isstring(literal.value)
+        if literal.value[0] == "\"":
+            curr_code_line = curr_code_line + "String {" + str(literal.value) + "}"
+        elif literal.value[0] == "'":
+            curr_code_line = curr_code_line + "Symbol {\"" + subseq(str(literal.value), 1, -1) + "\"}"
+        else:
+            curr_code_line = curr_code_line + str(literal.value)
 
     def visitIdentifier(identifier):
         curr_code_line = curr_code_line + identifier.value
+        global_variables[identifier.value] = "variable"
+
 
     def visitBoolOp(bool_op):
         bool_op.left.accept(this)
@@ -162,8 +92,13 @@ class CodegenVisitor(ASTVisitor):
         bool_op.right.accept(this)
 
     def visitBinOp(bin_op):
+        var function_correction = nil
         if bin_op.op == "**":
-            curr_code_line = curr_code_line + "pow("
+            function_correction = "pow"
+        if bin_op.op == "is":
+            function_correction = "is_equal"
+        if function_correction:
+            curr_code_line = curr_code_line + function_correction + "("
             bin_op.left.accept(this)
             curr_code_line = curr_code_line + ", "
             bin_op.right.accept(this)
@@ -200,37 +135,62 @@ class CodegenVisitor(ASTVisitor):
         curr_code_line = curr_code_line + "})"
 
     def visitArgumentList(argument_list):
-        for i = 0 to len(argument_list.args):
-            argument_list.args[i].accept(this)
-            if i < len(argument_list.args) - 1
-                curr_code_line = curr_code_line + ", "
         var kwargs = argument_list.kwargs
-        for i = 0 to len(kwargs.keys()):
-            key = kwargs.keys()[i]
-            key.accept(this)
-            curr_code_line = curr_code_line + " = "
-            kwargs[key].accept(this)
-            if i < len(kwargs) - 1:
-                curr_code_line = curr_code_line + ", "
+        if len(argument_list.args) == 0 and argument_list.dispatch == "dynamic":
+            curr_code_line = curr_code_line + "empty_array"
+        else:
+            if argument_list.dispatch == "dynamic":
+                curr_code_line = curr_code_line + "Array {"
+
+            for i = 0 to len(argument_list.args):
+                argument_list.args[i].accept(this)
+                if i < len(argument_list.args) - 1
+                    curr_code_line = curr_code_line + ", "
+
+            if argument_list.dispatch == "dynamic":
+                curr_code_line = curr_code_line + "}"
+
+        if argument_list.dispatch == "dynamic" or len(kwargs.keys()) > 0:
+            if len(kwargs.keys()) == 0:
+                curr_code_line = curr_code_line + ", empty_dict"
+            else:
+                curr_code_line = curr_code_line + ", Dictionary {"
+                for i = 0 to len(kwargs.keys()):
+                    curr_code_line = curr_code_line + "{"
+                    key = kwargs.keys()[i]
+                    key.accept(this)
+                    curr_code_line = curr_code_line + ", "
+                    kwargs[key].accept(this)
+                    curr_code_line = curr_code_line + "}"
+                    if i < len(kwargs) - 1:
+                        curr_code_line = curr_code_line + ", "
+                curr_code_line = curr_code_line + "}"
 
     def visitFunctionCall(function_call):
         if function_call.name in user_defined_classes:
             visitConstructor(function_call)
             return
-        // function_call.name.accept(this)
         if function_call.name in function_corrections.keys():
             function_call.name = function_corrections[function_call.name]
-        
-        var header, footer
+
+
         if function_call.name == "print":
-            header = "std::cout << "
-            footer = " << std::endl"
+            curr_code_line = curr_code_line + "std::cout << "
+            if len(function_call.parameters.kwargs) != 0:
+                print "Error: print function does not take keyword arguments"
+                exit()
+            var args = function_call.parameters.args
+            for i = 0 to len(args):
+                args[i].accept(this)
+                if i < len(args) - 1
+                    curr_code_line = curr_code_line + " << \" \" << "
+            curr_code_line = curr_code_line + " << std::endl"
+        elif function_call.name == "exit":
+            curr_code_line = curr_code_line + "exit(0)"
         else:
-            header = function_call.name + "("
-            footer = ")"
-        curr_code_line = curr_code_line + header
-        function_call.parameters.accept(this)
-        curr_code_line = curr_code_line + footer
+            curr_code_line = curr_code_line + function_call.name + "("
+            function_call.parameters.accept(this)
+            curr_code_line = curr_code_line + ")"
 
     def visitConstructor(constructor):
         curr_code_line = curr_code_line + "*(new " + constructor.name + " {"
@@ -239,9 +199,8 @@ class CodegenVisitor(ASTVisitor):
 
     def visitMethodCall(method_call):
         method_call.object.accept(this)
-        curr_code_line = curr_code_line + "."
-        method_call.method_name.accept(this)
-        curr_code_line = curr_code_line + "("
+        curr_code_line = curr_code_line + ".call(\"" + method_call.method_name + "\", "
+        method_call.parameters.dispatch = "dynamic"
         method_call.parameters.accept(this)
         curr_code_line = curr_code_line + ")"
 
@@ -402,7 +361,7 @@ class CodegenVisitor(ASTVisitor):
 
         for function in class_.member_functions:
             function.accept(this)
-            function_list.append([function.name.value, len(function.positional), len(function.optional.keys())])
+            function_list.append([function.name, len(function.positional), len(function.optional)])
     
         # Define global functions for each class member function
         for function in function_list:
@@ -464,6 +423,18 @@ class CodegenVisitor(ASTVisitor):
             element.accept(this)
 
 
+    def generate_main(folder, ast):
+        main_lines.append(indentation + "return 0;")
+        main_lines.append("}")
+        var main_file = open(output_folder + "/main.cpp", "w")
+        for line in main_includes:
+            main_file.write(line + "\n")
+        for global_variable in global_variables.keys():
+            main_file.write("Any " + global_variable + ";\n")
+        for line in main_lines:
+            main_file.write(line + "\n")
+        main_file.close()
+
     def generate_code(filename, ast, keyword main):
         reset()
         ast.accept(this)
@@ -477,20 +448,14 @@ class CodegenVisitor(ASTVisitor):
         header_file.close()
         if main:
             main_includes.append("#include \"" + filename + ".h\"")
-            main_lines.append(indentation + "return 0;")
-            main_lines.append("}")
-            var main_file = open(output_folder + "/main.cpp", "w")
-            for line in main_includes:
-                main_file.write(line + "\n")
-            for line in main_lines:
-                main_file.write(line + "\n")
-            main_file.close()
+            generate_main(filename, ast)
         else:
             print "Not implemented yet"
         reset()
 
 
 # TODO: Symbol table
+# TODO: GlobalAssignment node
 
-# Parser TODO: use StandaloneExpression
+
 

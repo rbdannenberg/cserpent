@@ -5,7 +5,10 @@
 #include "any_utils.h"
 #include "csstring.h"
 #include "symbol.h"
+#include "array.h"
+#include "dictionary.h"
 #include <iostream>
+#include <sstream>
 
 
 double force_real(Any x) {
@@ -24,24 +27,34 @@ int64_t force_int(Any x) {
 }
 
 String force_str(Any x) {
-    if (is_str(x)) return to_str(x);
-    else if (is_symbol(x)) return String {temp_str(to_symbol(x))};
-    else if (is_int(x)) return String {std::to_string(to_int(x))};
-    else if (is_real(x)) return String {std::to_string(to_real(x))};
-    else if (is_ptr(x)) {
-        std::cerr << "Pointer to string conversion not implemented" << std::endl;
+    std::stringstream ss;
+    switch (get_type(x)) {
+        case Any_type::STR: return to_str(x);
+        case Any_type::SYMBOL: return String {temp_str(to_symbol(x))};
+        case Any_type::INT: return String {std::to_string(to_int(x))};
+        case Any_type::REAL:
+            ss << to_real(x);
+            return String {ss.str()};
+        case Any_type::ARRAY: return String {debug_str(to_array(x))};
+        case Any_type::DICT: return String {debug_str(to_dict(x))};
+        case Any_type::NIL: return String {"nil"};
+        case Any_type::T: return String {"t"};
+        case Any_type::OBJ: {
+            std::cerr << "Object to string conversion not implemented" << std::endl;
+            break;
+        }
+        default: type_error(x);
     }
-    else type_error(x);
 }
 
 
 Any type_error(Any x) {
-    std::cerr << "Any has incorrect type: " << get_type(x) << std::endl;
+    std::cerr << "Any has incorrect type: " << get_type_str(x) << std::endl;
     exit(1);
 }
 
 Any type_error(Any x, const std::string& function) {
-    std::cerr << "Any has incorrect type in function " << function << ": " << get_type(x) << std::endl;
+    std::cerr << "Any has incorrect type in function " << function << ": " << get_type_str(x) << std::endl;
     exit(1);
 }
 

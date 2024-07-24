@@ -113,6 +113,10 @@ Any::Any(const Obj &x) {
     integer = reinterpret_cast<uint64_t>(&x);
 }
 
+Any::Any(bool x) {
+    integer = x ? t.integer : nil.integer;
+}
+
 Any& Any::operator=(int64_t x) {
 #ifdef DEBUG
     int64_t tmp = x & 0xFFFE000000000000;
@@ -180,6 +184,11 @@ Any &Any::operator=(const Obj &x) {
     return *this;
 }
 
+Any& Any::operator=(bool x) {
+    integer = x ? t.integer : nil.integer;
+    return *this;
+}
+
 bool is_int(Any x) {
     return (x.integer & INT_TAG) == INT_TAG;
 }
@@ -238,6 +247,10 @@ Array& to_array(Any x) {
     return *reinterpret_cast<Array*>(x.integer);
 }
 
+Dictionary& to_dict(Any x) {
+    return *reinterpret_cast<Dictionary*>(x.integer);
+}
+
 // check is like assert except it always executes, even in optimized code
 // since the expression could be int, bool, or a test for non-null pointer,
 // we use a macro:
@@ -260,7 +273,34 @@ void *as_ptr(Any x) {
     return to_ptr(x);
 }
 
-std::string get_type(Any x) {
+Any_type get_type(Any x) {
+    if (x.integer == 0) return Any_type::NIL;
+    else if (x.integer == t.integer) return Any_type::T;
+    else if (is_int(x)) return Any_type::INT;
+    else {
+        switch (x.integer & TAG_MASK) {
+            case STR_TAG:
+                return Any_type::STR;
+            case SYMBOL_TAG:
+                return Any_type::SYMBOL;
+            case PTR_TAG:
+                switch (to_ptr(x)->get_tag()) {
+                    case tag_array:
+                        return Any_type::ARRAY;
+                    case tag_dict:
+                        return Any_type::DICT;
+                    case tag_object:
+                        return Any_type::OBJ;
+                    default:
+                        throw std::runtime_error("Unknown type");
+                }
+            default:
+                return Any_type::REAL;
+        }
+    }
+}
+
+std::string get_type_str(Any x) {
     if (is_ptr(x)) return "pointer";
     else if (is_int(x)) return "integer";
     else if (is_real(x)) return "real";
@@ -317,9 +357,17 @@ void Any::append(double x) {
 Any Any::call(const Symbol& method, const Array &args, const Dictionary &kwargs) {
     if (is_ptr(*this)) {
         Basic_obj *basic_ptr = to_ptr(*this);
-        if (basic_ptr->get_tag() == tag_object) {
-            Obj *obj_ptr = reinterpret_cast<Obj*>(basic_ptr);
-            return obj_ptr->call(method, args, kwargs);
+        switch (basic_ptr->get_tag()) {
+            case tag_object: {
+                Obj *obj_ptr = reinterpret_cast<Obj*>(basic_ptr);
+                return obj_ptr->call(method, args, kwargs);
+            }
+            case tag_array: {
+                Array *arr_ptr = reinterpret_cast<Array*>(basic_ptr);
+                return arr_ptr->call(method, args, kwargs);
+            }
+            default:
+                type_error(*this);
         }
     }
     else {

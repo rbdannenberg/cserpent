@@ -91,8 +91,7 @@ target_include_directories(stringtest PUBLIC ${CS_INCLUDES})
 
 
 add_executable(compilation_output
-    compilation_output/binary_trees.cpp
-    compilation_output/binary_trees.h
+    compilation_output/compilation_output.h
     compilation_output/main.cpp
 )
 target_include_directories(compilation_output PUBLIC ${CS_INCLUDES})

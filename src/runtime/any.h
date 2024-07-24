@@ -44,6 +44,7 @@ public:
     Any(const Array& x);
     Any(const Dictionary& x);
     Any(const Obj& x);
+    Any(bool x);
 
     /// Implicit conversion: assignment
     /// Return type allows for chaining
@@ -55,6 +56,7 @@ public:
     Any& operator=(const Array& x);
     Any& operator=(const Dictionary& x);
     Any& operator=(const Obj& x);
+    Any& operator=(bool x);
 
     /// Implicit conversion: type-cast operator
     operator int64_t();
@@ -73,6 +75,19 @@ public:
 };
 
 inline const Any nil = Any {nullptr};
+extern const Any t;
+
+enum class Any_type {
+    INT,
+    REAL,
+    STR,
+    SYMBOL,
+    ARRAY,
+    DICT,
+    OBJ,
+    NIL,
+    T
+};
 
 // should we consider creating an enum type for the various underlying types?
 
@@ -81,6 +96,7 @@ bool is_real(Any x);
 bool is_ptr(Any x);
 bool is_str(Any x);
 bool is_symbol(Any x);
+Any_type get_type(Any x);
 
 // these to_* functions do not check that the underlying type is correct
 // for that, use as_* functions
@@ -90,6 +106,7 @@ Basic_obj *to_ptr(Any x);
 String to_str(Any x);
 Symbol to_symbol(Any x);
 Array& to_array(Any x);
+Dictionary& to_dict(Any x);
 
 // as_* functions are used in compiled code to ensure that the type
 // matches the expected type. as_* calls are generated from source
@@ -99,4 +116,4 @@ double as_real(Any x);
 void *as_ptr(Any x);
 
 /// Obtains the underlying type of an Any, mainly for debugging.
-std::string get_type(Any x);
+std::string get_type_str(Any x);

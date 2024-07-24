@@ -119,5 +119,6 @@ std::ostream& operator<<(std::ostream& os, const Symbol& x) {
     return os;
 }
 
+const Any t {Symbol {"t"}};
 
 

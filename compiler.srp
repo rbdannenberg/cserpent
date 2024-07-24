@@ -1,30 +1,42 @@
-# usage: serpent64 compiler.cpp [-d] <file-to-compile>.srp -o <output-file>[.cpp]
+# usage: serpent64 compiler.srp [-d] <file-to-compile>.srp [-o <output-folder>] [-c]
+# diff <(serpent64 compiler.srp benchmarks/srp/binary-trees.srp -o output) <(echo "exit()" | serpent64 benchmarks/srp/binary-trees.srp)
 
 require "src/frontend/compile"
 require "src/backend/codegen_visitor"
 require "utils"
 load "debug"
 
-if len(command_line_arguments) == 5:
-    if command_line_arguments[1] != "-d":
-        print "Incorrect number of arguments"
-        exit()
-    file_to_compile = command_line_arguments[2]
-    debug = true
-    if command_line_arguments[3] != "-o":
-        print "Needs -o flag"
-        exit()
-    output_folder = command_line_arguments[4]
-else:
-    if len(command_line_arguments) != 4:
-        print "Incorrect number of arguments"
-    file_to_compile = command_line_arguments[1]
-    debug = false
-    if command_line_arguments[2] != "-o":
-        print "Needs -o flag"
-        exit()
-    output_folder = command_line_arguments[3]
+# [-d]: debug flag, prints the AST
+# <file-to-compile>.srp: the file to compile
+# [-c]: compile flag, compiles the generated code
+
+debug = false
+compile = false
+output_folder = "output"
+i = 1
+while i < len(command_line_arguments):
+    if command_line_arguments[i] == "-d":
+        debug = true
+        command_line_arguments.uninsert(i)
+    elif command_line_arguments[i] == "-c":
+        compile = true
+        command_line_arguments.uninsert(i)
+    elif command_line_arguments[i] == "-o":
+        if i + 1 >= len(command_line_arguments):
+            print "Needs output folder"
+            exit()
+        output_folder = command_line_arguments[i + 1]
+        command_line_arguments.uninsert(i)
+        command_line_arguments.uninsert(i)
+    else:
+        i = i + 1
+if len(command_line_arguments) != 2:
+    print "Incorrect number of arguments"
+    print command_line_arguments
+    exit()
+file_to_compile = command_line_arguments[1]
 output_folder = change_file_suffix(output_folder, nil)
+mkdir(output_folder)
 
 res = parse_ast(file_to_compile)
 if not res.ok:
@@ -33,13 +45,57 @@ if not res.ok:
 if debug:
     print_ast(res.result)
 
+to_compile = []
 pass = 8 # so an error isn't thrown for empty base class
 visitor = CodegenVisitor(output_folder)
 visitor.generate_code(output_folder, res.result, main=true)
+to_compile.append(output_folder + ".cpp")
+to_compile.append(output_folder + ".h")
+to_compile.append("main.cpp")
 
 # for include_path in res.includes:
 #    parse_result = parse_ast(include_path)
 #    filename = change_file_suffix(file_from_path(include_path), nil)
 #    visitor.generate_code(filename, parse_result.result, main=false)
+#    to_compile.append(filename + ".cpp")
+#    to_compile.append(filename + ".h")
+
+if compile:
+    # write CMakeLists.txt
+    output_folder = output_folder + "/"
+    cmake_lists = open(output_folder + "CMakeLists.txt", "w")
+    cmake_lists.write("cmake_minimum_required(VERSION 3.29)\n")
+    cmake_lists.write("project(output)\n")
+    cmake_lists.write("set(CMAKE_CXX_STANDARD 17)\n")
+    cmake_lists.write("add_compile_options(-Wno-return-type -Wplacement-new=0)\n")
+    cmake_lists.write("set(CMAKE_INTERPROCEDURAL_OPTIMIZATION_RELEASE TRUE)\n")
+    cmake_lists.write("\n")
+    cmake_lists.write("# normal set of include paths:\n")
+    cmake_lists.write("include_directories(\n")
+    wd = getcwd() # note this ends with "/"
+    runtime_directories = ["src/runtime", "src/runtime/data_structures", "src/runtime/builtin_functions", "src/gc"]
+    for include_path in runtime_directories:
+        cmake_lists.write("        " + wd + include_path + "\n")
+    cmake_lists.write(")\n")
+    cmake_lists.write("set(RUNTIME_LIB_PATH \"" + wd + "cmake-build-release/libruntime.a\")\n")
+    cmake_lists.write("add_executable(output\n")
+    for file in to_compile:
+        cmake_lists.write("        " + file + "\n")
+    cmake_lists.write(")\n")
+    cmake_lists.write("target_link_libraries(output \"${RUNTIME_LIB_PATH}\")\n")
+    cmake_lists.close()
+
+    # compile code
+    cmake_configure = "cmake -DCMAKE_BUILD_TYPE=Release -S " + output_folder + " -B " + output_folder + "build" +  " --fresh"
+    cmake_build = "cmake --build " + output_folder + "build"
+    if not debug:
+        cmake_configure = cmake_configure + " > /dev/null"
+        cmake_build = cmake_build + " > /dev/null"
+    else:
+        print cmake_configure
+        print cmake_build
+    system(cmake_configure)
+    system(cmake_build)
+    system("./" + output_folder + "build/output")
 
 exit()

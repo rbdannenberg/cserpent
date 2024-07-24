@@ -1,0 +1,78 @@
+class ASTVisitor:
+    def visitLiteral(literal):
+        pass
+
+    def visitIdentifier(identifier):
+        pass
+
+    def visitBoolOp(bool_op):
+        pass
+
+    def visitBinOp(bin_op):
+        pass
+
+    def visitUnaryOp(unary_op):
+        pass
+
+    def visitArray(array_node):
+        pass
+
+    def visitDictionary(dictionary_node):
+        pass
+
+    def visitArgumentList(argument_list):
+        pass
+
+    def visitFunctionCall(function_call):
+        pass
+
+    def visitConstructor(constructor):
+        pass
+
+    def visitMethodCall(method_call):
+        pass
+
+    def visitGetAttribute(get_attribute):
+        pass
+
+    def visitIndex(index):
+        pass
+
+    def visitAssignment(assignment):
+        pass
+
+    def visitStandaloneExpression(standalone_expression):
+        pass
+
+    def visitDeclaration(declaration):
+        pass
+
+    def visitDeclarationNAssignment(declaration_n_assignment):
+        pass
+
+    def visitReturnStatement(return_statement):
+        pass
+
+    def visitBlock(block):
+        pass
+
+    def visitIf(if_statement):
+        pass
+
+    def visitWhile(while_statement):
+        pass
+
+    def visitForRange(for_statement):
+        pass
+
+    def visitForEach(for_statement):
+        pass
+
+    def visitFunction(function):
+        pass
+
+    def visitClass(class_):
+        pass
+
+    def visitFile(file):
+        pass

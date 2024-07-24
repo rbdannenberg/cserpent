@@ -353,13 +353,27 @@ int64_t operator>> (Any lhs, int rhs) {
 }
 
 std::ostream& operator<<(std::ostream& os, Any x) {
-    if (is_int(x)) {
-        return os << to_int(x);
+    return os << force_str(x);
+    switch (get_type(x)) {
+        case Any_type::INT:
+            return os << to_int(x);
+        case Any_type::REAL:
+            return os << to_real(x);
+        case Any_type::STR:
+            return os << to_str(x);
+        case Any_type::SYMBOL:
+            return os << to_symbol(x);
+        case Any_type::ARRAY:
+            return os << to_array(x);
+        case Any_type::DICT:
+            return os << to_dict(x);
+        case Any_type::OBJ:
+            return os << "Not implemented yet";
+        case Any_type::NIL:
+            return os << "nil";
+        default:
+            return os << "unknown";
     }
-    else if (is_real(x)) {
-        return os << to_real(x);
-    }
-    else type_error(x, __func__);
 }
 
 bool operator==(Any lhs, int64_t rhs) {

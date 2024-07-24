@@ -94,3 +94,12 @@ String toupper(Any s) {
     if (is_str(s)) return toupper(to_str(s));
     else type_error(s);
 }
+
+Any is_equal(Any lhs, Any rhs) {
+    bool res;
+    if (is_ptr(lhs)) {
+         res = lhs.integer == rhs.integer;
+    }
+    else res = lhs == rhs;
+    return Any {res};
+}
