@@ -5,10 +5,8 @@
 Any operator+ (Any lhs, int rhs);
 Any operator+ (Any lhs, int64_t rhs);
 Any operator+ (Any lhs, double rhs);
+Any operator+ (Any lhs, const String& rhs);
 Any operator+ (Any lhs, Any rhs);
-Any operator+ (int lhs, Any rhs);
-Any operator+ (int64_t lhs, Any rhs);
-Any operator+ (double lhs, Any rhs);
 
 Any operator* (Any lhs, int rhs);
 Any operator* (Any lhs, int64_t rhs);
@@ -87,7 +85,6 @@ bool operator!=(Any lhs, Any rhs);
 // Define a variable template for checking supported types
 template<typename T>
 constexpr bool is_comparable = std::disjunction<
-        std::is_same<T, Any>,
         std::is_same<T, int64_t>,
         std::is_same<T, int>,
         std::is_same<T, double>,
@@ -106,4 +103,10 @@ template<typename T>
 bool operator!=(T lhs, Any rhs) {
     static_assert(is_comparable<T>, "operator!= is not supported for the given type");
     return !operator==(rhs, lhs);
+}
+
+template<typename T>
+bool operator+(T lhs, Any rhs) {
+    static_assert(is_comparable<T>, "operator+ is not supported for the given type");
+    return operator+(rhs, lhs);
 }

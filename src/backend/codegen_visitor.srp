@@ -19,6 +19,7 @@ class CodegenVisitor(ASTVisitor):
     var include_list
     var user_defined_classes
     var global_variables
+    var function_block
 
     def init(_output_folder):
         super.init()
@@ -36,6 +37,7 @@ class CodegenVisitor(ASTVisitor):
         indentation = "    "
         user_defined_classes = []
         global_variables = {}
+        function_block = false
 
     def reset():
         source_lines = []
@@ -313,6 +315,8 @@ class CodegenVisitor(ASTVisitor):
         curr_code_line = curr_code_line + ")"
         add_line(curr_code_line)
         curr_code_line = ""
+        if not isinstance(function.block.statements.last(), ReturnStatement):
+            function.block.statements.append(ReturnStatement(Literal("nil", "Any")))
         function.block.accept(this)
 
         # define the call override for class member functions

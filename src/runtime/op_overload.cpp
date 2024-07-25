@@ -26,7 +26,7 @@ Any operator+ (Any lhs, double rhs) {
     return { force_real(lhs) + rhs };
 }
 
-Any operator+ (Any lhs, String rhs) {
+Any operator+ (Any lhs, const String& rhs) {
     if (is_str(lhs)) {
         return { to_str(lhs) + rhs};
     }
@@ -43,19 +43,6 @@ Any operator+ (Any lhs, Any rhs) {
         return lhs + to_str(rhs);
     }
     else type_error(rhs);
-}
-
-// Symmetrical + operators
-Any operator+ (int64_t lhs, Any rhs) {
-    return rhs + lhs;
-}
-
-Any operator+ (int lhs, Any rhs) {
-    return rhs + lhs;
-}
-
-Any operator+ (double lhs, Any rhs) {
-    return rhs + lhs;
 }
 
 // * operators

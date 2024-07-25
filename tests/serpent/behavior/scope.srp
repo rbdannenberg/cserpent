@@ -1,0 +1,9 @@
+def some_func():
+    print(b)
+
+def test_print():
+    var b = 5
+    some_func()
+test_print()
+
+exit()

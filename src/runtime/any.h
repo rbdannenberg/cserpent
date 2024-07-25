@@ -61,7 +61,8 @@ public:
     /// Implicit conversion: type-cast operator
     operator int64_t();
     operator double();
-    explicit operator String();
+    operator String();
+
 
 //    Any& operator[](int64_t i);
     void set(int64_t i, Any val); // Use this instead of assignment through [] (gc reasons).
@@ -113,6 +114,7 @@ Dictionary& to_dict(Any x);
 // code that looks like expression.as_int
 int64_t as_int(Any x);
 double as_real(Any x);
+String as_str(Any x);
 void *as_ptr(Any x);
 
 /// Obtains the underlying type of an Any, mainly for debugging.

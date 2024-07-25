@@ -6,6 +6,7 @@
 #include <cassert>
 #include <utility>
 #include "csstring.h"
+#include "any.h"
 
 
 // distinguish between short and long strings by the 47th bit. Pointers will have 1, short
@@ -184,6 +185,22 @@ String toupper(const String& s) {
     }
 }
 
+String tolower(const String& s) {
+    if (is_short_string(s)) {
+        String result {};
+        for (int64_t i = 0; i < len(s); i++) {
+            result.chars[i] = std::tolower(s.chars[i]);
+        }
+        return result;
+    } else {
+        std::string upper;
+        for (char c : *get_str_ptr(s.data)) {
+            upper.push_back(std::tolower(c));
+        }
+        return String {upper};
+    }
+}
+
 bool operator==(const String& a, const String& b) {
     return temp_str(a) == temp_str(b);
 }
@@ -196,3 +213,17 @@ std::ostream& operator<<(std::ostream& os, const String& x) {
     os << temp_str(x);
     return os;
 }
+
+int64_t ord(const String& s) {
+    if (is_short_string(s)) return s.chars[0];
+    else return get_str_ptr(s.data)->at(0);
+}
+
+String chr(int64_t i) {
+    return String {static_cast<char>(i)};
+}
+
+String strcat(const String& lhs, const String& rhs) {
+    return String {temp_str(lhs) + temp_str(rhs)};
+}
+

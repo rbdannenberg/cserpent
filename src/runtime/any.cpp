@@ -268,6 +268,11 @@ double as_real(Any x) {
     return to_real(x);
 }
 
+String as_str(Any x) {
+    check(is_str(x));
+    return to_str(x);
+}
+
 void *as_ptr(Any x) {
     check(is_ptr(x));
     return to_ptr(x);
@@ -309,8 +314,6 @@ std::string get_type_str(Any x) {
     else return "unknown";
 }
 
-
-
 Any::operator int64_t() {
     return as_int(*this);
 }
@@ -319,7 +322,9 @@ Any::operator double() {
     return as_real(*this);
 }
 
-
+Any::operator String() {
+    return as_str(*this);
+}
 
 
 static bool is_string_or_symbol(Any x) {

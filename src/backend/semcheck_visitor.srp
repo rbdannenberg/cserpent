@@ -1,0 +1,226 @@
+require "src/backend/visitor.srp"
+require "src/frontend/ast.srp"
+
+function_corrections = {
+    "main": "main__",
+    "str": "force_str",
+    "int": "force_int"
+}
+
+# Responsibilities
+# - Do function name corrections
+# - Create symbol table
+# - Do FunctionCall vs Constructor corrections
+# - Do initialization checking (+ globals)
+# - Adjust Literals to include their types
+# - (Eventually) do type checking and inference
+
+
+class SymbolEntry:
+    var category # function, variable, class, etc.
+    var value # the value of the symbol # Lowkey is this even necessary
+    var type # for type inference
+
+    def init(_category, _value = nil, _type = nil):
+        category = _category
+        value = _value
+        type = _type
+
+class ScopedTables:
+    var scopes # : Array[Dictionary[string, SymbolEntry]]
+    var current_scope # : int
+
+    def init():
+        scopes = [{}]
+        current_scope = 0
+
+    def enter_scope():
+        scopes.append({})
+        current_scope += 1
+
+    def exit_scope():
+        scopes.pop()
+        current_scope -= 1
+
+    def add_symbol(symbol, entry):
+        scopes[-1][symbol] = entry
+
+    def get_symbol(symbol):
+        for i = len(scopes) - 1 to -1 by -1:
+            if symbol in scopes[i]:
+                return scopes[i][symbol]
+        return nil
+
+    def get_current_scope():
+        return current_scope
+
+class GlobalTable:
+    var table # : Dictionary[string, SymbolEntry]
+
+    def init():
+        table = {}
+
+    def add_symbol(symbol, entry):
+        table[symbol] = entry
+
+    def get_symbol(symbol):
+        return table[symbol]
+
+    def get_table():
+        return table
+
+    def set_table(new_table):
+        table = new_table
+
+    def merge_table(new_table):
+        for key in new_table.keys():
+            if key in table.keys():
+                print "Error: Symbol " + key + " already defined, redefinition not allowed"
+                exit()
+            table[key] = new_table[key]
+
+
+class SemCheckVisitor(ASTVisitor):
+    var tables # : ScopedTables
+
+    def init():
+        super.init()
+        tables = ScopedTables()
+
+    def visitLiteral(literal):
+        pass
+
+    def visitIdentifier(identifier):
+        pass
+
+    def visitBoolOp(bool_op):
+        pass
+
+    def visitBinOp(bin_op):
+        pass
+
+    def visitUnaryOp(unary_op):
+        pass
+
+    def visitArray(array_node):
+        pass
+
+    def visitDictionary(dictionary_node):
+        pass
+
+    def visitArgumentList(argument_list):
+        pass
+
+    def visitFunctionCall(function_call):
+        pass
+
+    def visitConstructor(constructor):
+        pass
+
+    def visitMethodCall(method_call):
+        pass
+
+    def visitGetAttribute(get_attribute):
+        pass
+
+    def visitIndex(index):
+        pass
+
+    def visitAssignment(assignment):
+        pass
+
+    def visitStandaloneExpression(standalone_expression):
+        pass
+
+    def visitDeclaration(declaration):
+        pass
+
+    def visitDeclarationNAssignment(declaration_n_assignment):
+        pass
+
+    def visitReturnStatement(return_statement):
+        pass
+
+    def visitBlock(block):
+        for statement in block.statements:
+            statement.accept(this)
+
+    def visitIf(if_statement):
+
+        pass
+
+    def visitWhile(while_statement):
+        pass
+
+    def visitForRange(for_statement):
+        pass
+
+    def visitForEach(for_statement):
+        pass
+
+    def visitFunction(function):
+        if tables.get_symbol(function.name):
+            print "Error: Function " + function.name + " already defined, redefinition not allowed"
+            exit()
+        tables.add_symbol(function.name, SymbolEntry("function"))
+        tables.enter_scope()
+        for param in function.positional:
+            tables.add_symbol(param, SymbolEntry("variable"))
+        for param in function.optional:
+            tables.add_symbol(param[0], SymbolEntry("variable"))
+        function.block.accept(this)
+        tables.exit_scope()
+
+
+    def visitClass(class_):
+        if class_.name in global_table.keys():
+            print "Error: Class " + class_.name + " already defined, redefinition not allowed"
+            exit()
+        global_table[class_.name] = SymbolEntry("class")
+
+        if tables.get_symbol(class_.name):
+            print "Error: Class " + class_.name + " already defined, redefinition not allowed"
+            exit()
+        tables.add_symbol(class_.name, SymbolEntry("class"))
+        tables.enter_scope()
+        for member_var in class_.member_variables:
+            tables.add_symbol(member_var, SymbolEntry("variable"))
+        for member_func in class_.member_functions:
+            member_func.accept(this)
+        tables.exit_scope()
+
+
+    def visitFile(file):
+        pass
+
+    def generate_code(filename, ast, keyword main):
+        reset()
+        ast.accept(this)
+        var source_file = open(output_folder + "/" + filename + ".cpp", "w")
+        for line in source_lines:
+            source_file.write(line + "\n")
+        var header_file = open(output_folder + "/" + filename + ".h", "w")
+        for line in header_lines:
+            header_file.write(line + "\n")
+        source_file.close()
+        header_file.close()
+        if main:
+            main_includes.append("#include \"" + filename + ".h\"")
+            main_lines.append(indentation + "return 0;")
+            main_lines.append("}")
+            var main_file = open(output_folder + "/main.cpp", "w")
+            for line in main_includes:
+                main_file.write(line + "\n")
+            for line in main_lines:
+                main_file.write(line + "\n")
+            main_file.close()
+        else:
+            print "Not implemented yet"
+        reset()
+
+
+# TODO: Symbol table
+# TODO: GlobalAssignment node
+
+
+

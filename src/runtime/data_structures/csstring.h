@@ -19,6 +19,7 @@
 
 
 union String {
+public:
     struct {
         // short string
         // "wrong" way round because I hate little endian
@@ -42,13 +43,18 @@ union String {
     String& operator=(String other); // covers both copy and move assignment
 
     char operator[](int64_t i) const;
+
+    friend int64_t ord(const String& s);
+    friend String strcat(const String& lhs, const String& rhs);
 };
 
 int64_t len(const String& s);
 String subseq(const String& s, int64_t start, int64_t end = std::numeric_limits<int64_t>::max());
 int64_t find(const String& s, const String& pattern, int64_t start=0, int64_t end=std::numeric_limits<int64_t>::max());
 String toupper(const String& s);
+String tolower(const String& s);
 bool operator==(const String& a, const String& b);
 String operator+(const String& a, const String& b);
 std::ostream& operator<<(std::ostream& os, const String& x);
 
+String chr(int64_t i);
