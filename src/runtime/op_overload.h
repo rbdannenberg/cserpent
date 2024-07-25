@@ -106,7 +106,7 @@ bool operator!=(T lhs, Any rhs) {
 }
 
 template<typename T>
-bool operator+(T lhs, Any rhs) {
+Any operator+(T lhs, Any rhs) {
     static_assert(is_comparable<T>, "operator+ is not supported for the given type");
     return operator+(rhs, lhs);
 }

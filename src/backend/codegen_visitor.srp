@@ -19,7 +19,11 @@ class CodegenVisitor(ASTVisitor):
     var include_list
     var user_defined_classes
     var global_variables
-    var function_block
+    var current_class
+    # enums
+    var source
+    var header
+    var main
 
     def init(_output_folder):
         super.init()
@@ -37,7 +41,9 @@ class CodegenVisitor(ASTVisitor):
         indentation = "    "
         user_defined_classes = []
         global_variables = {}
-        function_block = false
+        source = 0
+        header = 1
+        main = 2
 
     def reset():
         source_lines = []
@@ -45,34 +51,20 @@ class CodegenVisitor(ASTVisitor):
         curr_code_line = ""
         indent_levels = [0, 0, 1]
 
-    def add_source_line(line):
-        for i = 0 to source_indent_level:
-            line = indentation + line
-        source_lines.append(line)
+    def switch_context(ctx):
+        context = ctx
 
-    def add_header_line(line):
-        for i = 0 to header_indent_level:
+    def add_line(line, optional ctx = nil):
+        if ctx == nil:
+            ctx = context
+        for i = 0 to indent_levels[ctx]:
             line = indentation + line
-        header_lines.append(line)
-    
-    def add_main_line(line):
-        for i = 0 to main_indent_level:
-            line = indentation + line
-        main_lines.append(line)
-
-    def add_line(line):
-        for i = 0 to indent_levels[context]:
-            line = indentation + line
-        if context == 0:
+        if ctx == 0:
             source_lines.append(line)
-        elif context == 1:
+        elif ctx == 1:
             header_lines.append(line)
         else:
             main_lines.append(line)
-
-
-    def drop_comma(string):
-        return subseq(string, 0, -2)
 
     def visitLiteral(literal):
         # print literal.value, type(literal.value), isstring(literal.value)
@@ -306,18 +298,25 @@ class CodegenVisitor(ASTVisitor):
         num_args = len(function.positional)
         if function.name == "main":
             function.name = "main__"
-        curr_code_line = "inline Any " + function.name + "("
+
+        curr_code_line = function.name + "("
         for i = 0 to num_args:
             curr_code_line = curr_code_line + "Any " + function.positional[i] # Change this once type inference exists
             // function.positional[i].accept(this)
             if i < num_args - 1:
                 curr_code_line = curr_code_line + ", "
         curr_code_line = curr_code_line + ")"
-        add_line(curr_code_line)
+        add_line("Any " + curr_code_line + ";", header)
+        if current_class:
+            add_line("Any " + current_class + "::" + curr_code_line, source)
+        else:
+            add_line("Any " + curr_code_line, source)
         curr_code_line = ""
         if not isinstance(function.block.statements.last(), ReturnStatement):
             function.block.statements.append(ReturnStatement(Literal("nil", "Any")))
+        switch_context(source)
         function.block.accept(this)
+        switch_context(header)
 
         # define the call override for class member functions
         // if indent_level > 0: # if we are in a class
@@ -335,9 +334,11 @@ class CodegenVisitor(ASTVisitor):
 
     def visitClass(class_):
         user_defined_classes.append(class_.name)
+        switch_context(header)
         var class_ptr = class_.name + "_class"
         var function_list = []
         add_line("extern Cs_class * " + class_ptr + ";")
+        print "here1", context
         add_line("class " + class_.name + " : public Obj {")
         add_line("public:")
         indent_levels[context] = indent_levels[context] + 1
@@ -364,13 +365,18 @@ class CodegenVisitor(ASTVisitor):
         add_line("};")        
 
         for function in class_.member_functions:
+            current_class = class_.name
             function.accept(this)
             function_list.append([function.name, len(function.positional), len(function.optional)])
+        current_class = nil
     
         # Define global functions for each class member function
+        switch_context(source)
         for function in function_list:
             var function_name = function[0]
-            add_line("Any " + class_.name + "_" + function_name + "(Obj* self, const Array& args, const Dictionary& kwargs) {")
+            var signature = "Any " + class_.name + "_" + function_name + "(Obj* self, const Array& args, const Dictionary& kwargs)"
+            add_line(signature + ";", header)
+            add_line(signature + " {", source)
             indent_levels[context] = indent_levels[context] + 1
             add_line("check_dispatch(\"" + function_name + "\", args, kwargs," + str(function[1]) + "," + str(function[2]) + ");")
             var dispatch_line = "reinterpret_cast<" + class_.name + "*>(self)->" + function_name + "("
@@ -384,7 +390,9 @@ class CodegenVisitor(ASTVisitor):
             add_line("}")
 
         # Create the MemberTable that maps symbols to function pointers
-        add_line("MemberTable " + class_.name + "_table  {")
+        var table_name = "MemberTable " + class_.name + "_table"
+        add_line("extern " + table_name + ";", header)
+        add_line(table_name + " {", source)
         indent_levels[context] = indent_levels[context] + 1
         for function in function_list:
             add_line("{Symbol{\"" + function[0] + "\"}, " + class_.name + "_" + function[0] + "},")
@@ -394,6 +402,7 @@ class CodegenVisitor(ASTVisitor):
         # NOTE: 0b0 should be changed once type inference is implemented and we have pointer types
         var cs_class_init = "{Symbol {\"" + class_.name + "\"}, " + str(len(class_.member_variables)) + ", 0b0, &" + class_.name + "_table};"
         add_line("Cs_class * " + class_ptr + " = new Cs_class " + cs_class_init)
+        switch_context(header)
 
         // get_override = "Any& get(const std::string& member_name) override {\n"
         // for variable in class_.member_variables:
@@ -443,6 +452,7 @@ class CodegenVisitor(ASTVisitor):
         reset()
         ast.accept(this)
         var source_file = open(output_folder + "/" + filename + ".cpp", "w")
+        source_file.write("#include \"" + filename + ".h\"\n\n")
         for line in source_lines:
             source_file.write(line + "\n")
         var header_file = open(output_folder + "/" + filename + ".h", "w")
