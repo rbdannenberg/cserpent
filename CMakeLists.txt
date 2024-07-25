@@ -7,7 +7,7 @@ set(CMAKE_INTERPROCEDURAL_OPTIMIZATION_RELEASE TRUE)
 add_definitions(-DFREE)
 
 # normal set of include paths:
-set(CS_INCLUDES src/runtime src/runtime/data_structures src/runtime/builtin_functions src/gc)
+set(CS_INCLUDES src/runtime src/runtime/data_structures src/runtime/builtin_functions src/gc src/runtime/globals)
 
 # cserpent executable was here previously - was never used so removed it
 

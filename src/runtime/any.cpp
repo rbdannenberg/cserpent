@@ -273,6 +273,16 @@ String as_str(Any x) {
     return to_str(x);
 }
 
+Symbol as_symbol(Any x) {
+    check(is_symbol(x));
+    return to_symbol(x);
+}
+
+Array &as_array(Any x) {
+    check(is_ptr(x));
+    return to_array(x);
+}
+
 void *as_ptr(Any x) {
     check(is_ptr(x));
     return to_ptr(x);
@@ -326,6 +336,13 @@ Any::operator String() {
     return as_str(*this);
 }
 
+Any::operator Symbol() {
+    return as_symbol(*this);
+}
+
+Any::operator Array&() {
+    return as_array(*this);
+}
 
 static bool is_string_or_symbol(Any x) {
     uint64_t string_or_symbol_mask = 0xFFFE000000000000uLL;

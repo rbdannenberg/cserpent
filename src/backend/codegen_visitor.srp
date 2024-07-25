@@ -76,6 +76,9 @@ class CodegenVisitor(ASTVisitor):
             curr_code_line = curr_code_line + str(literal.value)
 
     def visitIdentifier(identifier):
+        if current_class and identifier.value in current_class.member_variables:
+            curr_code_line = curr_code_line + "get_" + identifier.value + "()"
+            return
         curr_code_line = curr_code_line + identifier.value
         global_variables[identifier.value] = "variable"
 
@@ -166,14 +169,12 @@ class CodegenVisitor(ASTVisitor):
             return
         if function_call.name in function_corrections.keys():
             function_call.name = function_corrections[function_call.name]
-
-
+        var args = function_call.parameters.args
         if function_call.name == "print":
             curr_code_line = curr_code_line + "std::cout << "
             if len(function_call.parameters.kwargs) != 0:
                 print "Error: print function does not take keyword arguments"
                 exit()
-            var args = function_call.parameters.args
             for i = 0 to len(args):
                 args[i].accept(this)
                 if i < len(args) - 1
@@ -181,6 +182,27 @@ class CodegenVisitor(ASTVisitor):
             curr_code_line = curr_code_line + " << std::endl"
         elif function_call.name == "exit":
             curr_code_line = curr_code_line + "exit(0)"
+        elif function_call.name == "funcall":
+            curr_code_line = curr_code_line + "apply("
+            function_call.parameters.args[0].accept(this)
+            curr_code_line = curr_code_line + ", *(new Array {"
+            for i = 1 to len(args):
+                args[i].accept(this)
+                if i < len(args) - 1
+                    curr_code_line = curr_code_line + ", "
+            curr_code_line = curr_code_line + "}))"
+        elif function_call.name == "send":
+            curr_code_line = curr_code_line + "sendapply("
+            function_call.parameters.args[0].accept(this)
+            curr_code_line = curr_code_line + ", "
+            function_call.parameters.args[1].accept(this)
+            curr_code_line = curr_code_line + ", *(new Array {"
+            for i = 2 to len(args):
+                args[i].accept(this)
+                if i < len(args) - 1
+                    curr_code_line = curr_code_line + ", "
+            curr_code_line = curr_code_line + "}))"
+
         else:
             curr_code_line = curr_code_line + function_call.name + "("
             function_call.parameters.accept(this)
@@ -216,13 +238,20 @@ class CodegenVisitor(ASTVisitor):
             assignment.expression.accept(this)
             add_line(curr_code_line + "}, empty_dict);")
             curr_code_line = ""
+            return
         # same goes for index
-        else:
-            assignment.identifier.accept(this)
-            curr_code_line = curr_code_line + " = "
+        if current_class and isinstance(assignment.identifier, Identifier) and assignment.identifier.value in current_class.member_variables:
+            if curr_code_line != "":
+                print "Should be empty, weird"
+            curr_code_line = "set_" + assignment.identifier.value + "("
             assignment.expression.accept(this)
-            add_line(curr_code_line + ";")
-            curr_code_line = ""
+            add_line(curr_code_line + ");")
+            return
+        assignment.identifier.accept(this)
+        curr_code_line = curr_code_line + " = "
+        assignment.expression.accept(this)
+        add_line(curr_code_line + ";")
+        curr_code_line = ""
 
     def visitStandaloneExpression(standalone_expression):
         standalone_expression.expression.accept(this)
@@ -299,40 +328,53 @@ class CodegenVisitor(ASTVisitor):
         if function.name == "main":
             function.name = "main__"
 
+        # collect arguments within the parentheses
         curr_code_line = function.name + "("
         for i = 0 to num_args:
             curr_code_line = curr_code_line + "Any " + function.positional[i] # Change this once type inference exists
-            // function.positional[i].accept(this)
             if i < num_args - 1:
                 curr_code_line = curr_code_line + ", "
         curr_code_line = curr_code_line + ")"
+
+        var global_line = "Any " + "global_" + function.name + "(const Array& args, const Dictionary& kwargs)"
+
         add_line("Any " + curr_code_line + ";", header)
         if current_class:
-            add_line("Any " + current_class + "::" + curr_code_line, source)
+            add_line("Any " + current_class.name + "::" + curr_code_line, source)
         else:
             add_line("Any " + curr_code_line, source)
+
+
+
         curr_code_line = ""
-        if not isinstance(function.block.statements.last(), ReturnStatement):
-            function.block.statements.append(ReturnStatement(Literal("nil", "Any")))
+        # make corrections to the block
+        var last_statement = function.block.statements.last()
+        if not isinstance(last_statement, ReturnStatement):
+            if isinstance(last_statement, StandaloneExpression):
+                function.block.statements[len(function.block.statements) - 1] = ReturnStatement(last_statement.expression)
+            else:
+                function.block.statements.append(ReturnStatement(Literal("nil", "Any")))
         switch_context(source)
         function.block.accept(this)
         switch_context(header)
 
-        # define the call override for class member functions
-        // if indent_level > 0: # if we are in a class
-        //     add_line("Any " + function.name.value + "(const Array& args, const Dictionary& kwargs) {")
-        //     indent_level = indent_level + 1
-        //     add_line("if (member_name == \"" + function.name.value + "\") {")
-        //     add_line("return Any {" + function.name.value + "(args, kwargs)};")
-        //     add_line("} else {")
-        //     add_line("throw std::runtime_error(\"No such member function: \" + member_name);")
-        //     add_line("}")
-        //     indent_level = indent_level - 1
-        //     add_line("}") 
-
-
+        if not current_class:
+            # function is global
+            add_line(global_line + ";", header)
+            add_line(global_line + " {", source)
+            add_line(indentation + "check_dispatch(\"" + function.name + "\", args, kwargs, " + str(len(function.positional)) + ", " + str(len(function.optional)) + ");", source)
+            var call = indentation + "return " + function.name + "("
+            for i = 0 to num_args:
+                call = call + "args[" + str(i) + "]"
+                if i < num_args - 1:
+                    call = call + ", "
+            call = call + ");"
+            add_line(call, source)
+            add_line("}", source)
+            add_line("globals::cs_symbol_table.set_function(Symbol {\"" + function.name + "\"}, &global_" + function.name + ");", main)
 
     def visitClass(class_):
+        current_class = class_
         user_defined_classes.append(class_.name)
         switch_context(header)
         var class_ptr = class_.name + "_class"
@@ -361,15 +403,30 @@ class CodegenVisitor(ASTVisitor):
             function_list.append([getter, 0, 0])
             function_list.append([setter, 1, 0])
 
-        indent_levels[context] = indent_levels[context] - 1
-        add_line("};")        
 
         for function in class_.member_functions:
-            current_class = class_.name
+
             function.accept(this)
             function_list.append([function.name, len(function.positional), len(function.optional)])
-        current_class = nil
-    
+            if function.name == "init":
+                var num_args = len(function.positional)
+                var enclosed = ""
+
+                curr_code_line = class_.name + "("
+                for i = 0 to num_args:
+                    curr_code_line = curr_code_line + "Any " + function.positional[i] # Change this once type inference exists
+                    enclosed = enclosed + function.positional[i]
+                    if i < num_args - 1:
+                        curr_code_line = curr_code_line + ", "
+                        enclosed = enclosed + ", "
+                curr_code_line = curr_code_line + ") : Obj {" + class_ptr + "} {"
+                add_line(curr_code_line)
+                add_line(indentation + "init(" + enclosed + ");")
+                add_line("}")
+
+        indent_levels[context] = indent_levels[context] - 1
+        add_line("};")
+
         # Define global functions for each class member function
         switch_context(source)
         for function in function_list:
@@ -403,28 +460,7 @@ class CodegenVisitor(ASTVisitor):
         var cs_class_init = "{Symbol {\"" + class_.name + "\"}, " + str(len(class_.member_variables)) + ", 0b0, &" + class_.name + "_table};"
         add_line("Cs_class * " + class_ptr + " = new Cs_class " + cs_class_init)
         switch_context(header)
-
-        // get_override = "Any& get(const std::string& member_name) override {\n"
-        // for variable in class_.member_variables:
-        //     variable.accept(this)
-        //     get_override = get_override + "if (member_name == \"" + variable.identifier.value + "\") {\n"
-        //     get_override = get_override + indentation + "return " + variable.identifier.value + ";\n"
-        //     get_override = get_override + "} else "
-        // get_override = get_override + "throw std::runtime_error(\"No such member variable: \" + member_name);\n"
-        // call_override = "Any call(const std::string& member_name, const Array& args, const Dictionary& kwargs) override {\n"
-        // for function in class_.member_functions:
-        //     function.accept(this)
-        //     call_override = call_override + "if (member_name == \"" + variable.name.value + "\") {\n"
-        //     call_override = call_override + indentation + "if (len(args) == " + str(len(function.positional)) + ") {\n"
-        //     call_override = call_override + indentation + indentation + "return Any {"
-        //     call_override = call_override + function.name.value + "("
-        //     for i = 0 to len(function.positional):
-        //         call_override = call_override + "args[" + str(i) + "]"
-        //         if i < len(function.positional) - 1:
-        //             call_override = call_override + ", "
-        //     call_override = call_override + ")\n"
-        //     call_override = call_override + "} else "
-        // call_override = call_override + "throw std::runtime_error(\"No such member function: \" + member_name);\n"
+        current_class = nil
 
     def visitFile(file):
         add_line(include_list)
@@ -467,9 +503,6 @@ class CodegenVisitor(ASTVisitor):
             print "Not implemented yet"
         reset()
 
-
-# TODO: Symbol table
-# TODO: GlobalAssignment node
 
 
 

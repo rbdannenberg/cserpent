@@ -53,6 +53,8 @@ to_compile.append(output_folder + ".cpp")
 to_compile.append(output_folder + ".h")
 to_compile.append("main.cpp")
 
+for child in object_variables(res).values():
+    print child
 # for include_path in res.includes:
 #    parse_result = parse_ast(include_path)
 #    filename = change_file_suffix(file_from_path(include_path), nil)
@@ -73,7 +75,7 @@ if compile:
     cmake_lists.write("# normal set of include paths:\n")
     cmake_lists.write("include_directories(\n")
     wd = getcwd() # note this ends with "/"
-    runtime_directories = ["src/runtime", "src/runtime/data_structures", "src/runtime/builtin_functions", "src/gc"]
+    runtime_directories = ["src/runtime", "src/runtime/data_structures", "src/runtime/builtin_functions", "src/gc", "src/runtime/globals"]
     for include_path in runtime_directories:
         cmake_lists.write("        " + wd + include_path + "\n")
     cmake_lists.write(")\n")

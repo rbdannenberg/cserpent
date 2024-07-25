@@ -11,3 +11,4 @@
 #include <csstring.h>
 
 #include <builtin_functions.h>
+#include <symbol_table.h>

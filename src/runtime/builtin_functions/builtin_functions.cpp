@@ -8,6 +8,7 @@
 #include <data_structures/array.h>
 #include "csstring.h"
 #include <cmath>
+#include <symbol_table.h>
 
 int64_t len(Any x) {
     if (is_ptr(x)) {
@@ -102,4 +103,21 @@ Any is_equal(Any lhs, Any rhs) {
     }
     else res = lhs == rhs;
     return Any {res};
+}
+
+Any apply(Symbol function, const Array& argarray) {
+    return std::invoke(globals::cs_symbol_table.get_function(function), argarray, empty_dict);
+}
+
+Any sendapply(Obj& obj, Symbol method, const Array& argarray) {
+    return obj.call(method, argarray, empty_dict);
+}
+
+Any sendapply(Any obj, Symbol method, const Array& argarray) {
+    if (is_ptr(obj)) {
+        return obj.call(method, argarray, empty_dict);
+    }
+    else {
+        type_error(obj);
+    }
 }

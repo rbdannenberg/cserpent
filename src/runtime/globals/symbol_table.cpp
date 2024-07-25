@@ -5,7 +5,7 @@
 #include "symbol_table.h"
 
 namespace globals {
-    void SymbolTable::set_value(const Symbol& variable_name, Any value) {
+    void SymbolTable::set_value(const Symbol &variable_name, Any value) {
         auto it = table.find(variable_name);
         if (it != table.end()) {
             it->second.first = value;
@@ -13,7 +13,8 @@ namespace globals {
             table[variable_name] = {value, nullptr};
         }
     }
-    Any SymbolTable::get_value(const Symbol& variable_name) {
+
+    Any SymbolTable::get_value(const Symbol &variable_name) {
         auto it = table.find(variable_name);
         if (it != table.end()) {
             return it->second.first;
@@ -23,7 +24,8 @@ namespace globals {
             return {};
         }
     }
-    void SymbolTable::set_function(const Symbol& function_name, GlobalFn fn) {
+
+    void SymbolTable::set_function(const Symbol &function_name, GlobalFn fn) {
         auto it = table.find(function_name);
         if (it != table.end()) {
             if (it->second.second != nullptr) {
@@ -35,7 +37,8 @@ namespace globals {
             table[function_name] = {nil, fn};
         }
     }
-    SymbolTable::GlobalFn SymbolTable::get_function(const Symbol& function_name) {
+
+    SymbolTable::GlobalFn SymbolTable::get_function(const Symbol &function_name) {
         auto it = table.find(function_name);
         if (it != table.end()) {
             return it->second.second;
@@ -46,5 +49,5 @@ namespace globals {
         }
     }
 
-    SymbolTable cs_symbol_table {};
+    SymbolTable cs_symbol_table{};
 }

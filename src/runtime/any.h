@@ -62,6 +62,8 @@ public:
     operator int64_t();
     operator double();
     operator String();
+    operator Symbol();
+    operator Array&();
 
 
 //    Any& operator[](int64_t i);

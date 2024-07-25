@@ -8,14 +8,20 @@
 #include "dictionary.h"
 
 #include <map>
+
 namespace globals {
     class SymbolTable {
-        using GlobalFn = std::function<Any(const Array&, const Dictionary&)>;
+        using GlobalFn = std::function<Any(const Array &, const Dictionary &)>;
         std::unordered_map<Symbol, std::pair<Any, GlobalFn>> table;
-        void set_value(const Symbol& variable_name, Any value);
-        Any get_value(const Symbol& variable_name);
-        void set_function(const Symbol& function_name, GlobalFn fn);
-        GlobalFn get_function(const Symbol& function_name);
+    public:
+
+        void set_value(const Symbol &variable_name, Any value);
+
+        Any get_value(const Symbol &variable_name);
+
+        void set_function(const Symbol &function_name, GlobalFn fn);
+
+        GlobalFn get_function(const Symbol &function_name);
     };
 
     extern SymbolTable cs_symbol_table;
