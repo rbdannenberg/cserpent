@@ -64,6 +64,7 @@ public:
     operator String();
     operator Symbol();
     operator Array&();
+    operator bool();
 
 
 //    Any& operator[](int64_t i);
@@ -78,7 +79,10 @@ public:
 };
 
 inline const Any nil = Any {nullptr};
+inline const Any False = nil;
 extern const Any t;
+extern const Any True;
+
 
 enum class Any_type {
     INT,

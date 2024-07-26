@@ -4,6 +4,7 @@
 #pragma once
 #include <string>
 #include <iostream>
+#include <utility>
 #include "basic_obj.h"
 #include "symbol.h"
 
@@ -54,14 +55,14 @@ class Cs_class : public Obj {
     int64_t more_slots[4];
     // Notice Obj {Cs_class_class}. The class of all Cs_class objects is Cs_class_class!
     Cs_class(Symbol name, int64_t slot_count, int64_t any_slots, MemberTable *table) : Obj {Cs_class_class}{
-        slots[1] = name;
+        slots[1] = std::move(name);
         slots[2].integer = slot_count;
         slots[3].integer = any_slots;
         slots[4].integer = reinterpret_cast<int64_t>(table);
         // A: we could potentially copy the table wholesale, but that mucks around with memory a bit
         // too much for my liking. Get it working first then attempt to refactor.
     };
-    [[nodiscard]] Symbol *get_name() const { return reinterpret_cast<Symbol *>(slots[1].integer); }
+    [[nodiscard]] Symbol get_name() const { return to_symbol(slots[1]); }
     [[nodiscard]] int64_t get_inst_slot_count() const { return slots[2].integer; }
     [[nodiscard]] int64_t get_inst_any_slots() const { return slots[3].integer; }
     [[nodiscard]] MemberTable* get_member_table() const { return reinterpret_cast<MemberTable *>(slots[4].integer); } // reference so we can refactor later

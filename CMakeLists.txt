@@ -97,3 +97,18 @@ add_executable(compilation_output
 )
 target_include_directories(compilation_output PUBLIC ${CS_INCLUDES})
 target_link_libraries(compilation_output runtime)
+
+add_executable(classes_test
+    classes_require/account.cpp
+    classes_require/account.h
+        classes_require/classes_require.cpp
+        classes_require/classes_require.h
+        classes_require/main.cpp
+        classes_require/global_vars.h
+        classes_require/named_account.h
+        #    classes_require/named_account.cpp
+#    classes_require/named_account.h
+)
+target_include_directories(classes_test PUBLIC ${CS_INCLUDES})
+target_link_libraries(classes_test runtime)
+
