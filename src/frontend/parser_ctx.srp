@@ -60,7 +60,7 @@ class ParseContext:
                 this.pos = before_whitespace
             return nil
         
-        tok = this.peek()
+        var tok = this.peek()
         if not match(tok, predicate):
             if should_err:
                 this.err_expect(tok, predicate)
@@ -126,7 +126,7 @@ class ParseContext:
     ### INDENTATION CONTEXT ###
 
     def skip_whitespace():
-        curr_pos = this.pos
+        var curr_pos = this.pos
         for i = this.pos to len(this.input):
             if not match(this.input[i], [TK_INDENT, TK_DEDENT, TK_BREAK]):
                 this.pos = i

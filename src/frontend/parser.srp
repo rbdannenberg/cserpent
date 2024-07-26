@@ -311,11 +311,17 @@ def parse_statement(ctx):
     # print statements
     elif ctx.skip("print", false):
         exps = []
+        var semicolon_encountered = 0
         if not parse_expression(ctx):
             return false
         exps.append(ctx.pop_result())
 
-        while ctx.skip(",", false):
+        while ctx.skip_store([",", ";"], false) and semicolon_encountered <= 2:
+            var is_semi = ctx.pop_partial().content == ";"
+
+            if is_semi:
+                semicolon_encountered = semicolon_encountered + 1
+
             if not parse_expression(ctx):
                 return false
             exps.append(ctx.pop_result())
@@ -343,7 +349,7 @@ def parse_statement(ctx):
             )
             return false
 
-        ctx.set_result(StandaloneExpression(FunctionCall("print", ArgumentList(exps, {}))))
+        ctx.set_result(StandaloneExpression(FunctionCall("display", ArgumentList(exps, {}))))
 
     else:
         ctx.err_fset_miss(FS_EXPRESSION + ["return", "var", "print", "display"])

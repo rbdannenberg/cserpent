@@ -11,10 +11,10 @@ require "debug"
 # Abstract base class for all
 class Expression:
     def init():
-        pass
+        var pass = 1
 
     def accept(visitor):
-        pass
+        var pass = 1
 
 class Literal(Expression):
     var value # a value of type object_type e.g. 5, "hello", etc.

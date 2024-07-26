@@ -11,6 +11,7 @@ def parse_ast(path):
         return err_res("file " + path + " cannot be opened", nil)
     
     tokens = tokenize(file)
+    pretty_print_tokenize_result(tokens)
 
     if not tokens.ok:
         print "lex error:", file.get_formatted_pos(tokens.error.range.start)
