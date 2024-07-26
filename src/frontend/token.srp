@@ -135,21 +135,21 @@ def tk_dec(source_file, pos, boxed_output):
     if not isdigit(stream[pos]):
         return false
     
-    while isdigit(stream[pos]):
+    while pos < len(stream) and isdigit(stream[pos]):
         pos = pos + 1
 
-    if stream[pos] == ".":
+    if pos < len(stream) and stream[pos] == ".":
         pos = pos + 1
-        while isdigit(stream[pos]):
+        while pos < len(stream) and isdigit(stream[pos]):
             pos = pos + 1
         
-    if stream[pos] == "e":
+    if pos < len(stream) and stream[pos] == "e":
         pos = pos + 1
         # TODO: emit error if exponent is empty
         if not isdigit(stream[pos]):
             return false
         
-        while isdigit(stream[pos]):
+        while pos < len(stream) and isdigit(stream[pos]):
             pos = pos + 1
     
     boxed_output[0] = pos
@@ -342,7 +342,7 @@ def tokenize(source_file):
         elif tk_comment(source_file, pos, new_pos): # comment
             pass = 1
 
-        elif tk_number(source_file, pos, new_pos): # nnumeric literal
+        elif tk_number(source_file, pos, new_pos): # numeric literal
             lit = subseq(stream, pos, new_pos[0])
             range = source_file.get_range(pos, new_pos[0])
             tokens.append(Token(TK_LITERAL, lit, range))

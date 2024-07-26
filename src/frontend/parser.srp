@@ -316,15 +316,22 @@ def parse_statement(ctx):
             return false
         exps.append(ctx.pop_result())
 
-        while ctx.skip_store([",", ";"], false) and semicolon_encountered <= 2:
+        while ctx.skip_store([",", ";"], false) and semicolon_encountered <= 1:
             var is_semi = ctx.pop_partial().content == ";"
 
             if is_semi:
                 semicolon_encountered = semicolon_encountered + 1
+            else:
+                exps.append(Literal("\" \"", nil))
 
-            if not parse_expression(ctx):
-                return false
-            exps.append(ctx.pop_result())
+            if semicolon_encountered <= 1:
+                if not parse_expression(ctx):
+                    return false
+                exps.append(ctx.pop_result())
+
+        var last_tok = ctx.input[ctx.pos - 1]
+        if last_tok.content == ";" and semicolon_encountered == 2:
+            ctx.pos = ctx.pos - 1
 
         ctx.set_result(StandaloneExpression(FunctionCall("print", ArgumentList(exps, {}))))
 
