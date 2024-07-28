@@ -1,6 +1,16 @@
 require "utils"
 
 
+class ParsedFile:
+
+    var source_file
+    var ast
+
+    def init(source_file, ast):
+        this.source_file = source_file
+        this.ast = ast
+
+
 class SourceFile:
 
     var file_path
