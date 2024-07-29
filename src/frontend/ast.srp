@@ -316,7 +316,8 @@ class Class:
 class File:
     var deps # all depending files, List[string]
     var elements # list of class/function/block elements, List[Class | Function | BlockElement] if you will
-    def init(_elements):
+    def init(deps, _elements):
+        this.deps = deps
         elements = _elements
 
     def accept(visitor):

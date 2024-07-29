@@ -80,7 +80,7 @@ def format_error(err):
     if err.range == nil:
         range_str = ""
     else:
-        print err.range.file
+        // print err.range.file
         range_str = err.range.file + "(" + str(err.range.start) + "-" + str(err.range.end) + ")"
     
     return range_str + ": " + err.msg

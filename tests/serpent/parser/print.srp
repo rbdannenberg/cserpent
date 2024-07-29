@@ -1,3 +1,5 @@
+load "test"
+
 print "abc", "def"; 123, "456";
 print "abc"
 

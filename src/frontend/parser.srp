@@ -550,7 +550,10 @@ def parse_load_req(ctx):
     if not ctx.skip_store(TK_LITERAL):
         return false
     
-    ctx.pop_partial()
+    var path_lit = ctx.pop_partial().content
+    var path = subseq(path_lit, 1, len(path_lit) - 1)
+    ctx.add_dep(path)
+    print "DEP", path
     return true
         
     # TODO: this is ignored for now; handle import dependencies
@@ -589,5 +592,5 @@ def parse_global_decls(ctx):
 
             decls.append(ctx.pop_result())
     
-    ctx.set_result(File(decls))
+    ctx.set_result(File(ctx.deps, decls))
     return true

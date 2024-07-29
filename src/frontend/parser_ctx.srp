@@ -27,6 +27,7 @@ class ParseContext:
 
     ### CONTEXT & STUFF ###
     var types
+    var deps
 
     ### SETUPS ###
 
@@ -39,6 +40,7 @@ class ParseContext:
         this.should_ignore_whitespace = false
 
         this.types = []
+        this.deps = []
 
     def at_eof():
         return this.pos >= len(this.input)
@@ -105,7 +107,7 @@ class ParseContext:
         return this.error == nil
 
     def err(range, msg):
-        this.error = Error(range, msg)
+        this.error = ParseError(range, msg)
 
     def err_eof():
         err(nil, "unexpected end of file")
@@ -185,3 +187,10 @@ class ParseContext:
 
     def clear_partial(idx):
         this.partial.clear()
+
+
+    ### Deps ###
+
+    def add_dep(path):
+        if path not in this.deps:
+            this.deps.append(path)
