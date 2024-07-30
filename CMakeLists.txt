@@ -106,8 +106,7 @@ add_executable(classes_test
         classes_require/main.cpp
         classes_require/global_vars.h
         classes_require/named_account.h
-        #    classes_require/named_account.cpp
-#    classes_require/named_account.h
+        classes_require/named_account.cpp
 )
 target_include_directories(classes_test PUBLIC ${CS_INCLUDES})
 target_link_libraries(classes_test runtime)

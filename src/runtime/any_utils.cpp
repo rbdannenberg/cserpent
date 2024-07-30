@@ -48,8 +48,7 @@ String force_str(Any x) {
 
 
 Any type_error(Any x) {
-    std::cerr << "Any has incorrect type: " << get_type_str(x) << std::endl;
-    exit(1);
+    throw std::runtime_error("Any has incorrect type: " + get_type_str(x));
 }
 
 Any type_error(Any x, const std::string& function) {

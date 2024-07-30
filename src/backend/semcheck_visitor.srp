@@ -13,6 +13,7 @@ function_corrections = {
 # - Do FunctionCall vs Constructor corrections
 # - Do initialization checking (+ globals)
 # - Adjust Literals to include their types
+# - add return values to all functions
 # - (Eventually) do type checking and inference
 
 
@@ -144,6 +145,9 @@ class SemCheckVisitor(ASTVisitor):
     def visitBlock(block):
         for statement in block.statements:
             statement.accept(this)
+        if function_block: # and not isinstance(block.statements[-1], ReturnStatement):
+            print "here"
+            code_lines.append(indentation + "return nil;")
 
     def visitIf(if_statement):
 
@@ -168,7 +172,9 @@ class SemCheckVisitor(ASTVisitor):
             tables.add_symbol(param, SymbolEntry("variable"))
         for param in function.optional:
             tables.add_symbol(param[0], SymbolEntry("variable"))
+        function_block = true
         function.block.accept(this)
+        function_block = false
         tables.exit_scope()
 
 

@@ -76,7 +76,7 @@ class CodegenVisitor(ASTVisitor):
             curr_code_line = curr_code_line + str(literal.value)
 
     def visitIdentifier(identifier):
-        if current_class and identifier.value in current_class.member_variables:
+        if current_class and identifier.value in current_class.member_variables: # needs to encapsulate all inherited member variables
             curr_code_line = curr_code_line + "get_" + identifier.value + "()"
             return
         curr_code_line = curr_code_line + identifier.value

@@ -15,6 +15,9 @@ void check_dispatch(const Symbol& method, const Array& args, const Dictionary& k
 #endif
 }
 
+Obj::Obj() {
+    set_tag(tag_object);
+}
 
 Obj::Obj(Cs_class * class_ptr) {
     set_slot(0, class_ptr);
@@ -37,10 +40,8 @@ void Obj::set_class_ptr(Cs_class * c_ptr) {
 
 Any Obj::call(const Symbol& method, const Array &args, const Dictionary &kwargs) {
     Cs_class *cs_class = get_class_ptr();
-    MemberTable *table = cs_class->get_member_table();
-    return std::invoke((*table)[method], this, args, kwargs);
+    return std::invoke(cs_class->find_function(method), this, args, kwargs);
 }
-
 
 //Array *cs_symbols = nullptr;
 Cs_class *Cs_class_class = nullptr;
