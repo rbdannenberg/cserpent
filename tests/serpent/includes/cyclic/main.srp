@@ -1,1 +1,2 @@
 require "tests/serpent/includes/cyclic/a.srp"
+require "tests/serpent/includes/cyclic/b.srp"

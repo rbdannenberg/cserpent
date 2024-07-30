@@ -20,7 +20,9 @@ load "debug"
 session = CompilationSession()
 
 // should fail
-result = session.load_main_file("tests/serpent/includes/cyclic/main.srp")
+// result = session.load_main_file("tests/serpent/includes/cyclic/main.srp")
+
+result = session.load_main_file("tests/serpent/full_pipeline/dictionaries.srp")
 
 if result != nil:
     print format_error(result)

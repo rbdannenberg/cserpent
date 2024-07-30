@@ -107,7 +107,7 @@ class ParseContext:
         return this.error == nil
 
     def err(range, msg):
-        this.error = ParseError(range, msg)
+        this.error = Error(range, msg)
 
     def err_eof():
         err(nil, "unexpected end of file")
