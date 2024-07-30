@@ -29,10 +29,12 @@ class CompilationSession:
 
     var entry_point // main file
     var files // files[qualified_file_name] = file_ast
+    var top_order // topological ordering of the files in the project
 
-    def new():
+    def init():
         this.entry_point = nil
         this.files = {}
+        this.top_order = []
 
     # call this to load the entry point of a project
     # returns `nil` on success, or error if otherwise
@@ -43,11 +45,7 @@ class CompilationSession:
                 "compilation session already loaded " + this.entry_point
             )
 
-        var result = this.load_and_parse_file(file_path, [])
-        if not result.ok:
-            return result.err
-
-        return nil
+        return this.load_and_parse_file(file_path, [])
 
     # used internally
     # returns `nil` on success, or error if otherwise
@@ -60,7 +58,7 @@ class CompilationSession:
 
         var result = parse_ast(file_path)
         if not result.ok:
-            return result.err
+            return result.error
 
         this.files[file_path] = result.result
         loaded_stack.append(file_path)
@@ -71,4 +69,10 @@ class CompilationSession:
                 return dep_res
 
         loaded_stack.unappend()
+        if file_path not in this.top_order:
+            this.top_order.append(file_path)
+            
         return nil
+
+    def get_topological_ordering():
+        return this.top_order
