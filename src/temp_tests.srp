@@ -17,12 +17,15 @@ load "debug"
 
 
 
-// res = parse_ast("tests/serpent/full_pipeline/named_account.srp")
-res = parse_ast("tests/serpent/parser/print.srp")
-if not res.ok:
-    print format_error(res.error)
+session = CompilationSession()
 
-print_ast(res.result)
+// should fail
+result = session.load_main_file("tests/serpent/includes/cyclic/main.srp")
+
+if result != nil:
+    print format_error(result)
+
+print "Ordering:", session.get_topological_ordering()
 // visitor = CodegenVisitor("compilation_output")
 // visitor.generate_code("binary_trees", res.result, main=true)
 
