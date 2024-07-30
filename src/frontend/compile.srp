@@ -11,6 +11,7 @@ def parse_ast(path):
         return err_res("file " + path + " cannot be opened", nil)
     
     tokens = tokenize(file)
+    pretty_print_tokenize_result(tokens)
 
     if not tokens.ok:
         print "lex error:", file.get_formatted_pos(tokens.error.range.start)
@@ -22,3 +23,52 @@ def parse_ast(path):
         return Result(false, ctx.error)
 
     return res(ctx.pop_result())
+
+
+class CompilationSession:
+
+    var entry_point // main file
+    var files // files[qualified_file_name] = file_ast
+
+    def new():
+        this.entry_point = nil
+        this.files = {}
+
+    # call this to load the entry point of a project
+    # returns `nil` on success, or error if otherwise
+    def load_main_file(file_path):
+        if this.entry_point != nil:
+            return Error(
+                nil,
+                "compilation session already loaded " + this.entry_point
+            )
+
+        var result = this.load_and_parse_file(file_path, [])
+        if not result.ok:
+            return result.err
+
+        return nil
+
+    # used internally
+    # returns `nil` on success, or error if otherwise
+    def load_and_parse_file(file_path, loaded_stack):
+        if file_path in loaded_stack:
+            return Error(
+                nil,
+                "circular dependency, " + file_path + " is already included"
+            )
+
+        var result = parse_ast(file_path)
+        if not result.ok:
+            return result.err
+
+        this.files[file_path] = result.result
+        loaded_stack.append(file_path)
+
+        for dep in result.result.deps:
+            var dep_res = load_and_parse_file(dep, loaded_stack)
+            if dep_res != nil:
+                return dep_res
+
+        loaded_stack.unappend()
+        return nil

@@ -1,0 +1,9 @@
+load "test"
+
+print "abc", "def"; 123, "456";
+print "abc"
+
+yay = 1
+a = 2;
+b = 3;
+c

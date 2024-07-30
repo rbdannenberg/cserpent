@@ -18,7 +18,7 @@ load "debug"
 
 
 // res = parse_ast("tests/serpent/full_pipeline/named_account.srp")
-res = parse_ast("benchmarks/srp/symbols.srp")
+res = parse_ast("tests/serpent/parser/print.srp")
 if not res.ok:
     print format_error(res.error)
 

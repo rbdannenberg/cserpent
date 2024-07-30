@@ -11,10 +11,10 @@ require "debug"
 # Abstract base class for all
 class Expression:
     def init():
-        pass
+        var pass = 1
 
     def accept(visitor):
-        pass
+        var pass = 1
 
 class Literal(Expression):
     var value # a value of type object_type e.g. 5, "hello", etc.
@@ -314,8 +314,10 @@ class Class:
         visitor.visitClass(this)
 
 class File:
+    var deps # all depending files, List[string]
     var elements # list of class/function/block elements, List[Class | Function | BlockElement] if you will
-    def init(_elements):
+    def init(deps, _elements):
+        this.deps = deps
         elements = _elements
 
     def accept(visitor):

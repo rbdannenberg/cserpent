@@ -45,7 +45,7 @@ KW_STR = [
     "in"
 ]
 
-LITERAL_STR = ["true", "false", "nil"]
+LITERAL_STR = ["true", "false", "nil", "t"]
 
 SYMBOL_STR = [
     "**", "<<", ">>", "<=", "!=", ">=", "==",
@@ -84,7 +84,7 @@ def tk_iden(source_file, pos, boxed_output):
         return false
     
     ptr = pos + 1
-    while ptr < len(stream) and isalnum(stream[ptr]) or stream[ptr] == "_":
+    while ptr < len(stream) and (isalnum(stream[ptr]) or stream[ptr] == "_"):
         ptr = ptr + 1
     
     boxed_output[0] = ptr
@@ -135,21 +135,21 @@ def tk_dec(source_file, pos, boxed_output):
     if not isdigit(stream[pos]):
         return false
     
-    while isdigit(stream[pos]):
+    while pos < len(stream) and isdigit(stream[pos]):
         pos = pos + 1
 
-    if stream[pos] == ".":
+    if pos < len(stream) and stream[pos] == ".":
         pos = pos + 1
-        while isdigit(stream[pos]):
+        while pos < len(stream) and isdigit(stream[pos]):
             pos = pos + 1
         
-    if stream[pos] == "e":
+    if pos < len(stream) and stream[pos] == "e":
         pos = pos + 1
         # TODO: emit error if exponent is empty
         if not isdigit(stream[pos]):
             return false
         
-        while isdigit(stream[pos]):
+        while pos < len(stream) and isdigit(stream[pos]):
             pos = pos + 1
     
     boxed_output[0] = pos
@@ -281,13 +281,19 @@ def indent_size(source_file, start, end):
 
 
 def tokenize(source_file):
-    pos = 0
-    indent_level = 0
-    newline = true # true if a linebreak was just encountered
+    var pos = 0
+    var indent_level = 0
+    var newline = true # true if a linebreak was just encountered
 
     # List<Token>
-    tokens = []
-    stream = source_file.source
+    var tokens = []
+    var stream = source_file.source
+
+    var range
+    var lit
+    var iden
+    var pass
+    var tk_type
 
     while pos < len(stream):
         // print source_file.get_formatted_pos(pos)
@@ -301,15 +307,15 @@ def tokenize(source_file):
                     tokens.append(Token(TK_DEDENT, "", range))
                 return res(tokens)
 
-            whitespace_end = [-1]
+            var whitespace_end = [-1]
             if not tk_whitespace(source_file, pos, whitespace_end):
                 whitespace_end[0] = pos
 
-            res = indent_size(source_file, pos, whitespace_end[0])
-            if not res.ok:
-                return res
+            var result = indent_size(source_file, pos, whitespace_end[0])
+            if not result.ok:
+                return result
             
-            indent = res.result
+            indent = result.result
             range = source_file.get_range(pos, whitespace_end[0])
             if indent < indent_level:
                 for i = indent to indent_level:
@@ -322,7 +328,7 @@ def tokenize(source_file):
             newline = false
 
         # ugly boxed value representation for cursor position
-        new_pos = [-1]
+        var new_pos = [-1]
 
         if stream[pos] == "\n": # line break
             newline = true
@@ -336,7 +342,7 @@ def tokenize(source_file):
         elif tk_comment(source_file, pos, new_pos): # comment
             pass = 1
 
-        elif tk_number(source_file, pos, new_pos): # nnumeric literal
+        elif tk_number(source_file, pos, new_pos): # numeric literal
             lit = subseq(stream, pos, new_pos[0])
             range = source_file.get_range(pos, new_pos[0])
             tokens.append(Token(TK_LITERAL, lit, range))
@@ -344,11 +350,14 @@ def tokenize(source_file):
         elif tk_iden(source_file, pos, new_pos): # identifier
             iden = subseq(stream, pos, new_pos[0])
             tk_type = TK_IDENTIFIER
-
             if iden in KW_STR:
                 tk_type = TK_KEYWORD
             elif iden in LITERAL_STR:
-                ty_type = TK_LITERAL
+                tk_type = TK_LITERAL
+                if iden == "true":
+                    iden = "True"
+                elif iden == "false":
+                    iden = "False"
 
             range = source_file.get_range(pos, new_pos[0])
             tokens.append(Token(tk_type, iden, range))
@@ -388,7 +397,7 @@ def pretty_print_tokenize_result(result):
         for tok in result.result:
             print tok.tk_type, tok.content
     else:
-        err = result.error
-        range_str = str(err.range.start) + "-" + str(err.range.end)
+        var err = result.error
+        var range_str = str(err.range.start) + "-" + str(err.range.end)
         print "Tokenizer Error (" + range_str + ")"
         print err.msg
