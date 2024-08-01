@@ -3,6 +3,8 @@ require "src/frontend/token"
 require "src/frontend/utils"
 require "src/frontend/parser"
 require "src/frontend/parser_ctx"
+require "files"
+require "utils"
 
 
 def parse_ast(path):
@@ -11,7 +13,7 @@ def parse_ast(path):
         return err_res("file " + path + " cannot be opened", nil)
     
     tokens = tokenize(file)
-    pretty_print_tokenize_result(tokens)
+    // pretty_print_tokenize_result(tokens)
 
     if not tokens.ok:
         print "lex error:", file.get_formatted_pos(tokens.error.range.start)
@@ -24,17 +26,53 @@ def parse_ast(path):
 
     return res(ctx.pop_result())
 
+# Looks for file (which could be in a subfolder) in the given load path or paths in SERPENTPATH.
+# Returns the full absolute path of the found file, or nil if no file found
+def find_file(file, load_path):
+    var path = getenv("SERPENTPATH")
+
+    # Extract prefix folders from path (a string)
+    prefixes = [load_path]
+    var prev_i = 0
+    for char at i in path:
+        if char == ":":
+            prefixes.append(subseq(path, prev_i, i))
+            prev_i = i + 1
+    prefixes.append(subseq(path, prev_i))
+
+
+    file = change_file_suffix(file, "srp")
+    for prefix in prefixes:
+        if prefix == "" or prefix.last() != "/":
+            prefix = prefix + "/"
+        full_filename = prefix + file
+        var folder = path_parent(full_filename)
+        var name = file_from_path(full_filename)
+        var files_in_folder = listdir(folder)
+        if files_in_folder and name in listdir(folder):
+            return full_filename
+
+    print "No valid file found"
+    return nil
+
+# NOTE: file_path is currently a relative path, not fully qualified
+# NOTE: the <list of dependencies> is currently only the filenames (no folder information) and no extension,
+# since the resulting compiled c++ has a flat directory structure.
 
 class CompilationSession:
 
     var entry_point // main file
     var files // files[qualified_file_name] = file_ast
+    var deps // files[qualified_file_name] = <list of dependencies>
     var top_order // topological ordering of the files in the project
+    var load_path // directory of the main_file
 
     def init():
         this.entry_point = nil
         this.files = {}
+        this.deps = {}
         this.top_order = []
+        this.load_path = ""
 
     # call this to load the entry point of a project
     # returns `nil` on success, or error if otherwise
@@ -44,12 +82,15 @@ class CompilationSession:
                 nil,
                 "compilation session already loaded " + this.entry_point
             )
+        this.load_path = path_parent(file_path)
 
         return this.load_and_parse_file(file_path, [])
 
     # used internally
     # returns `nil` on success, or error if otherwise
     def load_and_parse_file(file_path, loaded_stack):
+        # A: I think this has the potential of parsing the same file multiple times if it gets required by a lot of files
+
         if file_path in loaded_stack:
             return Error(
                 nil,
@@ -63,10 +104,15 @@ class CompilationSession:
         this.files[file_path] = result.result
         loaded_stack.append(file_path)
 
+        this.deps[file_path] = []
         for dep in result.result.deps:
-            var dep_res = load_and_parse_file(dep, loaded_stack)
+            var dep_res = load_and_parse_file(find_file(dep, load_path), loaded_stack)
+            var dep_trimmed = change_file_suffix(file_from_path(dep), nil)
+            if dep_trimmed not in this.deps[file_path]:
+                this.deps[file_path].append(dep_trimmed)
             if dep_res != nil:
                 return dep_res
+
 
         loaded_stack.unappend()
         if file_path not in this.top_order:

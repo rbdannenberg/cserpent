@@ -401,3 +401,7 @@ Any Any::call(const Symbol& method, const Array &args, const Dictionary &kwargs)
     }
 }
 
+Any::Any(const std::ostream &x) {
+    integer = 0;
+}
+

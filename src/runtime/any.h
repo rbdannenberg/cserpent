@@ -45,6 +45,7 @@ public:
     Any(const Dictionary& x);
     Any(const Obj& x);
     Any(bool x);
+    Any(const std::ostream& x); ///< until print becomes not a function call
 
     /// Implicit conversion: assignment
     /// Return type allows for chaining

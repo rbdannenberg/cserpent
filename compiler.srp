@@ -13,6 +13,7 @@ load "debug"
 debug = false
 compile = false
 output_folder = "output"
+# parsing command line options
 i = 1
 while i < len(command_line_arguments):
     if command_line_arguments[i] == "-d":
@@ -34,33 +35,33 @@ if len(command_line_arguments) != 2:
     print "Incorrect number of arguments"
     print command_line_arguments
     exit()
-file_to_compile = command_line_arguments[1]
+original_target_file = command_line_arguments[1] # relative path, has .srp suffix
 output_folder = change_file_suffix(output_folder, nil)
 mkdir(output_folder)
 
-res = parse_ast(file_to_compile)
-if not res.ok:
-    print format_error(res.error)
+session = CompilationSession()
+res = session.load_main_file(original_target_file)
+if res != nil:
+    print format_error(res)
 
-if debug:
-    print_ast(res.result)
-
-to_compile = []
-pass = 8 # so an error isn't thrown for empty base class
 visitor = CodegenVisitor(output_folder)
-visitor.generate_code(output_folder, res.result, main=true)
-to_compile.append(output_folder + ".cpp")
-to_compile.append(output_folder + ".h")
-to_compile.append("main.cpp")
+pass = 8 # so an error isn't thrown for empty base class
+cmake_files = []
+display session.deps
+for target_file in session.get_topological_ordering():
+    var ast = session.files[target_file]
+    if debug:
+        print_ast(ast)
 
-for child in object_variables(res).values():
-    print child
-# for include_path in res.includes:
-#    parse_result = parse_ast(include_path)
-#    filename = change_file_suffix(file_from_path(include_path), nil)
-#    visitor.generate_code(filename, parse_result.result, main=false)
-#    to_compile.append(filename + ".cpp")
-#    to_compile.append(filename + ".h")
+    var is_main = original_target_file == target_file
+    var target_filename = change_file_suffix(file_from_path(target_file), nil)
+    if target_filename == "main":
+        target_filename = "main__" # main is a reserved word in C++
+    visitor.generate_code(target_filename, ast, session.deps[target_file], main=is_main)
+    if is_main:
+        cmake_files.append("main.cpp")
+    cmake_files.append(target_filename + ".cpp")
+    cmake_files.append(target_filename + ".h")
 
 if compile:
     # write CMakeLists.txt
@@ -81,7 +82,7 @@ if compile:
     cmake_lists.write(")\n")
     cmake_lists.write("set(RUNTIME_LIB_PATH \"" + wd + "cmake-build-release/libruntime.a\")\n")
     cmake_lists.write("add_executable(output\n")
-    for file in to_compile:
+    for file in cmake_files:
         cmake_lists.write("        " + file + "\n")
     cmake_lists.write(")\n")
     cmake_lists.write("target_link_libraries(output \"${RUNTIME_LIB_PATH}\")\n")

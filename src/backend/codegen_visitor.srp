@@ -14,6 +14,7 @@ class CodegenVisitor(ASTVisitor):
     var header_lines
     var main_lines
     var main_includes
+    var header_includes
     var curr_code_line
     var indent_levels
     var include_list
@@ -41,18 +42,20 @@ class CodegenVisitor(ASTVisitor):
         indentation = "    "
         user_defined_classes = []
         global_variables = {}
+        // these 3 act as enums
         source = 0
         header = 1
         main = 2
+
+    def switch_context(ctx):
+        context = ctx
 
     def reset():
         source_lines = []
         header_lines = []
         curr_code_line = ""
         indent_levels = [0, 0, 1]
-
-    def switch_context(ctx):
-        context = ctx
+        switch_context(header)
 
     def add_line(line, optional ctx = nil):
         if ctx == nil:
@@ -106,8 +109,11 @@ class CodegenVisitor(ASTVisitor):
         bin_op.right.accept(this)
 
     def visitUnaryOp(unary_op):
-        curr_code_line = curr_code_line + unary_op.op
+        if unary_op.op == "not":
+            unary_op.op = "!"
+        curr_code_line = curr_code_line + unary_op.op + "("
         unary_op.value.accept(this)
+        curr_code_line = curr_code_line + ")"
 
     def visitArray(array_node):
         # array literal, adds a 
@@ -170,7 +176,7 @@ class CodegenVisitor(ASTVisitor):
         if function_call.name in function_corrections.keys():
             function_call.name = function_corrections[function_call.name]
         var args = function_call.parameters.args
-        if function_call.name == "print":
+        if function_call.name == "print" or function_call.name == "display":
             curr_code_line = curr_code_line + "std::cout << "
             if len(function_call.parameters.kwargs) != 0:
                 print "Error: print function does not take keyword arguments"
@@ -380,7 +386,6 @@ class CodegenVisitor(ASTVisitor):
         var class_ptr = class_.name + "_class"
         var function_list = []
         add_line("extern Cs_class * " + class_ptr + ";")
-        print "here1", context
         add_line("class " + class_.name + " : public Obj {")
         add_line("public:")
         indent_levels[context] = indent_levels[context] + 1
@@ -477,6 +482,8 @@ class CodegenVisitor(ASTVisitor):
         main_lines.append("}")
         var main_file = open(output_folder + "/main.cpp", "w")
         var global_vars_file = open(output_folder + "/global_vars.h", "w")
+        global_vars_file.write("#pragma once\n")
+        global_vars_file.write("#include <runtime.h>\n")
         main_includes.append("#include \"global_vars.h\"")
         for line in main_includes:
             main_file.write(line + "\n")
@@ -488,7 +495,7 @@ class CodegenVisitor(ASTVisitor):
         main_file.close()
         global_vars_file.close()
 
-    def generate_code(filename, ast, keyword main):
+    def generate_code(filename, ast, deps, keyword main):
         reset()
         ast.accept(this)
         var source_file = open(output_folder + "/" + filename + ".cpp", "w")
@@ -497,6 +504,8 @@ class CodegenVisitor(ASTVisitor):
         for line in source_lines:
             source_file.write(line + "\n")
         var header_file = open(output_folder + "/" + filename + ".h", "w")
+        for dep in deps:
+            header_file.write("#include \"" + dep + ".h\"\n")
         for line in header_lines:
             header_file.write(line + "\n")
         source_file.close()
@@ -504,8 +513,7 @@ class CodegenVisitor(ASTVisitor):
         if main:
             main_includes.append("#include \"" + filename + ".h\"")
             generate_main(filename, ast)
-        else:
-            print "Not implemented yet"
+
         reset()
 
 

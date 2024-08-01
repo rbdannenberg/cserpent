@@ -59,6 +59,10 @@ class Cs_class : public Obj {
         slots[1] = std::move(name);
         slots[2].integer = slot_count;
         slots[3].integer = any_slots;
+        if (parent != nullptr) {
+            MemberTable parent_table_copy = *(parent->get_member_table());
+            table->merge(std::move(parent_table_copy)); // since merge alters the argument, we use a temporary copy
+        }
         slots[4].integer = reinterpret_cast<int64_t>(table);
         slots[5].integer = reinterpret_cast<int64_t>(parent);
         // A: we could potentially copy the table wholesale, but that mucks around with memory a bit
@@ -73,9 +77,6 @@ class Cs_class : public Obj {
         MemberTable *table = get_member_table();
         auto it = table->find(function_name);
         if (it == table->end()) {
-            if (get_parent() != nullptr) {
-                return get_parent()->find_function(function_name);
-            }
             throw std::runtime_error("Function not found in class or parent class.");
         }
         return it->second;
