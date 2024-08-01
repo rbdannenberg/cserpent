@@ -1,4 +1,4 @@
-require "account"
+require "extras/account"
 
 class Named_account(Account)
     var name

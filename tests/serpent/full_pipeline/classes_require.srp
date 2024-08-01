@@ -1,5 +1,5 @@
-require "account.srp"
-//require "named_account.srp"
+require "extras/account.srp"
+//require "extras/named_account.srp"
 
 # test it
 #

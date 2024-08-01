@@ -184,7 +184,7 @@ class CodegenVisitor(ASTVisitor):
             for i = 0 to len(args):
                 args[i].accept(this)
                 if i < len(args) - 1
-                    curr_code_line = curr_code_line + " << \" \" << "
+                    curr_code_line = curr_code_line + " << "
             curr_code_line = curr_code_line + " << std::endl"
         elif function_call.name == "exit":
             curr_code_line = curr_code_line + "exit(0)"
@@ -248,10 +248,12 @@ class CodegenVisitor(ASTVisitor):
         # same goes for index
         if current_class and isinstance(assignment.identifier, Identifier) and assignment.identifier.value in current_class.member_variables:
             if curr_code_line != "":
-                print "Should be empty, weird"
+                print_ast(assignment)
+                print curr_code_line, "Should be empty, weird", current_class
             curr_code_line = "set_" + assignment.identifier.value + "("
             assignment.expression.accept(this)
             add_line(curr_code_line + ");")
+            curr_code_line = ""
             return
         assignment.identifier.accept(this)
         curr_code_line = curr_code_line + " = "

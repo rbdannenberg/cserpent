@@ -553,7 +553,7 @@ def parse_load_req(ctx):
     var path_lit = ctx.pop_partial().content
     var path = subseq(path_lit, 1, len(path_lit) - 1)
     ctx.add_dep(path)
-    print "DEP", path
+    # print "DEP", path
     return true
         
     # TODO: this is ignored for now; handle import dependencies

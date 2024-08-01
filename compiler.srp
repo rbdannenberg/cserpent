@@ -47,7 +47,6 @@ if res != nil:
 visitor = CodegenVisitor(output_folder)
 pass = 8 # so an error isn't thrown for empty base class
 cmake_files = []
-display session.deps
 for target_file in session.get_topological_ordering():
     var ast = session.files[target_file]
     if debug:
