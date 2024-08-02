@@ -45,6 +45,7 @@ public:
     Any(const Dictionary& x);
     Any(const Obj& x);
     Any(bool x);
+    Any(const std::ostream& x); ///< until print becomes not a function call
 
     /// Implicit conversion: assignment
     /// Return type allows for chaining
@@ -64,6 +65,7 @@ public:
     operator String();
     operator Symbol();
     operator Array&();
+    operator bool();
 
 
 //    Any& operator[](int64_t i);
@@ -78,7 +80,10 @@ public:
 };
 
 inline const Any nil = Any {nullptr};
+inline const Any False = nil;
 extern const Any t;
+extern const Any True;
+
 
 enum class Any_type {
     INT,

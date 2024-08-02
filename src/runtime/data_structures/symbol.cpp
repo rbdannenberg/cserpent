@@ -120,5 +120,5 @@ std::ostream& operator<<(std::ostream& os, const Symbol& x) {
 }
 
 const Any t {Symbol {"t"}};
-
+const Any True {t};
 

@@ -1,5 +1,5 @@
-require "account.srp"
-require "named_account.srp"
+require "extras/account.srp"
+//require "extras/named_account.srp"
 
 # test it
 #
@@ -10,14 +10,14 @@ def account_test()
     if not account.withdraw(10)
         print "don't have $10"
 
-def named_account_test()
-    named_account = Named_account("Klaatu", 1000)
-    named_account.show()
-    named_account.withdraw(300) // inherited method
-    named_account.show()
+//def named_account_test()
+  //  named_account = Named_account("Klaatu", 1000)
+    //named_account.show()
+   // named_account.withdraw(300) // inherited method
+   // named_account.show()
 
 # run it ...
 account_test()
-named_account_test()
+//named_account_test()
 
 exit()

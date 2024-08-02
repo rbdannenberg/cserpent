@@ -40,8 +40,7 @@ String force_str(Any x) {
         case Any_type::NIL: return String {"nil"};
         case Any_type::T: return String {"t"};
         case Any_type::OBJ: {
-            std::cerr << "Object to string conversion not implemented" << std::endl;
-            break;
+            return String {temp_str((reinterpret_cast<Obj*>(x.integer)->get_class_ptr()->get_name()))};
         }
         default: type_error(x);
     }
@@ -49,8 +48,7 @@ String force_str(Any x) {
 
 
 Any type_error(Any x) {
-    std::cerr << "Any has incorrect type: " << get_type_str(x) << std::endl;
-    exit(1);
+    throw std::runtime_error("Any has incorrect type: " + get_type_str(x));
 }
 
 Any type_error(Any x, const std::string& function) {

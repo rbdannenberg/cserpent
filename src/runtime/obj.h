@@ -4,6 +4,7 @@
 #pragma once
 #include <string>
 #include <iostream>
+#include <utility>
 #include "basic_obj.h"
 #include "symbol.h"
 
@@ -16,6 +17,7 @@ class Obj : public Basic_obj {
 public:
     // Note: there should be no member variables here. All data should be stored in slots.
 
+    Obj();
     Obj(Cs_class *class_ptr);
 
     uint64_t get_any_slots();
@@ -51,20 +53,34 @@ inline constexpr size_t member_table_slot_count = (sizeof(MemberTable) + sizeof(
 class Cs_class : public Obj {
   public:
     // make sure object gets allocated with enough space for 5 slots:
-    int64_t more_slots[4];
+    int64_t more_slots[5];
     // Notice Obj {Cs_class_class}. The class of all Cs_class objects is Cs_class_class!
-    Cs_class(Symbol name, int64_t slot_count, int64_t any_slots, MemberTable *table) : Obj {Cs_class_class}{
-        slots[1] = name;
+    Cs_class(Symbol name, int64_t slot_count, int64_t any_slots, MemberTable *table, Cs_class * parent=nullptr) : Obj {Cs_class_class}{
+        slots[1] = std::move(name);
         slots[2].integer = slot_count;
         slots[3].integer = any_slots;
+        if (parent != nullptr) {
+            MemberTable parent_table_copy = *(parent->get_member_table());
+            table->merge(std::move(parent_table_copy)); // since merge alters the argument, we use a temporary copy
+        }
         slots[4].integer = reinterpret_cast<int64_t>(table);
+        slots[5].integer = reinterpret_cast<int64_t>(parent);
         // A: we could potentially copy the table wholesale, but that mucks around with memory a bit
         // too much for my liking. Get it working first then attempt to refactor.
     };
-    [[nodiscard]] Symbol *get_name() const { return reinterpret_cast<Symbol *>(slots[1].integer); }
+    [[nodiscard]] Symbol get_name() const { return to_symbol(slots[1]); }
     [[nodiscard]] int64_t get_inst_slot_count() const { return slots[2].integer; }
     [[nodiscard]] int64_t get_inst_any_slots() const { return slots[3].integer; }
     [[nodiscard]] MemberTable* get_member_table() const { return reinterpret_cast<MemberTable *>(slots[4].integer); } // reference so we can refactor later
+    [[nodiscard]] Cs_class* get_parent() const { return reinterpret_cast<Cs_class *>(slots[5].integer); }
+    [[nodiscard]] MemberFn find_function(Symbol function_name) {
+        MemberTable *table = get_member_table();
+        auto it = table->find(function_name);
+        if (it == table->end()) {
+            throw std::runtime_error("Function not found in class or parent class.");
+        }
+        return it->second;
+    }
 };
 
 // global symbol table (this should be a dictionary when they are implemented):

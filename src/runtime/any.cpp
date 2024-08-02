@@ -344,6 +344,10 @@ Any::operator Array&() {
     return as_array(*this);
 }
 
+Any::operator bool() {
+    return *this != nil;
+}
+
 static bool is_string_or_symbol(Any x) {
     uint64_t string_or_symbol_mask = 0xFFFE000000000000uLL;
     // return (x.integer & string_or_symbol_mask) == STR_TAG;
@@ -395,5 +399,9 @@ Any Any::call(const Symbol& method, const Array &args, const Dictionary &kwargs)
     else {
         type_error(*this);
     }
+}
+
+Any::Any(const std::ostream &x) {
+    integer = 0;
 }
 
