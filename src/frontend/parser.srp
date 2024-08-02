@@ -516,11 +516,19 @@ def parse_function(ctx):
 def parse_class(ctx):
     if not ctx.skip_store(TK_IDENTIFIER):
         return false
+    
+    var name = ctx.pop_partial().content
+    var parent = nil
+    if ctx.skip("(", false):
+        if not (ctx.skip_store(TK_IDENTIFIER) and ctx.skip(")")):
+            return false
+        
+        parent = ctx.pop_partial().content
+
     ctx.skip(":", false)
     if not (ctx.br() and ctx.indent()):
         return false
 
-    var name = ctx.pop_partial().content
     var vars = []
     var funcs = []
     while ctx.get(TK_DEDENT, false) == nil:
@@ -540,7 +548,7 @@ def parse_class(ctx):
     if not ctx.dedent():
         return false
 
-    ctx.set_result(Class(name, vars, funcs))
+    ctx.set_result(Class(name, parent, vars, funcs))
     return true
 
 

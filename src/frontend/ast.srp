@@ -302,11 +302,13 @@ class Function:
 
 class Class:
     var name # : string
+    var parent # : string
     var member_variables # : List[string] # but how to handle types?
     var member_functions # : List[Function]
     var parents # : List[string]
-    def init(_name, _member_variables, _member_functions):
+    def init(_name, _parent, _member_variables, _member_functions):
         name = _name
+        parent = _parent
         member_variables = _member_variables
         member_functions = _member_functions
 
