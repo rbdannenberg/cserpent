@@ -10,15 +10,6 @@
 #include "dictionary.h"
 #include "csstring.h"
 
-constexpr uint64_t BIAS         =    0x1000000000000uLL;
-constexpr uint64_t INT_TAG      = 0xFFFC000000000000uLL;
-constexpr uint64_t TAG_MASK     = 0xFFFF000000000000uLL;
-constexpr uint64_t PTR_TAG      = 0x0000000000000000uLL;
-constexpr uint64_t STR_TAG      = 0xFFFA000000000000uLL;
-constexpr uint64_t SYMBOL_TAG   = 0xFFFB000000000000uLL;
-constexpr size_t num_chars = 5; // 8 bytes - 2 (tag) - 1 (nul terminator)
-
-
 /**
 Hexadecimal to Binary Conversion Table:
 
@@ -74,20 +65,35 @@ Any::Any(void* x) {
 
 Any::Any(String x) {
 #ifdef DEBUG
-    if (x.tag != static_cast<int16_t>(0xFFFA)) {
+    if ((x.data & string_tag) != string_tag) {
         std::cerr << "Precondition failed: string corrupted" << std::endl;
         return {};
     }
 #endif
-    integer = 0; // So the potential pointer does not get freed
-    std::swap(x.data, integer); // Any takes on the information in the String
-    // Any copies of the resulting Any will point to the same std::string - "controlled aliasing"
-    // This is fine since no operation modifies the contents of the std::string, only returning a new
-    // String, separating the aliasing and maintaining value semantics for both Any and String.
-    // This is similar to copy-on-write.
-    // Thus, only the String-to-Any constructor, String-to-Any assignment and Any-to-String to_str need
-    // special care. Default Any copy/move constructor/assignment are preserved.
-    // Currently, the only leaks are 1 per String to Any conversion. This is acceptable.
+    // make an Any from a String. A String can be short (packed into
+    // integer) or long (pointer to std::string). I'm guessisng that
+    // C++ has already made a String copy, so x is a copy of the actual
+    // parameter and we can just transfer bits of x into this->integer.
+    // However, I also think x.~String() will run, so we will alter x
+    // to prevent it's original value from being deallocated.
+    integer = x.data;
+    x.data = 0;
+
+    // integer = 0; // So the potential pointer does not get freed
+    //std::swap(x.data, integer);
+    /* I don't understand any of this -RBD
+    // Any takes on the information in the String
+    // Any copies of the resulting Any will point to the same
+    // std::string - "controlled aliasing" This is fine since no
+    // operation modifies the contents of the std::string, only
+    // returning a new String, separating the aliasing and maintaining
+    // value semantics for both Any and String.  This is similar to
+    // copy-on-write.  Thus, only the String-to-Any constructor,
+    // String-to-Any assignment and Any-to-String to_str need special
+    // care. Default Any copy/move constructor/assignment are
+    // preserved.  Currently, the only leaks are 1 per String to Any
+    // conversion. This is acceptable.
+    */
 }
 
 Any::Any(Symbol x) {
@@ -97,8 +103,11 @@ Any::Any(Symbol x) {
         return {};
     }
 #endif
-    integer = 0;
-    std::swap(x.data, integer);
+    integer = x.data;
+    // x is a copy of the actual parameter that will be deconstructed on
+    // return; we've taken ownership of the string in x, so fix x so that
+    // the string will not be destroyed.
+    x.data = 0;
 }
 
 Any::Any(const Array& x) {
@@ -146,14 +155,20 @@ Any& Any::operator=(double x) {
 }
 
 Any& Any::operator=(String x) {
-    integer = 0;
-    std::swap(integer, x.data);
+    integer = x.data;
+    // x is already a copy of the actual parameter, and x will be
+    // destroyed on return. We've taken ownership of the string, so
+    // fix x so that the string will not be destroyed.
+    x.data = 0;
     return *this;
 }
 
 Any& Any::operator=(Symbol x) {
-    integer = 0;
-    std::swap(integer, x.data);
+    integer = x.data;
+    // x is already a copy of the actual parameter, and x will be
+    // destroyed on return. We've taken ownership of the string, so
+    // fix x so that the string will not be destroyed.
+    x.data = 0;
     return *this;
 }
 

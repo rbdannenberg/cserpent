@@ -9,40 +9,60 @@
 #include "any.h"
 
 
-// distinguish between short and long strings by the 47th bit. Pointers will have 1, short
-// strings will have 0, for the nul terminator.
-// number of useful characters in a short string (i.e. does not include the nul terminator)
-static constexpr int64_t max_short_size = 5;
-static constexpr uint16_t string_tag = 0xFFFA;
-static constexpr uint64_t long_tag = 0xFFFA800000000000; // for long strings only, 0xFFFA for regular tag, 8 to distinguish between nul terminator
-static constexpr uint64_t empty_string = 0xFFFA000000000000;
+// distinguish between short and long strings by the 47th
+// bit. Pointers will have 1, short strings will have 0, for the nul
+// terminator.
+
+// number of useful characters in a short string
+// (i.e. does not include the nul terminator)
+static constexpr int64_t max_short_size = 4;
+
+// for long strings only, 0xFFFA for regular tag, 8 to distinguish
+// between nul terminator
+static constexpr uint64_t long_short_tag = 0x800000000000;
+
+static constexpr uint64_t long_mask = TAG_MASK | long_short_tag;
+
+static constexpr uint64_t long_str_tag = STR_TAG | long_short_tag;
+
+static constexpr uint64_t empty_string = STR_TAG;
+
 
 // O(max_short_size)
 static bool is_short_literal(const char * literal) {
     for (int64_t i = 0; i < max_short_size + 1; i++) {
-        if (literal[i] == '\0') return true;
+        if (literal[i] == '\0') {
+            return true;
+        }
     }
     return false;
 }
 
+
 static bool is_short_string(const String& s) {
-    return s.chars[5] == '\0';
+    return !(s.data & long_short_tag);
 }
+
 
 static std::string * get_str_ptr(uint64_t s) {
-    return reinterpret_cast<std::string*>(s & ~long_tag); // you might worry about the 47th bit, but that ensures we get a "canonical" pointer
+     // you might worry about the 47th bit, but that ensures we get a
+     // "canonical" pointer
+    return reinterpret_cast<std::string*>(s & ~long_mask);
 }
 
-static uint64_t get_str_data(std::string * s) {
-    return reinterpret_cast<uint64_t>(s) | long_tag;
+
+static uint64_t str_pointer_to_data(std::string * s) {
+    return reinterpret_cast<uint64_t>(s) | long_str_tag;
 }
+
 
 /// @brief temporary conversion to exploit the std::string library
 /// static so we don't expose it outside of this file
 /// I believe std::string has optimizations for short strings as well, so this shouldn't be too wasteful
-static std::string temp_str(const String& s) {
+std::string temp_str(const String& s) {
     if (is_short_string(s)) {
-        std::string result {s.chars}; // should stop upon nul terminator
+        // should stop upon nul terminator
+        std::string result {s.chars + STR_BASE};
         assert(result.size() == len(s));
         return result;
     } else {
@@ -50,26 +70,37 @@ static std::string temp_str(const String& s) {
     }
 }
 
+
 String::String() : data {empty_string} {}
+
+
 String::String(char c) {
-    tag = string_tag;
-    chars[0] = c;
-    chars[1] = '\0';
-    chars[5] = '\0';
+    data = STR_TAG;
+    chars[STR_BASE + 0] = c;
+    chars[STR_BASE + 1] = '\0';
 }
 
-String::String(const char* literal) {
+
+uint64_t literal_string_to_data(const char *literal) {
+    uint64_t data;
     if (is_short_literal(literal)) {
+        return STR_TAG;
+        char *chars = reinterpret_cast<char *>(data);
         for (int64_t i = 0; i < max_short_size; i++) {
-            tag = string_tag;
-            chars[i] = literal[i];
+            chars[STR_BASE + i] = literal[i];
             chars[5] = '\0';
         }
     } else {
-        data = get_str_data(new std::string(literal));
+        return str_pointer_to_data(new std::string(literal));
     }
 }
+
+String::String(const char* literal) :
+    data { literal_string_to_data(literal) }  {}
+
+
 String::String(const std::string& s) : String {s.c_str()} {}
+
 
 String::~String() {
     if (!is_short_string(*this)) {
@@ -77,15 +108,20 @@ String::~String() {
     }
 }
 
-String::String(const String& other) {
+
+uint64_t copy_string_to_data(const String& other) {
     if (is_short_string(other)) {
-        data = other.data;
+        return other.data;
     } else {
         auto new_str = new std::string {*get_str_ptr(other.data)};
-        data = get_str_data(new_str);
-//        data = get_str_data(new std::string(*get_str_ptr(other.data)));
+        return str_pointer_to_data(new_str);
     }
 }
+
+
+String::String(const String& other) : 
+    data { copy_string_to_data(other) } { }
+
 
 void swap(String& first, String& second) noexcept {
     using std::swap;
@@ -93,27 +129,35 @@ void swap(String& first, String& second) noexcept {
 }
 
 
+/* WHAT IS THIS?
 String::String(String&& other) : data {} {
     swap(*this, other);
 }
+*/
 
+/* Overloading assignment to do swap?
 String& String::operator=(String other) {
     swap(*this, other);
     return *this;
 }
+*/
+
 
 char String::operator[](int64_t i) const {
     if (is_short_string(*this)) {
-        return chars[i];
+        return chars[STR_BASE + i];
     } else {
         return (*get_str_ptr(data))[i];
     }
 }
 
 int64_t len(const String& s) {
+    // len can be anything from 0 to 4
     if (is_short_string(s)) {
-        for (int64_t i = 0; i <= max_short_size; i++) { // len can be anything from 0 to 5
-            if (s.chars[i] == '\0') return i;
+        for (int64_t i = 0; i <= max_short_size; i++) {
+            if (s.chars[i] == '\0') {
+                return i;
+            }
         }
     } else {
         return get_str_ptr(s.data)->size();
@@ -138,9 +182,11 @@ String subseq(const String& s, int64_t start, int64_t end) {
     if (is_short_string(s)) {
         String result {};
         for (int64_t i = start; i < end; i++) {
+            // check destination index in bounds:
             assert(0 <= i - start && i - start < max_short_size);
+            // check source index in bounds:
             assert(0 <= i && i < max_short_size);
-            result.chars[i - start] = s.chars[i];
+            result.chars[STR_BASE + i - start] = s.chars[STR_BASE + i];
         }
         return result;
     } else {
@@ -173,7 +219,7 @@ String toupper(const String& s) {
     if (is_short_string(s)) {
         String result {};
         for (int64_t i = 0; i < len(s); i++) {
-            result.chars[i] = std::toupper(s.chars[i]);
+            result.chars[STR_BASE + i] = std::toupper(s.chars[STR_BASE + i]);
         }
         return result;
     } else {
@@ -185,11 +231,12 @@ String toupper(const String& s) {
     }
 }
 
+
 String tolower(const String& s) {
     if (is_short_string(s)) {
         String result {};
         for (int64_t i = 0; i < len(s); i++) {
-            result.chars[i] = std::tolower(s.chars[i]);
+            result.chars[STR_BASE + i] = std::tolower(s.chars[STR_BASE + i]);
         }
         return result;
     } else {
@@ -201,27 +248,33 @@ String tolower(const String& s) {
     }
 }
 
+
 bool operator==(const String& a, const String& b) {
     return temp_str(a) == temp_str(b);
 }
 
+
 String operator+(const String& a, const String& b) {
     return String {temp_str(a) + temp_str(b)};
 }
+
 
 std::ostream& operator<<(std::ostream& os, const String& x) {
     os << temp_str(x);
     return os;
 }
 
+
 int64_t ord(const String& s) {
-    if (is_short_string(s)) return s.chars[0];
+    if (is_short_string(s)) return s.chars[STR_BASE + 0];
     else return get_str_ptr(s.data)->at(0);
 }
+
 
 String chr(int64_t i) {
     return String {static_cast<char>(i)};
 }
+
 
 String strcat(const String& lhs, const String& rhs) {
     return String {temp_str(lhs) + temp_str(rhs)};

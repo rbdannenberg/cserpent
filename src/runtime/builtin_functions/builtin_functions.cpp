@@ -106,7 +106,8 @@ Any is_equal(Any lhs, Any rhs) {
 }
 
 Any apply(Symbol function, const Array& argarray) {
-    return std::invoke(globals::cs_symbol_table.get_function(function), argarray, empty_dict);
+    return std::invoke(globals::cs_symbol_table.get_function(function),
+                       argarray, empty_dict);
 }
 
 Any sendapply(Obj& obj, Symbol method, const Array& argarray) {

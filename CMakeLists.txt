@@ -70,10 +70,15 @@ add_executable(runtime_test
 target_include_directories(runtime_test PUBLIC ${CS_INCLUDES})
 target_link_libraries(runtime_test runtime)
 
-# mem_test - memory tests (no GC testing yet)
-add_executable(mem_test tests/c++/runtime/memtest.cpp)
-target_include_directories(mem_test PUBLIC ${CS_INCLUDES})
-target_link_libraries(mem_test runtime)
+# memtest - memory tests (no GC testing yet)
+add_executable(memtest tests/c++/runtime/memtest.cpp)
+target_include_directories(memtest PUBLIC ${CS_INCLUDES}) 
+target_link_libraries(memtest runtime) 
+
+# gctest - tests for garbage collector
+add_executable(gctest tests/c++/runtime/gctest.cpp)
+target_include_directories(gctest PUBLIC ${CS_INCLUDES}) 
+target_link_libraries(gctest runtime) 
 
 add_executable(cpptest tests/c++/runtime/cpptest.cpp)
 
@@ -90,24 +95,28 @@ add_executable(stringtest
 target_include_directories(stringtest PUBLIC ${CS_INCLUDES})
 
 
-add_executable(compilation_output
-    compilation_output/compilation_output.h
-        compilation_output/compilation_output.cpp
-    compilation_output/main.cpp
-)
-target_include_directories(compilation_output PUBLIC ${CS_INCLUDES})
-target_link_libraries(compilation_output runtime)
+if(EXISTS compilation_output/compilation_output.cpp) 
+  add_executable(compilation_output
+      compilation_output/compilation_output.h
+          compilation_output/compilation_output.cpp
+      compilation_output/main.cpp
+  )
+  target_include_directories(compilation_output PUBLIC ${CS_INCLUDES})
+  target_link_libraries(compilation_output runtime)
+endif()
 
-add_executable(classes_test
-    classes_require/account.cpp
-    classes_require/account.h
-        classes_require/classes_require.cpp
-        classes_require/classes_require.h
-        classes_require/main.cpp
-        classes_require/global_vars.h
-        classes_require/named_account.h
-        classes_require/named_account.cpp
-)
-target_include_directories(classes_test PUBLIC ${CS_INCLUDES})
-target_link_libraries(classes_test runtime)
+if(EXISTS classes_require/account.cpp)
+  add_executable(classes_test
+      classes_require/account.cpp
+      classes_require/account.h
+          classes_require/classes_require.cpp
+          classes_require/classes_require.h
+          classes_require/main.cpp
+          classes_require/global_vars.h
+          classes_require/named_account.h
+          classes_require/named_account.cpp
+  )
+  target_include_directories(classes_test PUBLIC ${CS_INCLUDES})
+  target_link_libraries(classes_test runtime)
+endif()
 

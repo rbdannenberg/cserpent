@@ -7,6 +7,8 @@
 
 #pragma once
 
+using std::size_t;
+
 // forward declaration of Array and Dictionary for call()
 
 union String;
@@ -15,6 +17,14 @@ union Symbol;
 class Dictionary;
 class Basic_obj;
 class Obj;
+
+constexpr uint64_t BIAS         =    0x1000000000000uLL;
+constexpr uint64_t INT_TAG      = 0xFFFC000000000000uLL;
+constexpr uint64_t TAG_MASK     = 0xFFFF000000000000uLL;
+constexpr uint64_t PTR_TAG      = 0x0000000000000000uLL;
+constexpr uint64_t STR_TAG      = 0xFFFA000000000000uLL;
+constexpr uint64_t SYMBOL_TAG   = 0xFFFB000000000000uLL;
+
 
 union Any {
     uint64_t integer;

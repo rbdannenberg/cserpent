@@ -16,7 +16,9 @@
 class Chunk;
 
 extern int64_t cs_heapsize;
-extern int64_t cs_allocated;
+extern int64_t cs_current_bytes_allocated;
+extern int64_t cs_current_object_count;
+extern int64_t cs_allocations;
 extern Chunk *cs_chunk_list;
 
 

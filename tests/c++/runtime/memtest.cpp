@@ -13,9 +13,16 @@
 
 using namespace std;
 
-constexpr int nobjs = 1000;
+constexpr int nobjs = 1000000;
 Basic_obj *objects[nobjs];
 long allocation_j[nobjs];
+
+// This test does not use GC so gc_mark_roots() is only here to satisfy
+// the linker
+void gc_mark_roots()
+{
+    return;
+}
 
 
 int main()
@@ -31,8 +38,19 @@ int main()
     for (long i = 0; i < nobjs; i++) {
         objects[i] = nullptr;
     }
+    
+    // simplest test first: free immediately
+    for (long i = 0; i < 100; i++) {
+        long size = ((random() % 1000) & 0x07) + 16;
+        Basic_obj *obj = (Basic_obj *) csmalloc(size);
+        csfree(obj);
+    }
+    
+    // test special size 47353
+    Basic_obj *obj = (Basic_obj *) csmalloc(47353);
+    csfree(obj);
 
-    for (long j = 0; j < 1000000; j++) {
+    for (long j = 0; j < 1000; j++) {
         // pick a random size using a pseudo-float approach to bias toward
         // picking smaller sizes
         long logsize = random() % 17 + 4;  // 4 to 20
@@ -51,6 +69,7 @@ int main()
             }            
             csfree(objects[index]);
         }
+
         // allocate new object
         objects[index] = (Basic_obj *) csmalloc(size);
         allocation_j[index] = j;  // at what iteration was this allocated?
@@ -76,7 +95,8 @@ int main()
     cout << "Total memory in heap: " << cs_heapsize << endl;
     cout << "    less available memory in chunk: " <<
             (cs_heapsize - cs_chunkmem()) << endl;
-    cout << "Total allocated: " << cs_allocated << endl;
+    cout << "Total current bytes allocated: " <<
+            cs_current_bytes_allocated << endl;
     cout << "Total of object sizes: " << total << endl;
     
 }

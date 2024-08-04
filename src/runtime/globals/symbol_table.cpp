@@ -10,7 +10,7 @@ namespace globals {
         if (it != table.end()) {
             it->second.first = value;
         } else {
-            table[variable_name] = {value, nullptr};
+            table[variable_name].first = value;
         }
     }
 
@@ -34,11 +34,12 @@ namespace globals {
             }
             it->second.second = fn;
         } else {
-            table[function_name] = {nil, fn};
+            table[function_name].second = fn;
         }
     }
 
-    SymbolTable::GlobalFn SymbolTable::get_function(const Symbol &function_name) {
+    SymbolTable::GlobalFn SymbolTable::get_function(
+            const Symbol &function_name) {
         auto it = table.find(function_name);
         if (it != table.end()) {
             return it->second.second;
@@ -47,6 +48,14 @@ namespace globals {
             throw std::runtime_error("");
             return {};
         }
+    }
+
+    void SymbolTable::add_symbol(const Symbol &symbol) {
+        auto it = table.find(symbol);
+        if (it != table.end()) {
+            return;
+        }
+        table[symbol] = {nullptr, nullptr};
     }
 
     SymbolTable cs_symbol_table{};

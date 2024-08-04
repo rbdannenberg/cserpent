@@ -9,22 +9,27 @@
 #include "symbol.h"
 
 class Cs_class;
-extern Cs_class *Cs_class_class;
+extern Cs_class *cs_class_class;  // Cs_class inherits from Obj, so instqnces of
+// Cs_class must have a class pointer. The pointer is cs_class_class.
 
 //// all user-defined objects inherit from this, which has a class
 //// pointer in slots[0]
 class Obj : public Basic_obj {
 public:
-    // Note: there should be no member variables here. All data should be stored in slots.
+    // Note: there should be no member variables here.
+    // All data should be stored in slots.
 
     Obj();
     Obj(Cs_class *class_ptr);
 
     uint64_t get_any_slots();
     
-    /* There used to be pure virtual functions here call and get, but because of issues with memory management,
-     * we will move towards attaching a dictionary to every Cs_class object that maps Symbols to fields and methods.
-     * In essence, this is a custom vtable implementation that gives us more control over memory layout.
+    /* There used to be pure virtual functions here call and get, but
+     * because of issues with memory management, we will move towards
+     * attaching a dictionary to every Cs_class object that maps
+     * Symbols to fields and methods.  In essence, this is a custom
+     * vtable implementation that gives us more control over memory
+     * layout.
      */
     Cs_class * get_class_ptr();
 
@@ -34,15 +39,21 @@ public:
     void set_class_ptr(Cs_class * c_ptr);
 };
 
-void check_dispatch(const Symbol& method, const Array& args, const Dictionary& kwargs, size_t args_len, size_t kwargs_len);
+void check_dispatch(const Symbol& method, const Array& args,
+                    const Dictionary& kwargs, size_t args_len,
+                    size_t kwargs_len);
 
 
-// The symbol table should exist globally, because Symbols can be generated on the fly. Instead of populating them with
-// the correct mappings each time, just treat them as unique strings/keys into the dictionary.
+// The symbol table should exist globally, because Symbols can be generated
+// on the fly. Instead of populating them with the correct mappings each
+// time, just treat them as unique strings/keys into the dictionary.
 using MemberFn = std::function<Any(Obj*, const Array&, const Dictionary&)>;
 using MemberTable = std::unordered_map<Symbol, MemberFn>;
 
-inline constexpr size_t member_table_slot_count = (sizeof(MemberTable) + sizeof(int64_t) - 1) / sizeof(int64_t) - 1;
+extern MemberTable cs_class_table;
+
+inline constexpr size_t member_table_slot_count =
+        (sizeof(MemberTable) + sizeof(int64_t) - 1) / sizeof(int64_t) - 1;
 
 
 // This is the class of class descriptors. A Cs_class has these fields:
@@ -53,31 +64,43 @@ inline constexpr size_t member_table_slot_count = (sizeof(MemberTable) + sizeof(
 class Cs_class : public Obj {
   public:
     // make sure object gets allocated with enough space for 5 slots:
-    int64_t more_slots[5];
-    // Notice Obj {Cs_class_class}. The class of all Cs_class objects is Cs_class_class!
-    Cs_class(Symbol name, int64_t slot_count, int64_t any_slots, MemberTable *table, Cs_class * parent=nullptr) : Obj {Cs_class_class}{
+    int64_t more_slots[5];  // more_slots[0] aliases with slots[1]
+    
+    // Notice Obj {Cs_class_class}. The class of all Cs_class objects is
+    // Cs_class_class!
+    Cs_class(Symbol name, int64_t slot_count, int64_t any_slots,
+             MemberTable *table, Cs_class * parent=nullptr) :
+            Obj {cs_class_class} {
         slots[1] = std::move(name);
         slots[2].integer = slot_count;
         slots[3].integer = any_slots;
         if (parent != nullptr) {
             MemberTable parent_table_copy = *(parent->get_member_table());
-            table->merge(std::move(parent_table_copy)); // since merge alters the argument, we use a temporary copy
+            // since merge alters the argument, we use a temporary copy
+            table->merge(std::move(parent_table_copy));
         }
         slots[4].integer = reinterpret_cast<int64_t>(table);
         slots[5].integer = reinterpret_cast<int64_t>(parent);
-        // A: we could potentially copy the table wholesale, but that mucks around with memory a bit
-        // too much for my liking. Get it working first then attempt to refactor.
+        // A: we could potentially copy the table wholesale, but that mucks
+        // around with memory a bit too much for my liking. Get it right
+        // first then attempt to refactor.
     };
     [[nodiscard]] Symbol get_name() const { return to_symbol(slots[1]); }
-    [[nodiscard]] int64_t get_inst_slot_count() const { return slots[2].integer; }
-    [[nodiscard]] int64_t get_inst_any_slots() const { return slots[3].integer; }
-    [[nodiscard]] MemberTable* get_member_table() const { return reinterpret_cast<MemberTable *>(slots[4].integer); } // reference so we can refactor later
-    [[nodiscard]] Cs_class* get_parent() const { return reinterpret_cast<Cs_class *>(slots[5].integer); }
+    [[nodiscard]] int64_t get_inst_slot_count() const {
+        return slots[2].integer; }
+    [[nodiscard]] int64_t get_inst_any_slots() const {
+        return slots[3].integer; }
+    [[nodiscard]] MemberTable* get_member_table() const {
+        // reference so we can refactor later:
+        return reinterpret_cast<MemberTable *>(slots[4].integer); }
+    [[nodiscard]] Cs_class* get_parent() const {
+        return reinterpret_cast<Cs_class *>(slots[5].integer); }
     [[nodiscard]] MemberFn find_function(Symbol function_name) {
         MemberTable *table = get_member_table();
         auto it = table->find(function_name);
         if (it == table->end()) {
-            throw std::runtime_error("Function not found in class or parent class.");
+            throw std::runtime_error(
+                    "Function not found in class or parent class.");
         }
         return it->second;
     }

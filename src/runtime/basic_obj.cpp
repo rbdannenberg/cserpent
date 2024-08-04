@@ -5,26 +5,23 @@
 #include "basic_obj.h"
 #include "csmem.h"
 
-#ifdef CSMALLOC
 void *Basic_obj::operator new(size_t size) {
     return csmalloc(size);
 }
 
 
-void Basic_obj::operator delete(void *p) noexcept {
-    csfree(p);
-}
-#endif
-
 // get the object pointed to by this object's header
 Basic_obj *Basic_obj::get_next()
 {
+    assert((uint64_t)((header  & ~0xFFFFE00000000000uLL) << 3) == 0 ||
+           (uint64_t)((header  & ~0xFFFFE00000000000uLL) << 3) > 0x100000000);
     return (Basic_obj *) ((header & ~0xFFFFE00000000000uLL) << 3);
 }
 
 
 void Basic_obj::set_next(Basic_obj *ptr)
 {
+    assert(!ptr || (int64_t) ptr > 0x100000000);
     header = (header & ~0x00001FFFFFFFFFFFuLL) |
              (((uint64_t) ptr) >> 3);
 }
@@ -59,6 +56,13 @@ void Basic_obj::set_color(Gc_color c)
 }
 
 
+void Basic_obj::set_white()
+{
+    assert(get_color() == GC_GRAY);
+    header = (header & 0xF9FFE00000000000uLL) | 0x0600000000000000uLL;
+}
+
+
 int64_t Basic_obj::get_slot_count()
 {
     int64_t nslots = (header >> 45) & 0xFFF;
@@ -76,6 +80,7 @@ int64_t Basic_obj::get_size()
 
 void Basic_obj::set_slot(int i, Any x) {
     Basic_obj *xptr;
+    assert(i >= 0 && i < get_slot_count());
     if (write_block && x.integer && is_ptr(x) &&
         (xptr = to_ptr(x))->get_color() == GC_BLACK &&
         get_color() != GC_BLACK) {

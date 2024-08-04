@@ -8,7 +8,7 @@
 #include "op_overload.h"
 
 
-static std::unordered_map<Any, Any> *to_map(const Dictionary& x) {
+std::unordered_map<Any, Any> *to_map(const Dictionary& x) {
     return (std::unordered_map<Any, Any> *) x.slots;
 }
 

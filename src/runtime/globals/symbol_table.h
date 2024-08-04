@@ -10,6 +10,7 @@
 #include <map>
 
 namespace globals {
+    // SymbolTable maps from Symbol to a value/function pair.
     class SymbolTable {
         using GlobalFn = std::function<Any(const Array &, const Dictionary &)>;
         std::unordered_map<Symbol, std::pair<Any, GlobalFn>> table;
@@ -22,6 +23,8 @@ namespace globals {
         void set_function(const Symbol &function_name, GlobalFn fn);
 
         GlobalFn get_function(const Symbol &function_name);
+        
+        void add_symbol(const Symbol &symbol);
     };
 
     extern SymbolTable cs_symbol_table;

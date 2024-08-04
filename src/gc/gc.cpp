@@ -4,11 +4,44 @@
 // Jun 2024
 
 #include "any.h"
+#include "csstring.h"
 #include "gc.h"
 #include "obj.h"
 #include "data_structures/array.h"
+#include "data_structures/dictionary.h"
 #include "data_structures/symbol.h"
 #include "csmem.h"
+
+#if GC_DEBUG
+// 1 is an address that will never match
+Basic_obj *gc_trace_ptr = (Basic_obj *) 0x108008058;
+
+char *color_name[] = {"FREE", "BLACK", "GRAY", "WHITE"};
+char *tag_name[] = { "free", "symbol", "integer", "string",
+                     "array", "dict", "object", "file" };
+
+
+void gc_trace(Basic_obj *obj, const char *msg)
+{
+    gc_trace_2(obj, msg, -9999);
+}
+
+
+void gc_trace_2(Basic_obj *obj, const char *msg, int index)
+{
+    if (obj == gc_trace_ptr) {
+        Basic_obj *next = obj->get_next();
+        assert((uint64_t) next == 0 || (uint64_t) next > 0x100000000);
+        printf("gc_trace %p in %s,", obj, msg);
+        if (index != -9999) {
+            printf(" %d", index);
+        }
+        printf(" tag %s (%d) color %s (%d) size %lld\n",
+               tag_name[obj->get_tag()], obj->get_tag(),
+               color_name[obj->get_color()], obj->get_color(), obj->get_size());
+    }
+}
+#endif
 
 enum {
     GC_START,
@@ -24,6 +57,7 @@ enum {
 
 Gc_color initial_color = GC_WHITE;
 bool write_block = false;
+int64_t gc_cycles = 0;
 
 static Basic_obj *gray_list = nullptr;
 static Chunk *sweep_chunk = nullptr;
@@ -43,6 +77,9 @@ void if_node_make_gray(Any x) {
     if (is_ptr(x)) {
         basic_obj_make_gray(to_ptr(x));
     }
+    // in the case of String and Symbol, each is either self-contained
+    // as a short string or a pointer to a std::string, so there is
+    // nothing to do in the Mark phase
 }
 
 
@@ -64,24 +101,32 @@ void gc_poll()
     while (work_done < WORK_PER_POLL) {
         switch (gc_state) {
         case GC_START:
+            printf("*** Starting GC cycle ***\n");
             initial_color = GC_WHITE;
             write_block = true;
-//            basic_obj_make_gray(cs_symbols); I think this is no longer necessary because the symbol table is in
-//            global memory, not on either heap
+//            basic_obj_make_gray(cs_symbols); I think this is no longer
+//            necessary because the symbol table is in
+//            global memory, not on either heap. [RBD:] But then we need
+//            to mark everything referenced by globals. Isn't it better to
+//            use a cserpent dictionary as a symbol table? GC_START should
+//            take (small) constant time.
+            gc_mark_roots(); // mark objects accessible through globals
             gc_state = GC_MARK;
             break;
         case GC_MARK:
             while (work_done < WORK_PER_POLL) {
                 obj = gray_list;
+                gc_trace(obj, "GC_MARK gray list");
                 if (!obj) {
                     gc_state = GC_MARK2;
                     break;
                 }
                 gray_list = gray_list->get_next();
-                obj->set_color(GC_WHITE);
+                obj->set_white();
                 
                 switch (obj->get_tag()) {
                 case tag_free:
+                    break;
                 case tag_symbol:
                     // since this is a Symbol, we know the 3 slots are pointers
                     // or nil, so we don't have to decode Any to see if it is
@@ -97,8 +142,7 @@ void gc_poll()
                 case tag_string:
                     work_done += MARK_NODE_COST;
                     break;
-                case tag_array:
-                case tag_dict: {
+                case tag_array: {
                     Array *array = (Array *) obj;
                     std::vector<Any> *data = (std::vector<Any> *) obj->slots;
                     // if the array is big, we want to mark the array
@@ -120,13 +164,24 @@ void gc_poll()
                     }
                     break;
                 }
+                case tag_dict: {
+                    // TODO: For incremental GC with large dictionaries, you
+                    // cannot use C++ map because you cannot iterate over
+                    // entries in small batches, allowing inserts to take
+                    // place while iterating.
+                    for (auto const& x : *to_map((Dictionary &) obj)) {
+                        if_node_make_gray(x.first);
+                        if_node_make_gray(x.second);
+                    }
+                    break;
+                }
                 case tag_object:
                 case tag_file: {
                     Obj *o = (Obj *) obj;
                     int64_t slots = o->get_slot_count();
                     uint64_t anyslots = o->get_any_slots();  // returns bit set
                     for (int64_t i = 0; i < slots; i++) {
-                        if ((1 << i) & anyslots) {
+                        if (((int64_t) 1 << i) & anyslots) {
                             if_node_make_gray(o->slots[i]);
                         }
                     }
@@ -163,28 +218,44 @@ void gc_poll()
         }
         case GC_MARK2:  // after GC_MARK; not used yet, so fall through
         case GC_MARK3:
+            printf("Start GC_SWEEP\n");
             write_block = false;  // nothing more will be put on gray list
             sweep_chunk = cs_chunk_list;
             sweep_ptr = sweep_chunk->chunk;  // iterates over objects
             initial_color = GC_GRAY;
             work_done += SWEEP_NODE_COST;
+            gc_state = GC_SWEEP;
             // fall through to GC_SWEEP
-        case GC_SWEEP: {  // free black nodes, oh sweet jesus this sounds so racist;
-            // I'd switch to RED/GREEN right now, but I'm a member of the Cherokee nation.
-            // In all seriousness, PLEASE suggest better terminology if you find these
-            // WHITE/GRAY/BLACK labels inappropriate or insensitive.
+        case GC_SWEEP: {  // free black nodes, oh sweet jesus this sounds
+            // so racist; I'd switch to RED/GREEN right now, but I'm a member
+            // of the Cherokee nation.
+            // In all seriousness, PLEASE suggest better terminology if you
+            // find these WHITE/GRAY/BLACK labels inappropriate or insensitive.
             while (work_done < WORK_PER_POLL) {
-                if (sweep_chunk) {
-                    sweep_ptr = sweep_chunk->chunk;
-                } else {
-                    initial_color = GC_BLACK;
-                    gc_state = GC_SWEEP2;
-                    break;
-                }
+                // printf("    sweep_ptr %p sweep_chunk %p\n",
+                //        sweep_ptr, sweep_chunk);
                 Basic_obj *obj = (Basic_obj *) sweep_ptr;
+                gc_trace(obj, "GC_SWEEP");
                 int64_t sz = obj->get_size();
+                // printf("sweep_ptr %p, color %d, obj size %lld\n", sweep_ptr,
+                //        obj->get_color(), sz);
                 if (obj->get_color() == GC_BLACK) {
-                    if (obj->has_tag(tag_file)) {
+                    if (obj->has_tag(tag_object)) {
+                        // find all strings and free them. Symbols may point
+                        // to a unique, shared std::string, which is not freed.
+                        Obj *o = (Obj *) obj;
+                        int64_t slots = o->get_slot_count();
+                        // returns bit set
+                        uint64_t anyslots = o->get_any_slots();
+                        for (int i = 0; i < slots; i++) {
+                            if (((1 << i) & anyslots) && is_str(o->slots[i])) {
+                                gc_trace_2(obj, "free string slot", i);
+                                (reinterpret_cast<
+                                 String &>(o->slots[i])).~String();
+                            }
+                        }
+                        work_done += slots * MARK_NODE_COST;
+                    } else if (obj->has_tag(tag_file)) {
                         /* TODO: implement Cs_file
                         Cs_file *csfile = (Cs_file *) obj;
                         if (csfile->get_file()) {
@@ -193,17 +264,29 @@ void gc_poll()
                         csfile->set_file(NULL);
                          */
                     }
-                    CSFREE(obj);
-                    work_done += FREE_NODE_COST;
+                    if (!obj->has_tag(tag_free)) {
+                        CSFREE(obj);
+                        work_done += FREE_NODE_COST;
+                    }
                 } else if (obj->get_color() == GC_FREE) {
                     work_done += SWEEP_NODE_COST;
                 } else if (obj->get_color() == GC_WHITE) {
+                    gc_trace(obj, "GC_SWEEP, changing white to black");
                     obj->set_color(GC_BLACK);
                     work_done += COLOR_NODE_COST;
                 }
                 sweep_ptr += ((sz + 7) & ~7);  // round up to 8-byte alignment
                 if (sweep_ptr >= sweep_chunk->next_free) {
+                    // printf("sweep_ptr %p sweep_chunk->next_free %p\n",
+                    //        sweep_ptr, sweep_chunk->next_free);
                     sweep_chunk = sweep_chunk->next;
+                    if (sweep_chunk) {
+                        sweep_ptr = sweep_chunk->chunk;
+                    } else {
+                        initial_color = GC_BLACK;
+                        gc_state = GC_SWEEP2;
+                        break;
+                    }
                 }
             }
             break;
@@ -214,6 +297,7 @@ void gc_poll()
             while (work_done < WORK_PER_POLL && gray_list) {
                 obj = gray_list;
                 gray_list = gray_list->get_next();
+                gc_trace(obj, "GC_SWEEP2, off gray_list, set black");
                 obj->set_color(GC_BLACK);
                 work_done += COLOR_NODE_COST;
             }
@@ -224,12 +308,14 @@ void gc_poll()
         case GC_FINAL:
             // set high water mark where gc starts again to 1.5 times current
             // amount of memory in use:
-            gc_high_water = cs_allocated;
+            gc_high_water = cs_current_bytes_allocated;
             gc_high_water += (gc_high_water >> 1);
             gc_state = GC_IDLE;
+            gc_cycles++;
             return;  // exit loop; do not look for more work
+            printf("*** GC cycle ended ***\n");
         case GC_IDLE:
-            if (cs_allocated > gc_high_water) {
+            if (cs_current_bytes_allocated > gc_high_water) {
                 gc_state = GC_START;
             }
             return;  // exit loop because our state might still be GC_IDLE
@@ -259,3 +345,76 @@ void gc_alter_array(Array *a)
         gc_array_index = 0; // start over
     }
 }
+
+#if GC_DEBUG_2
+void list_check(Basic_obj *head, long slots) {
+    extern Cs_class *obj_class;  // defined in gc_test
+    while (head) {
+        // printf("list_check for %ld slots: %p\n", slots, head);
+        assert(head != cs_class_class);
+        assert(head != obj_class);
+        int64_t actual = head->get_slot_count();
+        assert(actual == slots);
+        head = head->get_next();
+    }
+}
+
+// heap_check - scan heap and check for valid structure
+//
+// copied from csmem.cpp:
+#define LOG2_MAX_LINEAR_BYTES 9 // up to (512 - 16) byte chunks
+#define MAX_LINEAR_BYTES (1 << LOG2_MAX_LINEAR_BYTES)
+#define LOG2_MAX_EXPONENTIAL_BYTES 25 // up to 16MB = 2^24
+#define LOG2_MEM_QUANTUM 4  // linear sizes increment by this
+#define MEM_QUANTUM (1 << LOG2_MEM_QUANTUM)
+extern Basic_obj *linear_free[MAX_LINEAR_BYTES / MEM_QUANTUM - 1];
+extern Basic_obj *exponential_free[LOG2_MAX_EXPONENTIAL_BYTES -
+                                   LOG2_MAX_LINEAR_BYTES];
+//
+void gc_heap_check()
+{
+    Chunk *chunk = cs_chunk_list;
+    char *ptr = chunk->chunk;  // iterates over objects
+    Basic_obj *obj = nullptr;
+    Basic_obj *prev = nullptr;
+    int64_t sz = 0;
+    
+    while (true) {
+        prev = obj;
+        int64_t prev_size = sz;
+        
+        obj = (Basic_obj *) ptr;  // iterates over objects
+        sz = obj->get_size();
+        obj->get_next();  // checks reasonable next field
+        if (obj->has_tag(tag_object)) {
+            assert(obj->slots[0].integer > 0x100000000);
+        }
+        ptr += ((sz + 7) & ~7);  // round up to 8-byte alignment
+        if (ptr >= chunk->next_free) {
+            assert(ptr == chunk->next_free);
+            chunk = chunk->next;
+            if (chunk) {
+                ptr = chunk->chunk;
+            } else {
+                break;
+            }
+        }
+    }
+
+    // make sure all free lists only contain freed objects of the right
+    // size
+    long elem_size = 16;
+    for (int i = 0; i < MAX_LINEAR_BYTES / MEM_QUANTUM - 1; i++) {
+        long sz = (i + 1) << LOG2_MEM_QUANTUM;
+        long slots = (sz - 8) / 8;
+        list_check(linear_free[i], slots);
+    }
+    elem_size = MAX_LINEAR_BYTES;
+    for (int i = 0; i < LOG2_MAX_EXPONENTIAL_BYTES - LOG2_MAX_LINEAR_BYTES;
+         i++) {
+        long sz = 1 << (i + LOG2_MAX_LINEAR_BYTES);
+        long slots = (sz - 8) / 8;
+        list_check(exponential_free[i], slots);
+    }
+}
+#endif

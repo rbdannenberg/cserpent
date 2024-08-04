@@ -11,7 +11,9 @@
 #include "csmem.h"
 
 int64_t cs_heapsize = 0;
-int64_t cs_allocated = 0;
+int64_t cs_current_bytes_allocated = 0;
+int64_t cs_current_object_count = 0;
+int64_t cs_allocations = 0;
 
 
 //----------- heap consists of a list of large memory areas ----------
@@ -109,16 +111,24 @@ void *csmalloc(size_t size)
     // actual slot count stored in the first slot location, so we have no
     // way to encode 0 slots.
     assert(size >= 16);
-    int64_t slots = (size - 1) >> 3;  // 8 bytes per slot, not counting header,
-    // so if there are 2 slots, the object size is 24, and 23 / 8 = 2.
-    cs_allocated += (slots + 1) << 3;  // allocated only counts bytes used,
-            // rounded up to multiple of 8, not any additional fragmentation
     Basic_obj **head = head_ptr_for_size(&size);
+    int64_t slots = (size - 1) >> 3;  // 8 bytes per slot, not counting header,
+    // so if there are 2 slots, the object size is 24, and 23 / 8 = 2.;
     // now size is the actual allocation size, not the object size
+    cs_current_bytes_allocated += (slots + 1) << 3;  // allocated includes
+            // unused bytes, if there is fragmentation (e.g.
+            // head_ptr_for_size(&size) will round size up to the next
+            // allocation size, so this may create some unused space in
+            // an object.) I would prefer to count only requested, i.e.
+            // used, bytes, but when we free objects, we do not have any
+            // record of what was originally requested, and to know
+            // this would require more storage and or more work.
     void *result;
 
     assert(head);  // must have a freelist corresponding to size
-
+    // check for plausible pointer
+    assert(*head == nullptr || ((int64_t) *head) > 0x100000000);
+    
     if (*head) {  // return object from list if possible
         result = (void *) *head;
         *head = (*head)->get_next();
@@ -161,11 +171,16 @@ got_it:  // set header and return object
     // different slot counts, e.g. it could be 2 or 3 and be on the
     // same free list:
     if (slots >= 4096) {
-        ((Basic_obj *) result)->slots[0] = slots;
+        ((Basic_obj *) result)->slots[0].integer = slots;
         slots = 0;
     }
     ((Basic_obj *) result)->header = (((int64_t) tag_object)<< 59) +
+                                     (((int64_t) initial_color) << 57) +
                                      (slots << 45);
+    assert(((Basic_obj *) result)->get_size() == size);
+    cs_current_object_count++;
+    cs_allocations++;
+    gc_trace((Basic_obj *) result, "allocated");
     return result;
 }
 
@@ -206,6 +221,8 @@ void cssummary()
         elem_size *= 2;
     }
     std::cout << "-------- total free bytes " << total_free << std::endl;
+    std::cout << cs_current_object_count <<
+                 " currently allocated objects" << std::endl;
 }
 #endif
 
@@ -214,13 +231,21 @@ void csfree(void *object)
 {
     // can only free Basic_obj objects
     Basic_obj *obj = (Basic_obj *) object;
+    
+    // check for plausible pointer
+    assert(((int64_t) obj) > 0x100000000);
+    
+    gc_trace(obj, "freed");
     size_t size = (size_t) (obj->get_size());
-    cs_allocated -= size;
+    cs_current_bytes_allocated -= size;
 
     Basic_obj **head = head_ptr_for_size(&size);
     assert(head);
     obj->set_next(*head);
     obj->set_tag(tag_free);
     *head = obj;
+    cs_current_object_count--;
+    // printf("pointer to obj size %lld at %p -> %p\n",
+    //       obj->get_size(), head, obj);
 }
 
