@@ -27,7 +27,8 @@ enum Gc_color {
     GC_WHITE = 3
 };
 
-extern Gc_color initial_color;
+extern Gc_color gc_initial_color;
+extern Basic_obj *gc_gray_list;
 extern bool write_block;
 
 // how many mark/sweep cycles have been completed?
@@ -40,6 +41,14 @@ void gc_poll();
 // this function is defined by the runtime system to call basic_obj_make_gray
 // on all heap objects accessible through globals
 void gc_mark_roots();
+
+#if GC_DEBUG
+void gc_heap_print();
+void gc_gray_check();
+#else
+#define gc_heap_print()
+#define gc_gray_check()
+#endif
 
 #if GC_DEBUG_2
 void gc_heap_check();

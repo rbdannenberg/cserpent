@@ -32,6 +32,9 @@ void gc_mark_roots()
     basic_obj_make_gray(cs_class_class);
     basic_obj_make_gray(obj_class);
     for (int i = 0; i < obj_cache_size; i++) {
+        /* if (obj_cache[i]) {
+            printf("%d: %p\n", i, obj_cache[i]);
+        } */
         basic_obj_make_gray(obj_cache[i]);
     }
 }
@@ -78,9 +81,6 @@ int main()
         Obj *obj = (Obj *) csmalloc(slots * 8);
         // printf("allocated obj %p size %ld\n", obj, slots * 8);
         obj->set_slot(0, obj_class);
-        if (j % 1 == 0) {  // run gc every N objects (not sure what the
-            gc_poll();       //    value should be)
-        }
         allocation_j[j] = obj;  // what was allocated on this iteration?
 
         // fill object slots
@@ -111,11 +111,42 @@ int main()
         // Every once in awhile, write a new object into the cache
         // Every 10 objects means the average lifetime in the cache is 100
         if (random() % 10 == 0) {
+            gc_trace(obj, "storing obj in cache");
             obj_cache[random() % obj_cache_size] = obj;
+            // now obj has a reference to it. Does GC need to know?
+            if (write_block) {
+                basic_obj_make_gray(obj);
+            }
         }
+
+        // Now that we took care of obj, either creating a reference to it
+        // or not, we can do some garbage collecting.
+        if (j % 1 == 0) {  // run gc every N objects (not sure what the
+            gc_poll();       //    value should be)
+        }
+
         gc_heap_check();  // debugging consistency check
+        gc_gray_check();
     }
     
+    // run a full cycle of GC without creating anything to see how much
+    // we can free. Before starting, erase the obj_cache to free those objects:
+    for (int i = 0; i < obj_cache_size; i++) {
+        // check: none of the cached objects has been freed:
+        assert(!obj_cache[i] || obj_cache[i]->get_color() != GC_FREE);
+        obj_cache[i] = nullptr;
+    }
+    cout << "Number of currently allocated objects: " <<
+            cs_current_object_count << endl;
+    int gc_cycle_target = (int) gc_cycles + 2;  // finish this one, run one more
+    while (gc_cycles < gc_cycle_target) {
+        extern int64_t gc_high_water;  // hack this to allow GC to run again
+        gc_high_water = 0;
+        gc_poll();
+    }
+    cout << "Completed full GC cycle without new allocation." << endl;
+    gc_heap_print();
+
 #ifdef SUMMARY
     cssummary();
 #endif

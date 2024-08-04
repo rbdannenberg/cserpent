@@ -14,7 +14,7 @@
 
 #if GC_DEBUG
 // 1 is an address that will never match
-Basic_obj *gc_trace_ptr = (Basic_obj *) 0x108008058;
+Basic_obj *gc_trace_ptr = (Basic_obj *) 0x00000001080098a8;
 
 char *color_name[] = {"FREE", "BLACK", "GRAY", "WHITE"};
 char *tag_name[] = { "free", "symbol", "integer", "string",
@@ -55,16 +55,16 @@ enum {
     GC_IDLE
 } gc_state = GC_START;
 
-Gc_color initial_color = GC_WHITE;
+Gc_color gc_initial_color = GC_WHITE;
 bool write_block = false;
 int64_t gc_cycles = 0;
 
-static Basic_obj *gray_list = nullptr;
+Basic_obj *gc_gray_list = nullptr;
 static Chunk *sweep_chunk = nullptr;
 static char *sweep_ptr = nullptr;
 static Array *gc_array = nullptr;
 static int64_t gc_array_index = 0;
-static int64_t gc_high_water = CHUNK_SIZE / 2;
+int64_t gc_high_water = CHUNK_SIZE / 2;
 
 static const int SWEEP_NODE_COST = 1;
 static const int FREE_NODE_COST = 2;
@@ -84,10 +84,11 @@ void if_node_make_gray(Any x) {
 
 
 void basic_obj_make_gray(Basic_obj *obj) {
+    gc_trace(obj, "basic_obj_make_gray");
     if (obj && obj->get_color() == GC_BLACK) {
         obj->set_color(GC_GRAY);
-        obj->set_next(gray_list);
-        gray_list = obj;
+        obj->set_next(gc_gray_list);
+        gc_gray_list = obj;
     }
 }
 
@@ -101,8 +102,8 @@ void gc_poll()
     while (work_done < WORK_PER_POLL) {
         switch (gc_state) {
         case GC_START:
-            printf("*** Starting GC cycle ***\n");
-            initial_color = GC_WHITE;
+            // printf("*** Starting GC cycle ***\n");
+            gc_initial_color = GC_WHITE;
             write_block = true;
 //            basic_obj_make_gray(cs_symbols); I think this is no longer
 //            necessary because the symbol table is in
@@ -115,13 +116,13 @@ void gc_poll()
             break;
         case GC_MARK:
             while (work_done < WORK_PER_POLL) {
-                obj = gray_list;
+                obj = gc_gray_list;
                 gc_trace(obj, "GC_MARK gray list");
                 if (!obj) {
                     gc_state = GC_MARK2;
                     break;
                 }
-                gray_list = gray_list->get_next();
+                gc_gray_list = gc_gray_list->get_next();
                 obj->set_white();
                 
                 switch (obj->get_tag()) {
@@ -218,11 +219,11 @@ void gc_poll()
         }
         case GC_MARK2:  // after GC_MARK; not used yet, so fall through
         case GC_MARK3:
-            printf("Start GC_SWEEP\n");
+            // printf("Start GC_SWEEP\n");
             write_block = false;  // nothing more will be put on gray list
             sweep_chunk = cs_chunk_list;
             sweep_ptr = sweep_chunk->chunk;  // iterates over objects
-            initial_color = GC_GRAY;
+            gc_initial_color = GC_GRAY;
             work_done += SWEEP_NODE_COST;
             gc_state = GC_SWEEP;
             // fall through to GC_SWEEP
@@ -283,8 +284,9 @@ void gc_poll()
                     if (sweep_chunk) {
                         sweep_ptr = sweep_chunk->chunk;
                     } else {
-                        initial_color = GC_BLACK;
+                        gc_initial_color = GC_BLACK;
                         gc_state = GC_SWEEP2;
+                        // printf("** start GC_SWEEP2 **\n");
                         break;
                     }
                 }
@@ -294,14 +296,15 @@ void gc_poll()
         case GC_SWEEP2:
             // in this phase, we take gray objects that were created during
             // GC_SWEEP and make them black
-            while (work_done < WORK_PER_POLL && gray_list) {
-                obj = gray_list;
-                gray_list = gray_list->get_next();
-                gc_trace(obj, "GC_SWEEP2, off gray_list, set black");
+            while (work_done < WORK_PER_POLL && gc_gray_list) {
+                obj = gc_gray_list;
+                gc_gray_list = gc_gray_list->get_next();
+                gc_trace(obj, "GC_SWEEP2, off gc_gray_list, set black");
                 obj->set_color(GC_BLACK);
                 work_done += COLOR_NODE_COST;
             }
-            if (!gray_list) {
+            if (!gc_gray_list) {
+                // printf("** end GC_SWEEP2 **\n");
                 gc_state = GC_FINAL;
             }
             break;
@@ -312,8 +315,8 @@ void gc_poll()
             gc_high_water += (gc_high_water >> 1);
             gc_state = GC_IDLE;
             gc_cycles++;
+            // printf("*** GC cycle ended ***\n");
             return;  // exit loop; do not look for more work
-            printf("*** GC cycle ended ***\n");
         case GC_IDLE:
             if (cs_current_bytes_allocated > gc_high_water) {
                 gc_state = GC_START;
@@ -346,7 +349,7 @@ void gc_alter_array(Array *a)
     }
 }
 
-#if GC_DEBUG_2
+#if GC_DEBUG
 void list_check(Basic_obj *head, long slots) {
     extern Cs_class *obj_class;  // defined in gc_test
     while (head) {
@@ -355,6 +358,8 @@ void list_check(Basic_obj *head, long slots) {
         assert(head != obj_class);
         int64_t actual = head->get_slot_count();
         assert(actual == slots);
+        assert(head->get_color() == GC_FREE);
+        assert(head->get_tag() == tag_free);
         head = head->get_next();
     }
 }
@@ -371,7 +376,12 @@ extern Basic_obj *linear_free[MAX_LINEAR_BYTES / MEM_QUANTUM - 1];
 extern Basic_obj *exponential_free[LOG2_MAX_EXPONENTIAL_BYTES -
                                    LOG2_MAX_LINEAR_BYTES];
 //
-void gc_heap_check()
+// controls for what heap_scan does:
+constexpr int heap_check = 0;  // expensive scan heap and make tests
+constexpr int heap_print = 1;  // print all objects in use (not free)
+constexpr int gray_check = 2;  // look for gray objects
+
+static void heap_scan(int fn)
 {
     Chunk *chunk = cs_chunk_list;
     char *ptr = chunk->chunk;  // iterates over objects
@@ -388,6 +398,13 @@ void gc_heap_check()
         obj->get_next();  // checks reasonable next field
         if (obj->has_tag(tag_object)) {
             assert(obj->slots[0].integer > 0x100000000);
+        }
+        if (fn == heap_print && obj->has_tag(tag_object)) {
+            printf("obj on heap: %p\n", obj);
+        }
+        if (fn == gray_check && obj->get_color() == GC_GRAY) {
+            printf("found gray object: %p\n", obj);
+            assert(false);
         }
         ptr += ((sz + 7) & ~7);  // round up to 8-byte alignment
         if (ptr >= chunk->next_free) {
@@ -416,5 +433,25 @@ void gc_heap_check()
         long slots = (sz - 8) / 8;
         list_check(exponential_free[i], slots);
     }
+}
+
+void gc_heap_print()
+{
+    heap_scan(heap_print);
+}
+
+void gc_gray_check()
+{
+    if (gc_state == GC_IDLE) {  // gray list should be empty
+        // printf("gray check ...\n");
+        heap_scan(gray_check);
+    }
+}
+#endif
+
+#if GC_DEBUG_2
+void gc_heap_check()
+{
+    heap_scan(heap_check);
 }
 #endif

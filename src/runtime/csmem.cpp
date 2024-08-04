@@ -170,17 +170,21 @@ got_it:  // set header and return object
     // rewrite slots because each size category supports at least 2
     // different slot counts, e.g. it could be 2 or 3 and be on the
     // same free list:
+    Basic_obj *obj = (Basic_obj *) result;
     if (slots >= 4096) {
-        ((Basic_obj *) result)->slots[0].integer = slots;
+        obj->slots[0].integer = slots;
         slots = 0;
     }
-    ((Basic_obj *) result)->header = (((int64_t) tag_object)<< 59) +
-                                     (((int64_t) initial_color) << 57) +
-                                     (slots << 45);
-    assert(((Basic_obj *) result)->get_size() == size);
+    obj->header = (((int64_t) tag_object)<< 59) +
+                  (((int64_t) gc_initial_color) << 57) + (slots << 45);
+    if (gc_initial_color == GC_GRAY) {
+        obj->set_next(gc_gray_list);
+        gc_gray_list = obj;
+    }
+    assert(obj->get_size() == size);
     cs_current_object_count++;
     cs_allocations++;
-    gc_trace((Basic_obj *) result, "allocated");
+    gc_trace(obj, "allocated");
     return result;
 }
 
@@ -243,6 +247,7 @@ void csfree(void *object)
     assert(head);
     obj->set_next(*head);
     obj->set_tag(tag_free);
+    obj->set_color(GC_FREE);
     *head = obj;
     cs_current_object_count--;
     // printf("pointer to obj size %lld at %p -> %p\n",
