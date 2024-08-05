@@ -10,6 +10,7 @@
 #include "any.h"
 #include "gc.h"
 #include "obj.h"
+#include "array.h"
 #include "csmem.h"
 #include <iostream>
 #include <string>
@@ -23,6 +24,7 @@ Obj *allocation_j[nobjs];
 
 Cs_class *obj_class = NULL;
 
+Array *the_array = nullptr;
 Obj *obj_cache[obj_cache_size];
 
 void gc_mark_roots()
@@ -37,6 +39,7 @@ void gc_mark_roots()
         } */
         basic_obj_make_gray(obj_cache[i]);
     }
+    basic_obj_make_gray(the_array);
 }
 
 int main()
@@ -63,7 +66,13 @@ int main()
     // set some Any slots in the cache to newly created objects to create
     // some references from object to object in the heap. The cache will
     // be marked in gc_mark_roots() as if they are global variables.
-    // 
+    //
+    // For arrays, we create an array every 1000 objects or so and put it
+    // in  the_array. Then, every
+    // 10th object is written to a random spot in the array. Eventually,
+    // the array is replaced, so the objects are freed. The test will see
+    // if the objects are finally freed. We can also scan the array and
+    // make sure it does not have pointers to freed objects.
 
     obj_class = new Cs_class {Symbol("Obj"), 1, 0b1111, &cs_class_table};
     printf("obj_class has %lld slots\n", obj_class->get_slot_count());
@@ -119,6 +128,31 @@ int main()
             }
         }
 
+        // ARRAY TESTING
+
+        if (j % 1000 == 10) { // every 10th object goes into the_array
+            if (the_array) {
+                int64_t n = the_array->len();
+                int64_t r = random() % n;  // random index to the_array
+                the_array->set(r, obj);
+            }
+        }
+
+        if (j % 1000 == 0) {
+            if (the_array) {  // test for valid-looking elements
+                int64_t n = the_array->len();
+                for (int k = 0; k < n; k++) {
+                    Obj *elem = (Obj *) to_ptr((*the_array)[k]);
+                    assert(elem == nullptr || (int64_t) elem > 0x100000000);
+                    assert(elem == nullptr || elem->get_tag() == tag_object);
+                    assert(elem == nullptr || elem->get_color() != GC_FREE);
+                }
+            }
+            the_array = new Array(random() % 50 + 1, nullptr);
+        }
+
+        // END ARRAY TESTING
+
         // Now that we took care of obj, either creating a reference to it
         // or not, we can do some garbage collecting.
         if (j % 1 == 0) {  // run gc every N objects (not sure what the
@@ -136,6 +170,8 @@ int main()
         assert(!obj_cache[i] || obj_cache[i]->get_color() != GC_FREE);
         obj_cache[i] = nullptr;
     }
+    the_array = nullptr;
+
     cout << "Number of currently allocated objects: " <<
             cs_current_object_count << endl;
     int gc_cycle_target = (int) gc_cycles + 2;  // finish this one, run one more

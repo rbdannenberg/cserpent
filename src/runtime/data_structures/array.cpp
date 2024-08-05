@@ -128,7 +128,7 @@ Any Array::call(const Symbol& method, const Array& args, const Dictionary& kwarg
     }
     else if (method_str == "uninsert") {
         check_dispatch("uninsert", args, kwargs, 2, 0);
-        if (len(args) == 1) {
+        if (args.len() == 1) {
             return uninsert(to_int(args[0]));
         }
         return uninsert(to_int(args[0]), to_int(args[1]));
@@ -148,13 +148,13 @@ Any Array::call(const Symbol& method, const Array& args, const Dictionary& kwarg
     throw std::runtime_error("Array: no such method");
 }
 
-int64_t len(const Array& x) {
-    std::vector<Any> *data = (std::vector<Any> *) x.slots;
+int64_t Array::len() const {
+    std::vector<Any> *data = (std::vector<Any> *) slots;
     return data->size();
 }
 
 Array& subseq(const Array& arr, int64_t start, int64_t end) {
-    int64_t arr_len = len(arr);
+    int64_t arr_len = arr.len();
     if (end == std::numeric_limits<int64_t>::max()) {
         end = arr_len;
     }

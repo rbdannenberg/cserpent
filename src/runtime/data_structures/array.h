@@ -39,7 +39,7 @@ public:
     // important: use brackets for read only
     Any& operator[](int64_t i);
     Any operator[](int64_t i) const;
-    friend int64_t len(const Array& x);
+    int64_t len() const;
 
     Any call(const Symbol& method, const Array& args, const Dictionary& kwargs);
     friend std::ostream& operator<<(std::ostream& os, const Array& x);
@@ -51,4 +51,5 @@ private:
 
 Array& subseq(const Array& x, int64_t start, int64_t end = std::numeric_limits<int64_t>::max());
 bool is_equal(const Array& lhs, const Array& rhs);
+
 inline const Array empty_array {};
