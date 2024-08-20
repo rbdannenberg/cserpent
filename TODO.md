@@ -25,7 +25,7 @@ Memory Management
 ====================
 
 - Get memtest target to work
-- Create a test for the garbage collector and test it.
+- Create a test for the garbage collector and test it. (done)
 - Bake gc_poll() into overriden new operator.
 
 ====================
