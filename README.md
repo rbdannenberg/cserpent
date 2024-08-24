@@ -4,6 +4,8 @@ For contributors, see TODO.md and FILE_STRUCTURE.md.
 
 ## Tests:
 
+./run_tests.sh automates the testing process.
+
 Place any serpent file in the tests/serpent/full_pipeline directory
 and the script will tell us whether both serpent and cserpent output
 the same result to stdout.

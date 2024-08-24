@@ -100,3 +100,7 @@ benchmarks/mypyc-benchmarks
 
 /cserpent.xcodeproj/
 
+
+/output_1.txt
+
+/output_2.txt
