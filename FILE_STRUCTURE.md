@@ -12,7 +12,7 @@ CMake targets are:
 - ``memtest``: A test for memory management. Compiles but does not currently work.
 - ``cpptest``: A test that C++ compiles and runs.
 
-All executables work except for memtest. 
+All executables work except for runtime_test and memtest. 
 
 Note: Runtime is part of include directories, so you can include them with #include <any.h> and #include <array.h> etc.
 
