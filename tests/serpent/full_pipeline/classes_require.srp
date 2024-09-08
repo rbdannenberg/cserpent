@@ -6,7 +6,8 @@ require "extras/account.srp"
 def account_test()
     account = Account(0)
     account.deposit(5)
-    display "account_test", account, account.balance
+    print "balance", account.balance
+    # display "account_test", account, account.balance
     if not account.withdraw(10)
         print "don't have $10"
 
