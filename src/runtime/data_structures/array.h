@@ -1,7 +1,4 @@
 #pragma once
-#include "any.h"
-#include "gc.h"
-#include "obj.h"
 #include <vector>
 
 class Array;
@@ -36,8 +33,8 @@ public:
     void set(int64_t index, double value);
     void set(int64_t index, int64_t value);
 
-    // important: use brackets for read only
-    Any& operator[](int64_t i);
+    // important: use brackets only for read
+    // Any& operator[](int64_t i);
     Any operator[](int64_t i) const;
     int64_t len() const;
 

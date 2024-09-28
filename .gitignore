@@ -104,3 +104,5 @@ benchmarks/mypyc-benchmarks
 /output_1.txt
 
 /output_2.txt
+
+/benchmarks/byhand/Debug/

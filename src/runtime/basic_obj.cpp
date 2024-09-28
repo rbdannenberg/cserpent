@@ -81,7 +81,7 @@ int64_t Basic_obj::get_size()
 void Basic_obj::set_slot(int i, Any x) {
     Basic_obj *xptr;
     assert(i >= 0 && i < get_slot_count());
-    if (write_block && x.integer && is_ptr(x) &&
+    if (gc_write_block && x.integer && is_ptr(x) &&
         (xptr = to_ptr(x))->get_color() == GC_BLACK &&
         get_color() != GC_BLACK) {
         basic_obj_make_gray(xptr);

@@ -175,7 +175,7 @@ got_it:  // set header and return object
         obj->slots[0].integer = slots;
         slots = 0;
     }
-    obj->header = (((int64_t) tag_object)<< 59) +
+    obj->header = (((int64_t) tag_object) << 59) +
                   (((int64_t) gc_initial_color) << 57) + (slots << 45);
     if (gc_initial_color == GC_GRAY) {
         obj->set_next(gc_gray_list);
@@ -185,6 +185,10 @@ got_it:  // set header and return object
     cs_current_object_count++;
     cs_allocations++;
     gc_trace(obj, "allocated");
+
+    // for now, we run gc_poll() on every allocation and free, but this is
+    // almost certainly overkill and makes calls too often
+    gc_poll();
     return result;
 }
 
@@ -252,5 +256,9 @@ void csfree(void *object)
     cs_current_object_count--;
     // printf("pointer to obj size %lld at %p -> %p\n",
     //       obj->get_size(), head, obj);
+
+    // for now, we run gc_poll() on every allocation and free, but this is
+    // almost certainly overkill and makes calls too often
+    gc_poll();
 }
 

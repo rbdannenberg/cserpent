@@ -3,6 +3,7 @@
 #include <cstdint>
 #include <cstdio>
 #include "any.h"
+#include "op_overload.h"
 #include "gc.h"
 #include "obj.h"
 #include "any_utils.h"
@@ -360,7 +361,7 @@ Any::operator Array&() {
 }
 
 Any::operator bool() {
-    return *this != nil;
+    return integer != 0;
 }
 
 static bool is_string_or_symbol(Any x) {

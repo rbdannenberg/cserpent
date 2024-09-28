@@ -29,7 +29,10 @@ Array::Array(int64_t size, Any value) {
     set_tag(tag_array);
     std::vector<Any> &data = *new(slots) (std::vector<Any>)(size);
     if (size > 0) {
-        set(0, value);  // handles color and write_block for GC
+        set(0, value);  // handles color and gc_write_block for GC
+        // for the rest of the array, since we're duplicating value, there
+        // is no need to call the more expensive set method and we can just
+        // write value directly to array storage:
         for (int64_t i = 1; i < size; i++) {  // fill the rest with value
             data[i] = value;
         }
@@ -77,7 +80,7 @@ Array& Array::append(double x) {
 void Array::set(int64_t index, Any value) {
     std::vector<Any> *data = get_vector();
     Basic_obj *vptr;
-    if (write_block && is_ptr(value) && get_color() != GC_BLACK) {
+    if (gc_write_block && is_ptr(value) && get_color() != GC_BLACK) {
         basic_obj_make_gray(to_ptr(value));
     }
     data->at(index) = value;
@@ -95,11 +98,12 @@ void Array::set(int64_t index, int64_t value) {
     data->at(index) = value;
 }
 
-
+/*
 Any& Array::operator[](int64_t i) {
     std::vector<Any> *data = get_vector();
     return data->at(i);
 }
+*/
 
 
 Any Array::operator[](int64_t i) const {

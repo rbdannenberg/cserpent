@@ -4,7 +4,6 @@ project(cserpent)
 set(CMAKE_CXX_STANDARD 17)
 add_compile_options(-Wno-return-type -Wplacement-new=0) # suppress warnings about type_error (NOT A FULL SOLUTION)
 set(CMAKE_INTERPROCEDURAL_OPTIMIZATION_RELEASE TRUE)
-add_definitions(-DFREE)
 
 # normal set of include paths:
 set(CS_INCLUDES src/runtime src/runtime/data_structures src/runtime/builtin_functions src/gc src/runtime/globals)
@@ -41,23 +40,14 @@ add_library(runtime STATIC
         src/runtime/data_structures/symbol.h
         src/runtime/globals/symbol_table.cpp
         src/runtime/globals/symbol_table.h
+        src/runtime/runtime.cpp
         src/runtime/runtime.h
 )
+target_include_directories(runtime PUBLIC ${CS_INCLUDES}) 
 
 
-# runtime_benchmarks - runs benchmarks using main() in main_benchmark.cpp
-target_include_directories(runtime PUBLIC ${CS_INCLUDES})
-add_executable(runtime_benchmarks
-        benchmarks/C++/matrix_mult.cpp
-        benchmarks/C++/nqueen.cpp
-        benchmarks/C++/main_benchmark.cpp
-        benchmarks/C++/binary_trees.cpp
-        benchmarks/C++/C/binary_trees_c.cpp
-        benchmarks/C++/C/matrix_mult_c.cpp
-        benchmarks/C++/C/nqueen_c.cpp
-)
-target_include_directories(runtime_benchmarks PUBLIC ${CS_INCLUDES})
-target_link_libraries(runtime_benchmarks runtime)
+add_subdirectory(benchmarks/byhand)
+
 
 # runtime_test - runs runtime tests using main() in main_test.cpp
 add_executable(runtime_test
@@ -67,7 +57,8 @@ add_executable(runtime_test
         tests/c++/runtime/test_string_any.cpp
         tests/c++/runtime/array_test.cpp
 )
-target_include_directories(runtime_test PUBLIC ${CS_INCLUDES})
+message(STATUS "in cserpent: CS_INCLUDES is ${CS_INCLUDES}") 
+target_include_directories(runtime_test PUBLIC ${CS_INCLUDES})  
 target_link_libraries(runtime_test runtime)
 
 # memtest - memory tests (no GC testing yet)

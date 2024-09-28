@@ -1,3 +1,14 @@
+benchmarks
+
+C - contains benchmarks in C (not sure if these are original sources
+    or benchmarks for us to use)
+cpp - benchmarks in C++
+byhand - benchmarks compiled by hand from CSerpent to C++
+cscpp - benchmarks compiled from CSerpent to C++
+py - benchmarks in Python
+srp - benchmarks in Serpent
+csrp - benchmarks in CSerpent
+
 How to benchmark:
 
 Configure CMAKE -DCMAKE_BUILD_TYPE=Release as a command line argument to cmake.

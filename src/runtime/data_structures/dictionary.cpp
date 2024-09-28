@@ -4,6 +4,7 @@
 #include "any.h"
 #include "gc.h"
 #include "obj.h"
+#include "op_overload.h"
 #include "dictionary.h"
 #include "op_overload.h"
 

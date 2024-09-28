@@ -27,9 +27,23 @@ enum Gc_color {
     GC_WHITE = 3
 };
 
+// Every stack frame is different because every stack frame has
+// different local variables of type Any, but every stack frame starts
+// with a header, giving the number of locals, followed by that many
+// fields of type Any. Gc_frame is a "generic" stack frame where
+// locals are accessed as anys[0], anys[1], ...
+//
+extern struct Gc_frame {
+    uint64_t header;
+    Any anys[1];
+} *gc_frame_ptr;
+
+extern void *gc_stack_top;  // link to top stack frame
+extern Gc_color gc_frame_color;  // initial color for new frames
 extern Gc_color gc_initial_color;
 extern Basic_obj *gc_gray_list;
-extern bool write_block;
+extern bool gc_write_block;
+extern bool gc_local_write_block;
 
 // how many mark/sweep cycles have been completed?
 extern int64_t gc_cycles;

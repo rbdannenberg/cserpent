@@ -2,13 +2,18 @@
 // Created by anthony on 5/17/24.
 //
 
+#include <cmath>
+#include "any.h"
+#include "basic_obj.h"
+#include "obj.h"
 #include "builtin_functions.h"
 #include "op_overload.h"
 #include "any_utils.h"
-#include <data_structures/array.h>
+#include "data_structures/array.h"
 #include "csstring.h"
-#include <cmath>
-#include <symbol_table.h>
+#include "symbol.h"
+#include "symbol_table.h"
+#include "dictionary.h"
 
 int64_t len(Any x) {
     if (is_ptr(x)) {

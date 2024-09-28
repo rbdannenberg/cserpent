@@ -15,7 +15,8 @@ enum Tag {
     tag_array,
     tag_dict,
     tag_object,
-    tag_file };
+    tag_file,
+    tag_frame };
 
 // all garbage-collected objects inherit this base class
 //
@@ -45,7 +46,7 @@ public:
     // All Cserpent objects (class Obj, with TAG==tag_object, have at
     // most 64 slots, so #SLOTS is never zero. (Other types such as
     // array data or strings can have any number of slots.) The limit
-    // of 64 allows for a 64-word of bits indicating whether each slot
+    // of 64 allows for a 64-bit word of bits indicating whether each slot
     // is a pointer to another Basic_obj or is of type Any. Either
     // way, if the bit is 1 AND the high-order slot bits are zero, we
     // trace the pointer in the low-order (48) bits in the mark phase

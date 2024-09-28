@@ -2,6 +2,9 @@
 // Created by anthony on 7/9/24.
 //
 
+#include <iostream>
+#include "any.h"
+#include "symbol.h"
 #include "symbol_table.h"
 
 namespace globals {

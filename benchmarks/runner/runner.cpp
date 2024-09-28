@@ -1,6 +1,127 @@
+// runner.cpp - shared code to run C++ benchmarks
+//
+// This program is a main program and is designed to be linked to
+// various different benchmark implementations, each of which provides
+// the same run_benchmark(n) and benchmark_info() functions.
+//     run_benchmark(int n)
+// is called by main() to run the benchmark with parameter n
+// (which the benchmark may choose to ignore).
+// 
+// This is a main program. The command line is:
+//     prgname n [-i iters] [-w warmup] [-c comment]
+// where n is passed to run_benchmark(), iters is the number of iterations
+// and warmup is the number of times run_benchmark is called before any
+// measurements are made. Default iters = 100, default warmup = 3.
+// comment is a string that is copied to an output file (see below). The
+// string should be quoted if it has any spaces, e.g. -c "vers 3" The
+// default comment is the empty string.
+// 
+// The output is a line of text:
+//     prgname n iters warmup avg min max
+// where avg is the average time per iteration in seconds,
+// min is the minimum iteration time, and max is the maximum time
+// 
+// The output is also appended to benchmarkname.data with additional fields
+// for the date, time, info, and comment:
+//     prgname n iters warmup avg min max DD-MM-YYYY HH:MM:SS "info" "comment"
+// where info is obtained by calling benchmark_info() which returns a C++
+// string. This string can be used to describe variants of the benchmark.
+// Note that this program adds quotes to the info string and
+// the comment string (which is what was passed on the command line).
 //
 // Created by anthony on 5/30/24.
+// New version mostly written from comments above by MS Copilot. -RBD
 //
+#include <iostream>
+#include <chrono>
+#include <fstream>
+#include <string>
+#include <ctime>
+#include "any.h"
+#include "op_overload.h"
+#include "basic_obj.h"
+#include "obj.h"
+#include "runtime.h"
+
+// Function prototypes for benchmark implementations
+void run_benchmark(int n);
+std::string benchmark_info();
+
+int main(int argc, char* argv[]) {
+    if (argc < 2) {
+        std::cerr << "Usage: " << argv[0]
+                  << " n [-i iters] [-w warmup] [-c comment]\n";
+        return 1;
+    }
+
+    int n = std::stoi(argv[1]);
+    int iters = 100;
+    int warmup = 3;
+    std::string comment = "";
+
+    for (int i = 2; i < argc; ++i) {
+        if (std::string(argv[i]) == "-i" && i + 1 < argc) {
+            iters = std::stoi(argv[++i]);
+        } else if (std::string(argv[i]) == "-w" && i + 1 < argc) {
+            warmup = std::stoi(argv[++i]);
+        } else if (std::string(argv[i]) == "-c" && i + 1 < argc) {
+            comment = argv[++i];
+        }
+    }
+
+    runtime_init();
+
+    // Warmup phase
+    for (int i = 0; i < warmup; ++i) {
+        run_benchmark(n);
+    }
+
+    // Benchmark phase
+    double total_time = 0.0;
+    double min_time = std::numeric_limits<double>::max();
+    double max_time = 0.0;
+
+    for (int i = 0; i < iters; ++i) {
+        auto start = std::chrono::high_resolution_clock::now();
+        run_benchmark(n);
+        auto end = std::chrono::high_resolution_clock::now();
+        std::chrono::duration<double> duration = end - start;
+
+        double time = duration.count();
+        total_time += time;
+        if (time < min_time) min_time = time;
+        if (time > max_time) max_time = time;
+    }
+
+    double avg_time = total_time / iters;
+
+    // Output results
+    std::cout << argv[0] << " " << n << " " << iters << " " << warmup << " "
+              << avg_time << " " << min_time << " " << max_time << "\n";
+
+    // Append results to file
+    std::ofstream outfile(std::string(argv[0]) + ".data", std::ios::app);
+    if (outfile.is_open()) {
+        auto now = std::chrono::system_clock::
+                   to_time_t(std::chrono::system_clock::now());
+        std::tm* now_tm = std::localtime(&now);
+        char date_time[20];
+        std::strftime(date_time, sizeof(date_time), "%d-%m-%Y %H:%M:%S",
+                      now_tm);
+
+        outfile << argv[0] << " " << n << " " << iters << " " << warmup << " "
+                << avg_time << " " << min_time << " " << max_time << " "
+                << date_time << " \"" << benchmark_info() << "\" \""
+                << comment << "\"\n";
+        outfile.close();
+    } else {
+        std::cerr << "Unable to open file for writing\n";
+    }
+
+    return 0;
+}
+
+#ifdef OLD_ORIGINAL_IMPLEMENTATION_FROM_MAIN_BENCHMARK_CPP
 #include <any.h>
 #include "obj.h"
 #include <iostream>
@@ -137,3 +258,5 @@ int main() {
     std::cout << "Done." << std::endl;
     return 0;
 }
+
+#endif

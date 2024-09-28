@@ -1,6 +1,7 @@
 // csmem.h -- memory management API
 #include <cstdlib>
 #include <cstdint>
+#include <assert.h>
 
 // allocate one object of type t
 #define CSMALLOCT(t) (t *) csmalloc(sizeof(t))

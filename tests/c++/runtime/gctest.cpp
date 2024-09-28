@@ -22,17 +22,17 @@ constexpr int obj_cache_size = 10;
 
 Obj *allocation_j[nobjs];
 
-Cs_class *obj_class = NULL;
+Cs_class *cs_obj_class = NULL;
 
 Array *the_array = nullptr;
 Obj *obj_cache[obj_cache_size];
 
 void gc_mark_roots()
 {
-    // the only "global" in this test is obj_class and cs_class_class, but
-    // cs_class_class is referenced by obj_class, so no need to mark it here.
+    // the only "global" in this test is cs_obj_class and cs_class_class, but
+    // cs_class_class is referenced by cs_obj_class, so no need to mark it here.
     basic_obj_make_gray(cs_class_class);
-    basic_obj_make_gray(obj_class);
+    basic_obj_make_gray(cs_obj_class);
     for (int i = 0; i < obj_cache_size; i++) {
         /* if (obj_cache[i]) {
             printf("%d: %p\n", i, obj_cache[i]);
@@ -74,8 +74,8 @@ int main()
     // if the objects are finally freed. We can also scan the array and
     // make sure it does not have pointers to freed objects.
 
-    obj_class = new Cs_class {Symbol("Obj"), 1, 0b1111, &cs_class_table};
-    printf("obj_class has %lld slots\n", obj_class->get_slot_count());
+    cs_obj_class = new Cs_class {Symbol("Obj"), 1, 0b1111, &cs_class_table};
+    printf("cs_obj_class has %lld slots\n", cs_obj_class->get_slot_count());
 
     for (long j = 0; j < nobjs; j++) {
         // pick a random size - since we can only have up to about 64 slots
@@ -89,7 +89,7 @@ int main()
         gc_heap_check();
         Obj *obj = (Obj *) csmalloc(slots * 8);
         // printf("allocated obj %p size %ld\n", obj, slots * 8);
-        obj->set_slot(0, obj_class);
+        obj->set_slot(0, cs_obj_class);
         allocation_j[j] = obj;  // what was allocated on this iteration?
 
         // fill object slots
@@ -123,7 +123,7 @@ int main()
             gc_trace(obj, "storing obj in cache");
             obj_cache[random() % obj_cache_size] = obj;
             // now obj has a reference to it. Does GC need to know?
-            if (write_block) {
+            if (gc_write_block) {
                 basic_obj_make_gray(obj);
             }
         }

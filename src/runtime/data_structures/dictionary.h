@@ -3,9 +3,6 @@
 //
 
 #pragma once
-#include <any.h>
-#include "obj.h"
-#include <op_overload.h>
 #include <unordered_map>
 #include <functional>
 
@@ -17,7 +14,7 @@ struct std::hash<Any> {
 };
 
 struct KeyEqual {
-    bool operator()(Any a,Any b) const {
+    bool operator()(Any a, Any b) const {
         return a == b;
     }
 };
@@ -32,7 +29,7 @@ public:
                         sizeof(int64_t)) - 1];
     Dictionary();
     // TODO: what happens here? Adding elements to a dictionary requires
-    // that you check write_block and possible add new values to the
+    // that you check gc_write_block and possible add new values to the
     // gray list for GC. See Basic_obj::set_slot().
     Dictionary(std::initializer_list<std::pair<const Any, Any>> l);
 

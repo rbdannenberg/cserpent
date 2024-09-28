@@ -1,84 +1,132 @@
 Notes on garbage collection
 
 To implement GC similar to Serpent, we need to scan all
-objects. Options are scanning the C++ stack for pointers
-to a "magic token" that appears in all objects, or
-rather than allocating locals directly, place all
-potential references to objects in a struct which
-is a local on the stack, and link the structs to
-form a stack of their own.
+objects. Options are scanning the C++ stack for pointers to a "magic
+token" that appears in all objects, or rather than allocating locals
+directly, place all potential references to objects in a struct which
+is a local on the stack, and link the structs to form a stack of their
+own.
 
-The second option adds some overhead, but seems safer
-and easier to debug since you know if a reference
-should point to an object.
+The second option adds some overhead, but seems safer and easier to
+debug since you know if a reference should point to an object.
 
-On entering a function with any dynamic types for
-parameters or locals or temporaries, you need a
-local struct that can hold them, and to write them
-to fields of the struct (and otherwise set the
-fields to null pointers), then link the field
-to the previous field and set the machine's
-stack pointer to the local struct.
+On entering a function with any dynamic types for parameters, locals
+or temporaries, you need a local struct that can hold them. Parameters
+are copied into the local struct, and the struct is linked to a
+struct list. A cs_stack_top points to the top of the stack.
 
-Before you return, you must unlink the struct from
-the machine's stack.
+Before you return, you must unlink the struct from cs_stack_top.
 
-These stack frame objects must have color
-(black/white/gray) but the only possible reference
-to a stack frame is the frame of a called function.
-As a consequence, the order of color in the stack
-goes from white (at the top or deepest frame) to
-gray to black (at the shallowest function, e.g.
-main()). Remember that the mark phase is trying to
-mark all reachable objects white. During the mark
-phase, new frames will be marked white and if the
-previous frame is black, the frame, now reachable
-from the top frame, will be marked gray.
+These stack frame objects must have color (black/white/gray) but the
+only possible reference to a stack frame is the frame of a called
+function.  As a consequence, the order of color in the stack goes from
+white (at the top or deepest frame) to gray to black (at the
+shallowest function, e.g.  main()). Remember that the mark phase is
+trying to mark all reachable objects white. During marking, new
+frames will be marked white and if the previous frame is black, the
+frame, now reachable from the top frame, will be marked gray.
 
-Stack frames are not on the gray list, so when
-the gray list is empty, we still have to mark
-the stack. We can do this incrementally. Make
-a note that we are in a new "stack marking"
-phase. Upon entering this phase, set the "stack
-mark pointer" to the stack pointer.
+Stack frames are not on the gray list, so when the gray list is empty,
+we still have to mark the stack. We can do this incrementally. Make a
+note that we are in a new "stack marking" phase. Upon entering this
+phase, set the "stack mark pointer" to the stack pointer. We want to
+start this phase after marking everything reachable from
+globals. While that is happening, we do not have to perform the "write
+block" check when we store into locals since we know that either the
+locals will be freed when the function returns or the locals will be
+marked at a later time. Since most functions are short, we expect to
+free a lot of locals during GC marking, so it should pay to wait until
+everything is marked *except* for the stack before marking the stack.
 
-To make progress in this phase, if the "stack
-mark pointer" points to a white frame, set the
-"stack mark pointer" to the next frame. If the
-"stack mark pointer" points to a gray frame,
-mark everything it points to that is not white,
-including the next frame, to gray. If anything
-but a stack frame is marked gray, change the
-mark phase to marking the gray list until the
-list is again empty and you can restart the
-"stack marking" phase. Note that you can
-pick up where you left off marking the stack
-because any new stack frames in the mark
-phase are white and do not need to be marked.
+Therefore, in addition to gc_initial_color, which tells us the
+color of objects when allocated, we have gc_frame_color, which tells
+us the color of the frame when we enter a function. And in addition to
+gc_write_block (which tells us that when we store a black object X
+into a non-black object, we need to make X gray), we need
+gc_local_write_block, which tells us to take similar actions when
+storing into local variables.
 
-When you return from a functions, this frees
-stack frames, which could be referenced by
-the "stack mark pointer". This is bad because
-resuming the stack marking phase would lead
-us to mark frames that have been popped and
-therefore do not exist. Therefore, when you
-return after the first stack marking phase
-has begun (even if you are now back marking
-the gray list), you must check: If the "stack
-mark pointer" is the frame pointer, then
-set the "stack mark pointer" to the frame of
-the caller you are returning to.
+Marking is performed in states GC_MARK and GC_MARK_ARRAY. When there
+is nothing left to mark on the gray list, GC_MARK2 starts marking
+frames by setting gc_local_write_block to true, gc_frame_color to
+GC_WHITE, and gc_frame_ptr to gc_stack_top. Then we fall through to
+GC_MARK_STACK. In that state, all the non-white stack frames are
+marked (to top-most frames will be white and we can just follow the
+list to the black ones).
 
-The stack marking phase as described marks
-the whole stack frame at once and moves the
-"stack mark pointer" to the next frame in
-order to record its progress. It would be
-possible to scan less than a whole frame by
-treating the stack frame as an array and
-keeping an index to record how far you got
-and where to resume marking. Since stack
-frames are usually small, this probably
-just adds needless overhead and we can
-expect the garbage collector to mark
-multiple frames in one quantum of garbage
+After marking all the stack frames, many objects may now be on the
+gray list, so we set the gc_state to GC_MARKB, which is the same
+as GC_MARK (marks the gc_gray_list), but when the gc_gray_list is
+empty, the next state is GC_MARK3 which begins the sweep phase
+resetting color from white to black and freeing black nodes.
+
+After sweeping the heap in state GC_SWEEP, we need to change all the
+stack frames back to black. This is done in GC_SWEEP1. Finally,
+GC_SWEEP2 converts all the gray list objects to black (keeping them).
+
+When you return from a functions, this frees stack frames, which could
+be referenced by the "stack mark pointer". This is bad because
+resuming the stack marking phase would lead us to mark frames that
+have been popped and therefore do not exist. Therefore, when you
+return after the first stack marking phase has begun (even if you are
+now back marking the gray list), you must check: If gc_frame_ptr points
+to the locals in the current frame, then set gc_frame_ptr to 
+the frame of the caller you are returning to. (Note that whole stack
+frames are marked atomically, so when we are computing, gc_frame_ptr
+points to an unmarked frame. It is safe to just change it to another
+frame.)
+
+Note: It would be possible to scan less than a whole frame by treating
+the stack frame as an array and keeping an index to record how far you
+got and where to resume marking. Since stack frames are usually small,
+this probably just adds needless overhead and we can expect the
+garbage collector to mark multiple frames in one quantum of garbage
 collection.
+
+Expressions, parameters, and function results are important to
+consider with respect to GC. The assumption with GC is that everything
+that is reachable can be found by marking, starting with globals and
+stack locals. A possible exception is expressions where intermediate
+values are pointers to the heap that are not stored in any objects
+visible to GC. Our CSerpent compiler must make intermediate values
+visible by storing them into locals.
+
+We can rule out expressions that involve a single operation or
+function call. E.g. "a = str(b)" is not a problem. str(b) will create
+a string that is invisible to GC, but before gc_poll() could possibly
+run, the value is stored into a. There must be nested expressions to
+create a problem. E.g. "a = str(b) + str(c)" will create str(b) that
+is unknown to GC. Then str(c) will allocate a new string object, which
+could run gc_poll() and free the string created by str(b). Of course,
+it is unlikely GC could run through a full GC epoch in one call but if
+WORK_PER_POLL is set very high to enable a "stop and collect"
+behavior, it is possible.
+
+A simple rule to be safe is: All expressions that can return an object
+must immediately store results into a local variable or object
+field. In the case of "a = str(b) + str(c)" the compiler should
+rewrite this as:
+    tmp1 = str(b)
+    tmp2 = str(c)
+    a = tmp1 + tmp2
+When the left side is an expression, the same rule must apply, so
+    a[i + 2] = str(b)
+*could* be compiled as is, since only one object (str(b)) is
+created. But if the compiler isn't so smart as to figure out i + 2
+cannot be an object, it must write something like:
+    tmp = str(b)
+    a[i + 2] = tmp
+or
+    tmp = i + 2 
+    a[tmp] = str(b) 
+Note that operator= is overloaded here, so we have to consider that
+this is really a function call to Any.set(Any i, Any x), but this does
+not change anything.
+
+Another example is a.append(f(x)). Here, append can cause memory
+allocation, so f(x) should be protected:
+    tmp = f(x)
+    a.append(tmp)
+This is according to the rule that since f(x) is not immediately
+stored into a local or object field in "a.append(f(x))" we must change
+the code to store f(x) into tmp.

@@ -6,6 +6,7 @@
 #include "data_structures/array.h"
 #include "data_structures/symbol.h"
 #include "csmem.h"
+#include "runtime.h"
 
 void check_dispatch(const Symbol& method, const Array& args,
                     const Dictionary& kwargs, size_t args_len, size_t kwargs_len) {
@@ -83,4 +84,5 @@ void main_init()
                                     &cs_class_table };
     // special case: fill in the class slot now to form a cycle:
     cs_class_class->set_slot(0, cs_class_class);
+    cs_obj_class = new Cs_class {Symbol("Obj"), 1, 0b1, &cs_class_table};
 }

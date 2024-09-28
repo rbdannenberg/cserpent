@@ -2,9 +2,12 @@
 // Created by anthony on 7/7/24.
 //
 
+#include <iostream>
 #include <stdexcept>
 #include <cassert>
 #include <utility>
+#include "any.h"
+#include "basic_obj.h"
 #include "csstring.h"
 #include "symbol.h"
 #include "array.h"
@@ -32,7 +35,9 @@ Symbol::Symbol() : data {empty_symbol} {}
 Symbol::Symbol(const char* literal) :
         data { literal_string_to_data(literal) }
 {
-    data |= string_to_symbol;  // fix type tag
+    data += string_to_symbol;  // fix type tag
+    std::cout << "Symbol created from string, but no hash table to retain it"
+              << std::endl;
 }
 
 

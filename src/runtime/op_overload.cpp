@@ -1,5 +1,7 @@
 #include "any.h"
+#include "basic_obj.h"
 #include "any_utils.h"
+#include "symbol.h"
 #include "op_overload.h"
 #include "array.h"
 #include "csstring.h"
@@ -366,8 +368,7 @@ std::ostream& operator<<(std::ostream& os, Any x) {
 bool operator==(Any lhs, int64_t rhs) {
     if (is_int(lhs)) {
         return to_int(lhs) == rhs;
-    }
-    else type_error(lhs, __func__);
+    } else type_error(lhs, __func__);
 }
 
 bool operator==(Any lhs, int rhs) {
@@ -377,8 +378,7 @@ bool operator==(Any lhs, int rhs) {
 bool operator==(Any lhs, Any rhs) {
     if (is_str(rhs)) {
         return lhs == to_str(rhs);
-    }
-    else if (is_symbol(rhs)) {
+    } else if (is_symbol(rhs)) {
         return lhs == to_symbol(rhs);
     }
     return lhs.integer == rhs.integer;

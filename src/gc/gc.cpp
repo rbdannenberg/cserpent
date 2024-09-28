@@ -4,12 +4,13 @@
 // Jun 2024
 
 #include "any.h"
+#include "op_overload.h"
 #include "csstring.h"
 #include "gc.h"
 #include "obj.h"
-#include "data_structures/array.h"
-#include "data_structures/dictionary.h"
-#include "data_structures/symbol.h"
+#include "array.h"
+#include "dictionary.h"
+#include "symbol.h"
 #include "csmem.h"
 
 #if GC_DEBUG
@@ -46,17 +47,22 @@ void gc_trace_2(Basic_obj *obj, const char *msg, int index)
 enum {
     GC_START,
     GC_MARK,
+    GC_MARKB,
     GC_MARK_ARRAY,
+    GC_MARK_ARRAYB,
     GC_MARK2,
+    GC_MARK_STACK,
     GC_MARK3,
     GC_SWEEP,
+    GC_SWEEP1,
     GC_SWEEP2,
     GC_FINAL,
     GC_IDLE
 } gc_state = GC_START;
 
 Gc_color gc_initial_color = GC_WHITE;
-bool write_block = false;
+bool gc_write_block = false;
+bool gc_local_write_block = false;
 int64_t gc_cycles = 0;
 
 Basic_obj *gc_gray_list = nullptr;
@@ -65,6 +71,10 @@ static char *sweep_ptr = nullptr;
 static Array *gc_array = nullptr;
 static int64_t gc_array_index = 0;
 int64_t gc_high_water = CHUNK_SIZE / 2;
+Gc_frame *gc_frame_ptr = NULL;
+void *gc_stack_top;  // link to top stack frame
+Gc_color gc_frame_color;  // initial color for new frames
+
 
 static const int SWEEP_NODE_COST = 1;
 static const int FREE_NODE_COST = 2;
@@ -93,6 +103,7 @@ void basic_obj_make_gray(Basic_obj *obj) {
 }
 
 
+
 // do a unit of GC
 void gc_poll()
 {
@@ -104,7 +115,7 @@ void gc_poll()
         case GC_START:
             // printf("*** Starting GC cycle ***\n");
             gc_initial_color = GC_WHITE;
-            write_block = true;
+            gc_write_block = true;
 //            basic_obj_make_gray(cs_symbols); I think this is no longer
 //            necessary because the symbol table is in
 //            global memory, not on either heap. [RBD:] But then we need
@@ -114,12 +125,13 @@ void gc_poll()
             gc_mark_roots(); // mark objects accessible through globals
             gc_state = GC_MARK;
             break;
+        case GC_MARKB:
         case GC_MARK:
             while (work_done < WORK_PER_POLL) {
                 obj = gc_gray_list;
                 gc_trace(obj, "GC_MARK gray list");
                 if (!obj) {
-                    gc_state = GC_MARK2;
+                    gc_state = (gc_state == GC_MARK ? GC_MARK2 : GC_MARK3);
                     break;
                 }
                 gc_gray_list = gc_gray_list->get_next();
@@ -159,7 +171,8 @@ void gc_poll()
                         }
                         work_done += work_to_do;
                     } else {
-                        gc_state = GC_MARK_ARRAY;
+                        gc_state = (gc_state == GC_MARK ? GC_MARK_ARRAY :
+                                                          GC_MARK_ARRAYB);
                         gc_array = array;
                         gc_array_index = 0;
                     }
@@ -195,7 +208,8 @@ void gc_poll()
                 }
             }
             break;
-        case GC_MARK_ARRAY: {
+        case GC_MARK_ARRAY:
+        case GC_MARK_ARRAYB: {
             std::vector<Any> *data = (std::vector<Any> *) gc_array;
             if (data->size() < gc_array_index) {
                 gc_array_index = data->size();
@@ -211,19 +225,40 @@ void gc_poll()
             }
             if (gc_array_index >= data->size()) {
                 // we're done scanning the array
-                gc_state = GC_MARK;
+                gc_state = (gc_state == GC_MARK_ARRAY ? GC_MARK : GC_MARKB);
             } else {
                 return;  // we're out of time; come again soon
             }
             break;
         }
-        case GC_MARK2:  // after GC_MARK; not used yet, so fall through
+        case GC_MARK2:  // after GC_MARK; start marking frames
+            gc_frame_ptr = (Gc_frame *) gc_stack_top;
+            gc_frame_color = GC_WHITE;
+            gc_local_write_block = true;
+            gc_state = GC_MARK_STACK;
+        case GC_MARK_STACK:
+            while (work_done < WORK_PER_POLL && gc_frame_ptr) {
+                if (static_cast<Gc_color>(
+                        (gc_frame_ptr->header >> 57) & 0x03) != GC_WHITE) {
+                    int n = (gc_frame_ptr->header >> 45) & 0xFFF;  // slot cnt
+                    for (int i = 0; i < n; i++) {
+                        basic_obj_make_gray(to_ptr(gc_frame_ptr->anys[i]));
+                    }
+                    work_done += n * MARK_NODE_COST;
+                }
+            }
+            if (!gc_frame_ptr) {
+                gc_state = GC_MARKB;  // mark gray list again
+            }
+            break;
         case GC_MARK3:
             // printf("Start GC_SWEEP\n");
-            write_block = false;  // nothing more will be put on gray list
+            gc_write_block = false;  // nothing more will be put on gray list
+            gc_local_write_block = false;
             sweep_chunk = cs_chunk_list;
             sweep_ptr = sweep_chunk->chunk;  // iterates over objects
             gc_initial_color = GC_GRAY;
+            gc_frame_color = GC_BLACK;
             work_done += SWEEP_NODE_COST;
             gc_state = GC_SWEEP;
             // fall through to GC_SWEEP
@@ -232,6 +267,7 @@ void gc_poll()
             // of the Cherokee nation.
             // In all seriousness, PLEASE suggest better terminology if you
             // find these WHITE/GRAY/BLACK labels inappropriate or insensitive.
+            // Maybe HOT, WARM, COLD?
             while (work_done < WORK_PER_POLL) {
                 // printf("    sweep_ptr %p sweep_chunk %p\n",
                 //        sweep_ptr, sweep_chunk);
@@ -285,14 +321,29 @@ void gc_poll()
                         sweep_ptr = sweep_chunk->chunk;
                     } else {
                         gc_initial_color = GC_BLACK;
-                        gc_state = GC_SWEEP2;
-                        // printf("** start GC_SWEEP2 **\n");
+                        // prepare to change stack frames to black
+                        gc_frame_ptr = (Gc_frame *) gc_stack_top;
+                        gc_state = GC_SWEEP1;
+                        // printf("** start GC_SWEEP1 **\n");
                         break;
                     }
                 }
             }
             break;
         }
+        case GC_SWEEP1:  // change all stack frames to black
+            while (work_done < WORK_PER_POLL && gc_frame_ptr) {
+                gc_frame_ptr->header = 
+                        (gc_frame_ptr->header & ~0x0600000000000000uLL) |
+                        (static_cast<uint64_t>(GC_BLACK) << 57);
+                gc_frame_ptr = (Gc_frame *)
+                        ((gc_frame_ptr->header & ~0xFFFFE00000000000uLL) << 3);
+                work_done += COLOR_NODE_COST;
+            }
+            if (!gc_frame_ptr) {
+                gc_state = GC_SWEEP2;
+            }
+            break;
         case GC_SWEEP2:
             // in this phase, we take gray objects that were created during
             // GC_SWEEP and make them black
@@ -351,11 +402,11 @@ void gc_alter_array(Array *a)
 
 #if GC_DEBUG
 void list_check(Basic_obj *head, long slots) {
-    extern Cs_class *obj_class;  // defined in gc_test
+    extern Cs_class *cs_obj_class;  // defined in gc_test
     while (head) {
         // printf("list_check for %ld slots: %p\n", slots, head);
         assert(head != cs_class_class);
-        assert(head != obj_class);
+        assert(head != cs_obj_class);
         int64_t actual = head->get_slot_count();
         assert(actual == slots);
         assert(head->get_color() == GC_FREE);
