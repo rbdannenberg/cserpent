@@ -5,8 +5,6 @@
 #include <string>
 #include <iostream>
 #include <utility>
-#include "basic_obj.h"
-#include "symbol.h"
 
 class Cs_class;
 extern Cs_class *cs_class_class;  // Cs_class inherits from Obj, so instqnces of
@@ -35,20 +33,20 @@ public:
 
     /// Although we don't need to compile to "call" for known Object types, this is
     /// helpful for encapsulation.
-    Any call(const Symbol& method, const Array& args, const Dictionary& kwargs);
+    Any call(Symbol *method, Array *args, Dict *kwargs);
     void set_class_ptr(Cs_class * c_ptr);
 };
 
-void check_dispatch(const Symbol& method, const Array& args,
-                    const Dictionary& kwargs, size_t args_len,
+void check_dispatch(Symbol *method, Array *args,
+                    Dict *kwargs, size_t args_len,
                     size_t kwargs_len);
 
 
 // The symbol table should exist globally, because Symbols can be generated
 // on the fly. Instead of populating them with the correct mappings each
 // time, just treat them as unique strings/keys into the dictionary.
-using MemberFn = std::function<Any(Obj*, const Array&, const Dictionary&)>;
-using MemberTable = std::unordered_map<Symbol, MemberFn>;
+using MemberFn = std::function<Any(Obj*, Array*, Dict*)>;
+using MemberTable = std::unordered_map<Symbol *, MemberFn>;
 
 extern MemberTable cs_class_table;
 
@@ -68,10 +66,10 @@ class Cs_class : public Obj {
     
     // Notice Obj {Cs_class_class}. The class of all Cs_class objects is
     // Cs_class_class!
-    Cs_class(Symbol name, int64_t slot_count, int64_t any_slots,
-             MemberTable *table, Cs_class * parent=nullptr) :
+    Cs_class(Symbol *name, int64_t slot_count, int64_t any_slots,
+             MemberTable *table, Cs_class *parent=nullptr) :
             Obj {cs_class_class} {
-        slots[1] = std::move(name);
+        set_slot(1, name);
         slots[2].integer = slot_count;
         slots[3].integer = any_slots;
         if (parent != nullptr) {
@@ -84,8 +82,8 @@ class Cs_class : public Obj {
         // A: we could potentially copy the table wholesale, but that mucks
         // around with memory a bit too much for my liking. Get it right
         // first then attempt to refactor.
-    };
-    [[nodiscard]] Symbol get_name() const { return to_symbol(slots[1]); }
+    }
+    [[nodiscard]] Symbol *get_name() { return to_symbol(slots[1]); }
     [[nodiscard]] int64_t get_inst_slot_count() const {
         return slots[2].integer; }
     [[nodiscard]] int64_t get_inst_any_slots() const {
@@ -95,7 +93,7 @@ class Cs_class : public Obj {
         return reinterpret_cast<MemberTable *>(slots[4].integer); }
     [[nodiscard]] Cs_class* get_parent() const {
         return reinterpret_cast<Cs_class *>(slots[5].integer); }
-    [[nodiscard]] MemberFn find_function(Symbol function_name) {
+    [[nodiscard]] MemberFn find_function(Symbol *function_name) {
         MemberTable *table = get_member_table();
         auto it = table->find(function_name);
         if (it == table->end()) {
@@ -131,7 +129,7 @@ inline Any Adder_get_x(Obj* self) {
 inline Any Adder_get_y(Obj* self) {
     return static_cast<Adder*>(self)->y;
 }
-inline Any Adder_call_add(Obj* self, const Array& args, const Dictionary& kwargs) {
+inline Any Adder_call_add(Obj* self, Array *args, const Dict& kwargs) {
     return static_cast<Adder*>(self)->add(to_int(args[0]));
 }
 

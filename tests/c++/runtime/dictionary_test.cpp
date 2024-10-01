@@ -4,12 +4,12 @@
 /* TODO: dictionary_test
  
  #include "any.h"
- #include "dictionary.h"
+ #include "dict.h"
  #include "op_overload.h"
  #include <iostream>
  
  void test_dictionary() {
- Any D = *(new Dictionary {});
+ Any D = *(new Dict {});
  D['a'] = 5;
  D['b'] = 8;
  std::cout << D['a']  << std::endl;

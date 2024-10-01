@@ -3,7 +3,6 @@
 //
 #pragma once
 #include <cstdint>
-#include "gc.h"
 
 union Any;
 
@@ -21,7 +20,7 @@ enum Tag {
 // all garbage-collected objects inherit this base class
 //
 class Basic_obj {
-public:
+public:    
     /* fields in header:
      *
      * header format is:

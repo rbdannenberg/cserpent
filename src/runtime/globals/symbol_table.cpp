@@ -2,31 +2,12 @@
 // Created by anthony on 7/9/24.
 //
 
+/*
+
 #include <iostream>
 #include "any.h"
 #include "symbol.h"
 #include "symbol_table.h"
-
-namespace globals {
-    void SymbolTable::set_value(const Symbol &variable_name, Any value) {
-        auto it = table.find(variable_name);
-        if (it != table.end()) {
-            it->second.first = value;
-        } else {
-            table[variable_name].first = value;
-        }
-    }
-
-    Any SymbolTable::get_value(const Symbol &variable_name) {
-        auto it = table.find(variable_name);
-        if (it != table.end()) {
-            return it->second.first;
-        } else {
-            std::cerr << "Variable not found: " << variable_name << std::endl;
-            throw std::runtime_error("");
-            return {};
-        }
-    }
 
     void SymbolTable::set_function(const Symbol &function_name, GlobalFn fn) {
         auto it = table.find(function_name);
@@ -52,14 +33,4 @@ namespace globals {
             return {};
         }
     }
-
-    void SymbolTable::add_symbol(const Symbol &symbol) {
-        auto it = table.find(symbol);
-        if (it != table.end()) {
-            return;
-        }
-        table[symbol] = {nullptr, nullptr};
-    }
-
-    SymbolTable cs_symbol_table{};
-}
+*/

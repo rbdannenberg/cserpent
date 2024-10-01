@@ -3,6 +3,7 @@
 //
 
 #include "any.h"
+#include "gc.h"
 #include "basic_obj.h"
 #include "obj.h"
 #include "op_overload.h"
@@ -10,7 +11,7 @@
 #include "csstring.h"
 #include "symbol.h"
 #include "array.h"
-#include "dictionary.h"
+#include "dict.h"
 #include <iostream>
 #include <sstream>
 
@@ -30,21 +31,35 @@ int64_t force_int(Any x) {
     else type_error(x);
 }
 
-String force_str(Any x) {
-    std::stringstream ss;
+Any force_str(Any x) {
     switch (get_type(x)) {
-        case Any_type::STR: return to_str(x);
-        case Any_type::SYMBOL: return String {temp_str(to_symbol(x))};
-        case Any_type::INT: return String {std::to_string(to_int(x))};
-        case Any_type::REAL:
+        case Any_type::STRING: return x;
+        case Any_type::SYMBOL: return to_symbol(x)->name();
+        case Any_type::INT: {
+            std::string ias(std::to_string(to_int(x)));
+            Any int_as_string(ias);
+            return int_as_string;
+        }
+        case Any_type::REAL: {
+            std::stringstream ss;
             ss << to_real(x);
-            return String {ss.str()};
-        case Any_type::ARRAY: return String {debug_str(to_array(x))};
-        case Any_type::DICT: return String {debug_str(to_dict(x))};
-        case Any_type::NIL: return String {"nil"};
-        case Any_type::T: return String {"t"};
+            std::string ras(ss.str());
+            Any real_as_string(ras);
+            return real_as_string;
+        }
+        case Any_type::ARRAY: {
+            std::string aas(debug_str(to_array(x)));
+            Any array_as_string(aas);
+            return array_as_string;
+        }
+        case Any_type::DICT: {
+            std::string das(debug_str(to_dict(x)));
+            Any dict_as_string(das);
+            return dict_as_string;
+        }
         case Any_type::OBJ: {
-            return String {temp_str((reinterpret_cast<Obj*>(x.integer)->get_class_ptr()->get_name()))};
+            Any oas(to_obj(x)->get_class_ptr()->get_name());
+            return oas;
         }
         default: type_error(x);
     }

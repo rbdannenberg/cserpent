@@ -1,25 +1,30 @@
 The tag of an Any refers to the first 16 bits. We will use the tag to identify the underlying type of an Any.
 
 ### Int
-Precondition: 50-bit two's complement; in 64-bit ensure top 15 bits are 1's or 0's
+Precondition: 49-bit two's complement; in 64-bit ensure top 15 bits are 1's or 0's
 
-Tags (after bias): FFFC - FFFF
+Tags (before bias): FFFE - FFFF
 
 ### Double
-Precondition: Not Nan or inf (Fix!)
+Precondition: not a NaN or canonical, inf, or -inf only
 
-Tags (after bias): 0001 - 7FF0 and 8001 - FFF0
+Tags (after bias): 0001 - FFFA
 
 ### Pointer
-Preconditon: Top 16 bits address 0
+Preconditon: Top 16 bits are 0
 
 Tags: 0000
 
-### Left unused tags (after bias)
-7FF1 - 7FFF and FFF1 - FFFB
+### Symbols
+Tags: FFFA
+A Symbol is heap-allocated and contains a string name, function
+pointer and global variable value.
 
-equivalently, they are:
+### Short Strings
+Tags: FFFC
+A short string has up to 5 bytes followed by and EOS (zero) byte.
 
-0111,1111,1111,0001 - 0111,1111,1111,1111
-
-1111,1111,1111,0001 - 1111,1111,1111,1011
+### Strings
+Tags: FFFD
+A String is heap-allocated and contains a std::string containing
+an immutable string. An Any with tag FFFD is a pointer to the String.

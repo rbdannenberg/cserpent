@@ -4,6 +4,7 @@
 
 #include <cmath>
 #include "any.h"
+#include "gc.h"
 #include "basic_obj.h"
 #include "obj.h"
 #include "builtin_functions.h"
@@ -12,20 +13,19 @@
 #include "data_structures/array.h"
 #include "csstring.h"
 #include "symbol.h"
-#include "symbol_table.h"
-#include "dictionary.h"
+#include "dict.h"
 
 int64_t len(Any x) {
-    if (is_ptr(x)) {
-        Basic_obj *basic_ptr= to_ptr(x);
+    if (is_basic_obj(x)) {
+        Basic_obj *basic_ptr= to_basic_obj(x);
         if (basic_ptr->get_tag() == tag_array) {
             return len(to_array(x));
         }
-    }
-    else if (is_str(x)) {
-        return len(to_str(x));
-    }
-    else {
+    } else if (is_string(x)) {
+        return len(to_string(x));
+    } else if (is_short(x)) {
+        return strlen(x.bytes + SHORTSTR_BASE);
+    } else {
         type_error(x);
     }
 }
@@ -58,26 +58,27 @@ int64_t idiv(Any lhs, int rhs) {
     else type_error(lhs);
 }
 
-int64_t find(Any s, const String& pattern, int64_t start, int64_t end) {
-    if (is_str(s)) {
-        return find(to_str(s), pattern, start, end);
+/*
+int64_t find(String *s, String *pattern, int64_t start, int64_t end) {
+    if (is_string(s)) {
+        return find(to_string(s), pattern, start, end);
     }
     else {
         type_error(s);
     }
 }
 
-int64_t find(const String& s, Any pattern, int64_t start, int64_t end) {
+int64_t find(String *s, Any pattern, int64_t start, int64_t end) {
     if (is_str(pattern)) {
-        return find(s, to_str(pattern), start, end);
+        return find(s, to_string(pattern), start, end);
     }
     else {
         type_error(s);
     }
 }
 int64_t find(Any s, Any pattern, int64_t start, int64_t end) {
-    if (is_str(s) && is_str(pattern)) {
-        return find(to_str(s), to_str(pattern), start, end);
+    if (is_string(s)) {
+        return find(to_string(s), pattern, start, end);
     }
     else {
         type_error(s);
@@ -89,7 +90,7 @@ Any subseq(Any s, int64_t start, int64_t end) {
         return subseq(to_str(s), start, end);
     }
     else if (is_ptr(s)) {
-        if (to_ptr(s)->get_tag() == tag_array) {
+        if (to_basic_obj(s)->get_tag() == tag_array) {
             return subseq(to_array(s), start, end);
         }
         type_error(s);
@@ -110,16 +111,16 @@ Any is_equal(Any lhs, Any rhs) {
     return Any {res};
 }
 
-Any apply(Symbol function, const Array& argarray) {
+Any apply(Symbol function, Array *argarray) {
     return std::invoke(globals::cs_symbol_table.get_function(function),
                        argarray, empty_dict);
 }
 
-Any sendapply(Obj& obj, Symbol method, const Array& argarray) {
+Any sendapply(Obj& obj, Symbol method, Array *argarray) {
     return obj.call(method, argarray, empty_dict);
 }
 
-Any sendapply(Any obj, Symbol method, const Array& argarray) {
+Any sendapply(Any obj, Symbol method, Array *argarray) {
     if (is_ptr(obj)) {
         return obj.call(method, argarray, empty_dict);
     }
@@ -127,3 +128,4 @@ Any sendapply(Any obj, Symbol method, const Array& argarray) {
         type_error(obj);
     }
 }
+*/

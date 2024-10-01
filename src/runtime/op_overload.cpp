@@ -1,4 +1,5 @@
 #include "any.h"
+#include "gc.h"
 #include "basic_obj.h"
 #include "any_utils.h"
 #include "symbol.h"
@@ -28,23 +29,28 @@ Any operator+ (Any lhs, double rhs) {
     return { force_real(lhs) + rhs };
 }
 
-Any operator+ (Any lhs, const String& rhs) {
-    if (is_str(lhs)) {
-        return { to_str(lhs) + rhs};
+Any operator+ (Any lhs, const String *rhs) {
+    assert(false);  // needs work
+    if (is_string(lhs)) {
+        assert(false);  // needs work
+        // return { to_string(lhs) + rhs};
+    } else if (is_short(lhs)) {
+        return nil;
     }
 }
 
 Any operator+ (Any lhs, Any rhs) {
+    assert(false);  // needs work
     if (is_int(rhs)) {
         return lhs + to_int(rhs);
-    }
-    else if (is_real(rhs)) {
+    } else if (is_real(rhs)) {
         return lhs + to_real(rhs);
-    }
-    else if (is_str(rhs)) {
-        return lhs + to_str(rhs);
-    }
-    else type_error(rhs);
+    } else if (is_string(rhs)) {
+        assert(false);  // needs work
+        // return lhs + to_string(rhs);
+    } else if (is_short(rhs)) {
+        assert(false);   // needs work
+    } else type_error(rhs);
 }
 
 // * operators
@@ -348,8 +354,9 @@ std::ostream& operator<<(std::ostream& os, Any x) {
             return os << to_int(x);
         case Any_type::REAL:
             return os << to_real(x);
-        case Any_type::STR:
-            return os << to_str(x);
+        case Any_type::STRING:
+        case Any_type::SHORT:
+            return os << get_c_str(x);
         case Any_type::SYMBOL:
             return os << to_symbol(x);
         case Any_type::ARRAY:
@@ -377,16 +384,18 @@ bool operator==(Any lhs, int rhs) {
 
 bool operator==(Any lhs, Any rhs) {
     if (is_str(rhs)) {
-        return lhs == to_str(rhs);
+        assert(false);  // needs work
+        // return lhs == to_string(rhs);
     } else if (is_symbol(rhs)) {
-        return lhs == to_symbol(rhs);
+        assert(false);  // needs work
+        // return lhs == to_symbol(rhs);
     }
     return lhs.integer == rhs.integer;
 }
 
 bool operator==(Any lhs, String rhs) {
     if (is_str(lhs)) {
-        return to_str(lhs) == rhs;
+        return to_string(lhs) == rhs;
     }
     else type_error(lhs, __func__);
 }
@@ -404,7 +413,7 @@ bool operator!=(Any lhs, Any rhs) {
 
 //Any& Any::operator[](int64_t i) {
 //    if (is_ptr(*this)) {
-//        Basic_obj *basic_ptr= to_ptr(*this);
+//        Basic_obj *basic_ptr= to_basic_obj(*this);
 //        if (basic_ptr->get_tag() == tag_array) {
 //            assert(false);  // do not use a[i] = x; instead use a.set(i, x);
 ////            std::vector<Any> *data = (std::vector<Any> *) basic_ptr->slots;
@@ -427,8 +436,8 @@ bool operator!=(Any lhs, Any rhs) {
 //    }
 //}
 void Any::set(int64_t i, Any val) {
-    if (is_ptr(*this)) {
-        Basic_obj *basic_ptr = to_ptr(*this);
+    if (is_basic_obj(*this)) {
+        Basic_obj *basic_ptr = to_basic_obj(*this);
         if (basic_ptr->get_tag() == tag_array) {
             (static_cast<Array*>(basic_ptr))->set(i, val);
             return;
@@ -438,13 +447,14 @@ void Any::set(int64_t i, Any val) {
 }
 
 Any Any::operator[](int64_t i) const {
-    if (is_ptr(*this)) {
-        Basic_obj *basic_ptr= to_ptr(*this);
+    if (is_basic_obj(*this)) {
+        Basic_obj *basic_ptr= to_basic_obj(*this);
         if (basic_ptr->get_tag() == tag_array) {
             return (*(static_cast<Array*>(basic_ptr)))[i];
         }
-    } else if (is_str(*this)) {
-        return String {to_str(*this)[i]};
+    } else if (is_string(*this)) {
+        Any result = get_c_str(*this);
+        return result;
     } else {
         type_error(*this);
     }

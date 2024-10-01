@@ -5,45 +5,16 @@
 #include <stdexcept>
 #include <cassert>
 #include <utility>
-#include "csstring.h"
 #include "any.h"
+#include "gc.h"
+#include "basic_obj.h"
+#include "obj.h"
+#include "op_overload.h"
+#include "csstring.h"
 
+int64_t len(String *x) { return x->len(); }
 
-// distinguish between short and long strings by the 47th
-// bit. Pointers will have 1, short strings will have 0, for the nul
-// terminator.
-
-// number of useful characters in a short string
-// (i.e. does not include the nul terminator)
-static constexpr int64_t max_short_size = 4;
-
-// for long strings only, 0xFFFA for regular tag, 8 to distinguish
-// between nul terminator
-static constexpr uint64_t long_short_tag = 0x800000000000;
-
-static constexpr uint64_t long_mask = TAG_MASK | long_short_tag;
-
-static constexpr uint64_t long_str_tag = STR_TAG | long_short_tag;
-
-static constexpr uint64_t empty_string = STR_TAG;
-
-
-// O(max_short_size)
-static bool is_short_literal(const char * literal) {
-    for (int64_t i = 0; i < max_short_size + 1; i++) {
-        if (literal[i] == '\0') {
-            return true;
-        }
-    }
-    return false;
-}
-
-
-static bool is_short_string(const String& s) {
-    return !(s.data & long_short_tag);
-}
-
-
+/*
 static std::string * get_str_ptr(uint64_t s) {
      // you might worry about the 47th bit, but that ensures we get a
      // "canonical" pointer
@@ -69,18 +40,20 @@ std::string temp_str(const String& s) {
         return *get_str_ptr(s.data);
     }
 }
+*/
 
-
-String::String() : data {empty_string} {}
-
-
-String::String(char c) {
-    data = STR_TAG;
-    chars[STR_BASE + 0] = c;
-    chars[STR_BASE + 1] = '\0';
+String::String(const char *s) {
+    set_tag(tag_string);
+    slots[0].integer = (int64_t) (new std::string(s ? s : ""));
 }
 
 
+String::String(const std::string &s) {
+    set_tag(tag_string);
+    slots[0].integer = (int64_t) (new std::string(s));
+}
+
+/*
 uint64_t literal_string_to_data(const char *literal) {
     uint64_t data;
     if (is_short_literal(literal)) {
@@ -127,7 +100,7 @@ void swap(String& first, String& second) noexcept {
     using std::swap;
     swap(first.data, second.data);
 }
-
+*/
 
 /* WHAT IS THIS?
 String::String(String&& other) : data {} {
@@ -142,7 +115,7 @@ String& String::operator=(String other) {
 }
 */
 
-
+/*
 char String::operator[](int64_t i) const {
     if (is_short_string(*this)) {
         return chars[STR_BASE + i];
@@ -280,3 +253,4 @@ String strcat(const String& lhs, const String& rhs) {
     return String {temp_str(lhs) + temp_str(rhs)};
 }
 
+*/

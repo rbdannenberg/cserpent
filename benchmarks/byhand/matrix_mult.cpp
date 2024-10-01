@@ -22,6 +22,7 @@ return c
 
 #include <cstdint>
 #include "any.h"
+#include "gc.h"
 #include "basic_obj.h"
 #include "obj.h"
 #include "runtime.h"
@@ -52,12 +53,12 @@ Any matmul(Any a_, Any b_) {
     locals.n = len(locals.a);
     locals.m = len(locals.b[0]);
     locals.p = len(locals.a[0]);
-    locals.c = *(new Array {});
+    locals.c = new Array {};
     STD_FUNCTION_ENTRY(9);
 
     for (int64_t i = 0; i < locals.n; i++) {
         // list comprehension
-        locals.ci = *(new Array(locals.m, 0.0));
+        locals.ci = new Array(as_int(locals.m), 0.0);
         for (int64_t k = 0; k < locals.p; k++) {
             locals.aik = locals.a[i][k];
             locals.bk = locals.b[k];
@@ -85,13 +86,13 @@ std::string test_matmul(Any n_) {
     memset(&locals, 0, sizeof(locals));
     locals.n = n_;
     locals.tmp = 1.0 / (locals.n * locals.n);
-    locals.a = *(new Array {});
-    locals.b = *(new Array {});
+    locals.a = new Array;
+    locals.b = new Array;
     STD_FUNCTION_ENTRY(7);
 
     for (int64_t i = 0; i < locals.n; i++) {
-        locals._tmp_a = *(new Array {});
-        locals._tmp_b = *(new Array {});
+        locals._tmp_a = new Array;
+        locals._tmp_b = new Array;
         for (int64_t j = 0; j < locals.n; j++) {
             locals._tmp_a.append(locals.tmp * (i - j) * (i + j));
             locals._tmp_b.append(locals.tmp * (i + j) * (i - j));
@@ -104,16 +105,6 @@ std::string test_matmul(Any n_) {
     // do_not_optimize(d);
     /// This is an optimization blocker, makes it harder to inline and lets us check correctness
     std::string result = std::to_string(to_real(d[static_cast<int64_t>(n) / 2][static_cast<int64_t>(n) / 2]));
-#ifdef FREE
-    for (int64_t i = 0; i < n; i++) {
-        delete reinterpret_cast<Array*>(to_ptr(a[i]));
-        delete reinterpret_cast<Array*>(to_ptr(b[i]));
-        delete reinterpret_cast<Array*>(to_ptr(d[i]));
-    }
-    delete reinterpret_cast<Array*>(to_ptr(a));
-    delete reinterpret_cast<Array*>(to_ptr(b));
-    delete reinterpret_cast<Array*>(to_ptr(d));
-#endif
     return result;
 #endif
 

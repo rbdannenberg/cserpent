@@ -13,19 +13,19 @@ public:
     Array();
     Array(std::initializer_list<Any> l);
     Array(int64_t size, Any value);
-    Array(const Array& x);
+    Array(Array *x);
     // int64_t available_len();
     // void expand();
-    Array& append(Any x);
-    Array& append(int64_t x);
-    Array& append(double x);
+    Array *append(Any x);
+    Array *append(int64_t x);
+    Array *append(double x);
     Any last();
-    Array& insert(int64_t i, Any x);
+    Array *insert(int64_t i, Any x);
     Any unappend();
-    Array& uninsert(int64_t i, int64_t j = std::numeric_limits<int64_t>::max());
-    Array& reverse();
-    Array& copy();
-    Array& set_len(int64_t new_len);
+    Array *uninsert(int64_t i, int64_t j = std::numeric_limits<int64_t>::max());
+    Array *reverse();
+    Array *copy();
+    Array *set_len(int64_t new_len);
 
 
     // to store at an address, use this:
@@ -38,15 +38,17 @@ public:
     Any operator[](int64_t i) const;
     int64_t len() const;
 
-    Any call(const Symbol& method, const Array& args, const Dictionary& kwargs);
-    friend std::ostream& operator<<(std::ostream& os, const Array& x);
-    friend std::string debug_str(const Array& x);
-private:
+    Any call(Any method, Array *args, Dict *kwargs);
+    friend std::ostream& operator<<(std::ostream& os, Array *x);
+    friend std::string debug_str(Array *x);
+protected:
     std::vector<Any> * get_vector() const;
 
 };
 
-Array& subseq(const Array& x, int64_t start, int64_t end = std::numeric_limits<int64_t>::max());
-bool is_equal(const Array& lhs, const Array& rhs);
+int64_t len(Array *x);
 
-inline const Array empty_array {};
+Array *subseq(Array *x, int64_t start, int64_t end = std::numeric_limits<int64_t>::max());
+bool is_equal(Array *lhs, Array *rhs);
+
+inline Array empty_array {};

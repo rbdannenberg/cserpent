@@ -28,8 +28,8 @@ add_library(runtime STATIC
         src/runtime/obj.cpp
         src/runtime/data_structures/array.h
         src/runtime/data_structures/array.cpp
-        src/runtime/data_structures/dictionary.cpp
-        src/runtime/data_structures/dictionary.h
+        src/runtime/data_structures/dict.cpp
+        src/runtime/data_structures/dict.h
         src/runtime/data_structures/csstring.h
         src/runtime/data_structures/csstring.cpp
         src/gc/gc.h
@@ -38,8 +38,6 @@ add_library(runtime STATIC
         src/runtime/basic_obj.h
         src/runtime/data_structures/symbol.cpp
         src/runtime/data_structures/symbol.h
-        src/runtime/globals/symbol_table.cpp
-        src/runtime/globals/symbol_table.h
         src/runtime/runtime.cpp
         src/runtime/runtime.h
 )

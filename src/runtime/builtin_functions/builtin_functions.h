@@ -21,6 +21,6 @@ Any subseq(Any s, int64_t start, int64_t end = std::numeric_limits<int64_t>::max
 String toupper(Any s);
 Any is_equal(Any lhs, Any rhs);
 
-Any apply(Symbol function, const Array& argarray);
-Any sendapply(Obj& obj, Symbol method, const Array& argarray);
-Any sendapply(Any obj, Symbol method, const Array& argarray);
+Any apply(Symbol function, Array *argarray);
+Any sendapply(Obj& obj, Symbol method, Array *argarray);
+Any sendapply(Any obj, Symbol method, Array *argarray);

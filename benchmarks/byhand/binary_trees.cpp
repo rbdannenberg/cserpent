@@ -1,9 +1,9 @@
 #include <sstream>
 #include "any.h"
 #include "op_overload.h"
-#include "data_structures/array.h"
-#include "data_structures/dictionary.h"
-#include "builtin_functions/builtin_functions.h"
+#include "array.h"
+#include "dict.h"
+#include "builtin_functions.h"
 #include "benchmarking_utils.h"
 
 extern Cs_class * Tree_class;
@@ -31,21 +31,21 @@ public:
     }
 };
 
-Any Tree_get_left(Obj* self, const Array& args, const Dictionary& kwargs) {
-    check_dispatch("get_left", args, kwargs, 0, 0);
+Any Tree_get_left(Obj* self, Array *args, Dict& kwargs) {
+    check_dispatch(to_symbol(symbol_get_left), args, kwargs, 0, 0);
     return reinterpret_cast<Tree*>(self)->get_left();
 }
-Any Tree_get_right(Obj* self, const Array& args, const Dictionary& kwargs) {
-    check_dispatch("get_right", args, kwargs, 0, 0);
+Any Tree_get_right(Obj* self, Array *args, Dict& kwargs) {
+    check_dispatch(to_symbol(symbol_get_right), args, kwargs, 0, 0);
     return reinterpret_cast<Tree*>(self)->get_right();
 }
-Any Tree_set_left(Obj* self, const Array& args, const Dictionary& kwargs) {
-    check_dispatch("set_left", args, kwargs, 1, 0);
+Any Tree_set_left(Obj* self, Array *args, Dict& kwargs) {
+    check_dispatch(to_symbol(symbol_set_left), args, kwargs, 1, 0);
     reinterpret_cast<Tree*>(self)->set_left(args[0]);
     return nil;
 }
-Any Tree_set_right(Obj* self, const Array& args, const Dictionary& kwargs) {
-    check_dispatch("set_right", args, kwargs, 1, 0);
+Any Tree_set_right(Obj* self, Array *args, Dict& kwargs) {
+    check_dispatch(to_symbol(symbol_set_right), args, kwargs, 1, 0);
     reinterpret_cast<Tree*>(self)->set_right(args[0]);
     return nil;
 }
@@ -96,7 +96,7 @@ void free_tree(Any tree) {
         free_tree(left);
         free_tree(tree.call("get_right", empty_array, empty_dict));
     }
-    delete reinterpret_cast<Tree*>(to_ptr(tree));
+    delete reinterpret_cast<Tree*>(to_basic_obj(tree));
 }
 
 std::string test_trees(Any arg) {

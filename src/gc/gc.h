@@ -18,14 +18,31 @@ void gc_trace_2(Basic_obj *obj, const char *msg, int index);
 #define gc_trace_2(ptr, msg, index)
 #endif
 
-#include "any.h"
-
 enum Gc_color {
     GC_FREE = 0,
     GC_BLACK = 1,
     GC_GRAY = 2,
     GC_WHITE = 3
 };
+
+enum Gc_states {
+    GC_START,
+    GC_MARK,
+    GC_MARKB,
+    GC_MARK_ARRAY,
+    GC_MARK_ARRAYB,
+    GC_MARK2,
+    GC_MARK_STACK,
+    GC_MARK3,
+    GC_SWEEP,
+    GC_SWEEP1,
+    GC_SWEEP2,
+    GC_FINAL,
+    GC_IDLE
+};
+
+extern Gc_states gc_state;
+
 
 // Every stack frame is different because every stack frame has
 // different local variables of type Any, but every stack frame starts
@@ -44,6 +61,8 @@ extern Gc_color gc_initial_color;
 extern Basic_obj *gc_gray_list;
 extern bool gc_write_block;
 extern bool gc_local_write_block;
+extern Array *gc_array;
+extern int64_t gc_array_index;
 
 // how many mark/sweep cycles have been completed?
 extern int64_t gc_cycles;

@@ -4,6 +4,7 @@
 //
 #include "any.h"
 #include "gc.h"
+#include "basic_obj.h"
 #include "obj.h"
 #include <iostream>
 #include <cassert>
@@ -186,7 +187,7 @@ got_it:  // set header and return object
     cs_allocations++;
     gc_trace(obj, "allocated");
 
-    // for now, we run gc_poll() on every allocation and free, but this is
+    // for now, we run gc_poll() on every allocation, but this is
     // almost certainly overkill and makes calls too often
     gc_poll();
     return result;
@@ -256,9 +257,5 @@ void csfree(void *object)
     cs_current_object_count--;
     // printf("pointer to obj size %lld at %p -> %p\n",
     //       obj->get_size(), head, obj);
-
-    // for now, we run gc_poll() on every allocation and free, but this is
-    // almost certainly overkill and makes calls too often
-    gc_poll();
 }
 

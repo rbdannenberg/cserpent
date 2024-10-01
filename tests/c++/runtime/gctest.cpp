@@ -142,7 +142,7 @@ int main()
             if (the_array) {  // test for valid-looking elements
                 int64_t n = the_array->len();
                 for (int k = 0; k < n; k++) {
-                    Obj *elem = (Obj *) to_ptr((*the_array)[k]);
+                    Obj *elem = (Obj *) to_basic_obj((*the_array)[k]);
                     assert(elem == nullptr || (int64_t) elem > 0x100000000);
                     assert(elem == nullptr || elem->get_tag() == tag_object);
                     assert(elem == nullptr || elem->get_color() != GC_FREE);

@@ -1,3 +1,34 @@
+Nan-boxing in CSerpent
+
+(See "Notes on Nan-boxing" below for more design details)
+
+Here is how things are represented in CSerpent:
+
+Type Any is a union with uint64_t and double fields. Type
+determination and checking is done by looking at the unint64_t. 
+
+Quiet NaNs are FFF8... to FFFF...
+NaN values are 7FF8... (canonical), 7FF0... (inf), FFF0... (-inf)
+Quieted canonical NaN (I think) isi FFF8
+
+Unused NaNs are therefore FFF9... to FFFF....
+
+Doubles are biased by 1<<48 to use the range 0001... to FFFA...
+
+Pointers use the range 0000....
+Pointers include CSerpent objects, Arrays, Dicts, 
+
+Integers (49-bit signed) have high order bits FFFE and FFFF and are
+decoded by sign-extending the sign bit at 0001....
+
+Symbols use the high order bits FFFB
+
+Short strings use the high order bits FFFC
+
+Strings use the high order bits FFFD
+
+
+
 Notes on Nan-boxing
 
 Nan-boxing means using NaN (not-a-number) floating point values
@@ -122,3 +153,4 @@ allocate another CSString. The CSString is now referenced by multiple
 pointers, but it's on the heap and will get GC'd when the references
 all go away. When the CSString is deleted, C++ reference counting will
 free the actual string data.
+

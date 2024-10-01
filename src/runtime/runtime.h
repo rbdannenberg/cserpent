@@ -21,3 +21,18 @@ void runtime_mark_roots();
     if ((Frame *) gc_frame_ptr == &locals) \
         gc_frame_ptr = (Gc_frame *) gc_stack_top; \
     return (result);
+
+extern Any symbol_append;
+extern Any symbol_last;
+extern Any symbol_insert;
+extern Any symbol_unappend;
+extern Any symbol_uninsert;
+extern Any symbol_reverse;
+extern Any symbol_copy;
+extern Any symbol_set_len;
+extern Any symbol_get_name;
+extern Any symbol_get_inst_slot_count;
+extern Any symbol_get_inst_any_slots;
+extern Any symbol_get_member_table;
+extern Any symbol_Class;
+extern Any symbol_Obj;

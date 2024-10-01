@@ -2,17 +2,21 @@
 
 #include "any.h"
 #include "gc.h"
+#include "basic_obj.h"
 #include "obj.h"
 #include "array.h"
 #include "csmem.h"
 #include "op_overload.h"
-#include "dictionary.h"
+#include "dict.h"
 #include <algorithm>
 #include <sstream>
+#include "runtime.h"
 
-static std::vector<Any> *to_vector(const Array& x) {
-    return (std::vector<Any> *) x.slots;
+static std::vector<Any> *to_vector(Array *x) {
+    return (std::vector<Any> *) x->slots;
 }
+
+int64_t len(Array *x) { return x->len(); }
 
 Array::Array() {
     set_tag(tag_array);
@@ -43,9 +47,9 @@ std::vector<Any> * Array::get_vector() const {
     return (std::vector<Any> *) slots;
 }
 
-Array::Array(const Array& x) {
+Array::Array(Array *x) {
     set_tag(tag_array);
-    new(slots) std::vector<Any> {*(x.get_vector())};
+    new(slots) std::vector<Any> {*(x->get_vector())};
 }
 
 static int64_t handle_index(int64_t i, int64_t len) {
@@ -59,20 +63,21 @@ static int64_t handle_index(int64_t i, int64_t len) {
 }
 
 
-Array& Array::append(Any x) {
+Array *Array::append(Any x) {
     std::vector<Any> *data = get_vector();
-    data->push_back(nullptr);
+    Any y;
+    data->push_back(y);
     set(data->size() - 1, x);
-    return *this;
+    return this;
 }
 
 
-Array& Array::append(int64_t x) {
+Array *Array::append(int64_t x) {
     return append(Any {x});
 }
 
 
-Array& Array::append(double x) {
+Array *Array::append(double x) {
     return append(Any {x});
 }
 
@@ -80,8 +85,8 @@ Array& Array::append(double x) {
 void Array::set(int64_t index, Any value) {
     std::vector<Any> *data = get_vector();
     Basic_obj *vptr;
-    if (gc_write_block && is_ptr(value) && get_color() != GC_BLACK) {
-        basic_obj_make_gray(to_ptr(value));
+    if (gc_write_block && is_basic_obj(value) && get_color() != GC_BLACK) {
+        basic_obj_make_gray(to_basic_obj(value));
     }
     data->at(index) = value;
 }    
@@ -112,53 +117,46 @@ Any Array::operator[](int64_t i) const {
 }
 
 // Refactor to constexpr function, after validating correctness.
-Any Array::call(const Symbol& method, const Array& args, const Dictionary& kwargs) {
-    std::string method_str = temp_str(method);
-    if (method_str == "append") { // potential symbol optimization here
-        check_dispatch("append", args, kwargs, 1, 0);
-        return append(args[0]);
-    }
-    else if (method_str == "last") {
-        check_dispatch("last", args, kwargs, 0, 0);
+Any Array::call(Any method, Array *args, Dict *kwargs) {
+    if (method.is(symbol_append)) { // potential symbol optimization here
+        check_dispatch(to_symbol(symbol_append), args, kwargs, 1, 0);
+        return append((*args)[0]);
+    } else if (method.is(symbol_last)) {
+        check_dispatch(to_symbol(symbol_last), args, kwargs, 0, 0);
         return last();
-    }
-    else if (method_str == "insert") {
-        check_dispatch("insert", args, kwargs, 2, 0);
-        return insert(to_int(args[0]), args[1]);
-    }
-    else if (method_str == "unappend") {
-        check_dispatch("unappend", args, kwargs, 0, 0);
+    } else if (method.is(symbol_insert)) {
+        check_dispatch(to_symbol(symbol_insert), args, kwargs, 2, 0);
+        return insert(to_int((*args)[0]), (*args)[1]);
+    } else if (method.is(symbol_unappend)) {
+        check_dispatch(to_symbol(symbol_unappend), args, kwargs, 0, 0);
         return unappend();
-    }
-    else if (method_str == "uninsert") {
-        check_dispatch("uninsert", args, kwargs, 2, 0);
-        if (args.len() == 1) {
-            return uninsert(to_int(args[0]));
+    } else if (method.is(symbol_uninsert)) {
+        check_dispatch(to_symbol(symbol_uninsert), args, kwargs, 2, 0);
+        if (args->len() == 1) {
+            return uninsert(to_int((*args)[0]));
         }
-        return uninsert(to_int(args[0]), to_int(args[1]));
-    }
-    else if (method_str == "reverse") {
-        check_dispatch("reverse", args, kwargs, 0, 0);
+        return uninsert(to_int((*args)[0]), to_int((*args)[1]));
+    } else if (method.is(symbol_reverse)) {
+        check_dispatch(to_symbol(symbol_reverse), args, kwargs, 0, 0);
         return reverse();
-    }
-    else if (method_str == "copy") {
-        check_dispatch("copy", args, kwargs, 0, 0);
+    } else if (method.is(symbol_copy)) {
+        check_dispatch(to_symbol(symbol_copy), args, kwargs, 0, 0);
         return copy();
-    }
-    else if (method_str == "set_len") {
-        check_dispatch("set_len", args, kwargs, 1, 0);
-        return set_len(to_int(args[0]));
+    } else if (method.is(symbol_set_len)) {
+        check_dispatch(to_symbol(symbol_set_len), args, kwargs, 1, 0);
+        return set_len(to_int((*args)[0]));
     }
     throw std::runtime_error("Array: no such method");
 }
+
 
 int64_t Array::len() const {
     std::vector<Any> *data = (std::vector<Any> *) slots;
     return data->size();
 }
 
-Array& subseq(const Array& arr, int64_t start, int64_t end) {
-    int64_t arr_len = arr.len();
+Array *subseq(Array *arr, int64_t start, int64_t end) {
+    int64_t arr_len = arr->len();
     if (end == std::numeric_limits<int64_t>::max()) {
         end = arr_len;
     }
@@ -174,17 +172,17 @@ Array& subseq(const Array& arr, int64_t start, int64_t end) {
     }
     auto result = new Array {};
     for (int64_t i = start; i < end; i++) {
-        result->append(arr[i]);
+        result->append((*arr)[i]);
     }
-    return *result;
+    return result;
 }
 
-bool is_equal(const Array& lhs, const Array& rhs) {
+bool is_equal(Array *lhs, Array *rhs) {
     return &lhs == &rhs;
 }
 
-std::ostream &operator<<(std::ostream &os, const Array &x) {
-    std::vector<Any> &data = *(x.get_vector());
+std::ostream &operator<<(std::ostream &os, Array *x) {
+    std::vector<Any> &data = *(x->get_vector());
     os << "[";
     for (auto i = data.begin(); i != data.end(); i++) {
         os << *i;
@@ -196,8 +194,8 @@ std::ostream &operator<<(std::ostream &os, const Array &x) {
     return os;
 }
 
-std::string debug_str(const Array& x) {
-    std::vector<Any> &data = *(x.get_vector());
+std::string debug_str(Array *x) {
+    std::vector<Any> &data = *(x->get_vector());
     std::stringstream ss;
     ss << "[";
     for (auto i = data.begin(); i != data.end(); i++) {
@@ -208,7 +206,6 @@ std::string debug_str(const Array& x) {
     }
     ss << "]";
     return ss.str();
-
 }
 
 
@@ -217,12 +214,12 @@ Any Array::last() {
     return data->back();
 }
 
-Array& Array::insert(int64_t i, Any x) {
+Array *Array::insert(int64_t i, Any x) {
     std::vector<Any> *data = get_vector();
     // do bounds checking
     i = handle_index(i, data->size());
     data->insert(data->begin() + i, x);
-    return *this;
+    return this;
 }
 
 Any Array::unappend() {
@@ -232,7 +229,7 @@ Any Array::unappend() {
     return last;
 }
 
-Array& Array::uninsert(int64_t i, int64_t j) {
+Array *Array::uninsert(int64_t i, int64_t j) {
     std::vector<Any> *data = get_vector();
     i = handle_index(i, data->size());
     if (j == std::numeric_limits<int64_t>::max()) {
@@ -241,21 +238,21 @@ Array& Array::uninsert(int64_t i, int64_t j) {
         j = handle_index(j, data->size());
         data->erase(data->begin() + i, data->begin() + j);
     }
-    return *this;
+    return this;
 }
 
-Array& Array::reverse() {
+Array *Array::reverse() {
     std::vector<Any> *data = get_vector();
     std::reverse(data->begin(), data->end());
-    return *this;
+    return this;
 }
 
-Array& Array::copy() {
-    return *(new Array (*this));
+Array *Array::copy() {
+    return new Array (*this);
 }
 
-Array& Array::set_len(int64_t new_len) {
+Array *Array::set_len(int64_t new_len) {
     std::vector<Any> *data = get_vector();
     data->resize(new_len);
-    return *this;
+    return this;
 }

@@ -5,10 +5,12 @@
 #include "any.h"
 #include "op_overload.h"
 #include "gc.h"
+#include "basic_obj.h"
 #include "obj.h"
 #include "any_utils.h"
 #include "array.h"
-#include "dictionary.h"
+#include "dict.h"
+#include "symbol.h"
 #include "csstring.h"
 
 /**
@@ -29,32 +31,27 @@ Any::Any() : integer {0} {}
 
 Any::Any(int64_t x) {
 #ifdef DEBUG
-    int64_t tmp = x & 0xFFFE000000000000;
-    if (tmp != 0 && tmp != 0xFFFE000000000000) {
+    int64_t tmp = x & INT_MASK;
+    if (tmp != 0 && tmp != INT_MASK;
         throw std::runtime_error("Precondition failed: integer value corrupted:");
     }
 #endif
-    integer = static_cast<uint64_t>(x) | INT_TAG;
+    integer = (static_cast<uint64_t>(x) & INT_MASK) | INT_TAG;
 }
 
 Any::Any(int x) {
-    integer = static_cast<uint64_t>(x) | INT_TAG;
+    integer = (static_cast<uint64_t>(x) & INT_MASK) | INT_TAG;
 }
 
 Any::Any(double x) {
     real = x;
-#ifdef DEBUG
-    if ((integer & 0x7FF0000000000000) == DOUBLE_UP) {
-        throw std::runtime_error("Precondition failed: Nan or Inf value.");
-        return {};
-    }
-#endif
     integer += BIAS;
+    assert(is_real(*this));
 }
 
 Any::Any(void* x) {
     // not integer = reinterpret_cast<uint64_t>(x);?
-    integer = *reinterpret_cast<uint64_t*>(&x);
+    integer = reinterpret_cast<uint64_t>(x);
 #ifdef DEBUG
     if (integer & TAG_MASK) {
         std::cerr << "Precondition failed: pointer corrupted" << std::endl;
@@ -63,74 +60,57 @@ Any::Any(void* x) {
 #endif
 }
 
+Any::Any(String *x) {
+    // make an Any to reference a String.
+    integer = reinterpret_cast<uint64_t>(x) | STR_TAG;
+}
 
-Any::Any(String x) {
-#ifdef DEBUG
-    if ((x.data & string_tag) != string_tag) {
-        std::cerr << "Precondition failed: string corrupted" << std::endl;
-        return {};
+Any::Any(Symbol *x) {
+    integer = reinterpret_cast<uint64_t>(x) | SYMBOL_TAG;
+}
+
+Any::Any(Array *x) {
+    integer = reinterpret_cast<uint64_t>(x);
+}
+
+Any::Any(Dict *x) {
+    integer = reinterpret_cast<uint64_t>(x);
+}
+
+Any::Any(Obj *x) {
+    integer = reinterpret_cast<uint64_t>(x);
+}
+
+Any::Any(const char *x) {
+    size_t len = strlen(x);
+    if (len < 6) {
+        integer = SHORT_TAG;
+        strncpy(bytes + SHORTSTR_BASE, x, 6);
+    } else {
+        String *ss = new String(x);
+        integer = reinterpret_cast<uint64_t>(ss) | STR_TAG;
     }
-#endif
-    // make an Any from a String. A String can be short (packed into
-    // integer) or long (pointer to std::string). I'm guessisng that
-    // C++ has already made a String copy, so x is a copy of the actual
-    // parameter and we can just transfer bits of x into this->integer.
-    // However, I also think x.~String() will run, so we will alter x
-    // to prevent it's original value from being deallocated.
-    integer = x.data;
-    x.data = 0;
-
-    // integer = 0; // So the potential pointer does not get freed
-    //std::swap(x.data, integer);
-    /* I don't understand any of this -RBD
-    // Any takes on the information in the String
-    // Any copies of the resulting Any will point to the same
-    // std::string - "controlled aliasing" This is fine since no
-    // operation modifies the contents of the std::string, only
-    // returning a new String, separating the aliasing and maintaining
-    // value semantics for both Any and String.  This is similar to
-    // copy-on-write.  Thus, only the String-to-Any constructor,
-    // String-to-Any assignment and Any-to-String to_str need special
-    // care. Default Any copy/move constructor/assignment are
-    // preserved.  Currently, the only leaks are 1 per String to Any
-    // conversion. This is acceptable.
-    */
 }
 
-Any::Any(Symbol x) {
-#ifdef DEBUG
-    if (x.tag != static_cast<int16_t>(0xFFFB)) {
-        std::cerr << "Precondition failed: symbol corrupted" << std::endl;
-        return {};
+Any::Any(std::string &x) {
+    size_t len = x.size();
+    if (len < 6) {
+        integer = SHORT_TAG;
+        strncpy(bytes + SHORTSTR_BASE, x.c_str(), 6);
+    } else {
+        String *ss = new String(x);
+        integer = reinterpret_cast<uint64_t>(ss) | STR_TAG;
     }
-#endif
-    integer = x.data;
-    // x is a copy of the actual parameter that will be deconstructed on
-    // return; we've taken ownership of the string in x, so fix x so that
-    // the string will not be destroyed.
-    x.data = 0;
-}
-
-Any::Any(const Array& x) {
-    integer = reinterpret_cast<uint64_t>(&x);
-}
-
-Any::Any(const Dictionary &x) {
-    integer = reinterpret_cast<uint64_t>(&x);
-}
-
-Any::Any(const Obj &x) {
-    integer = reinterpret_cast<uint64_t>(&x);
 }
 
 Any::Any(bool x) {
-    integer = x ? t.integer : nil.integer;
+    integer = x ? symbol_t.integer : 0;
 }
 
 Any& Any::operator=(int64_t x) {
 #ifdef DEBUG
-    int64_t tmp = x & 0xFFFE000000000000;
-    if (tmp != 0 && tmp != 0xFFFE000000000000) {
+    int64_t tmp = x & INT_MASK;
+    if (tmp != 0 && tmp != INT_MASK) {
         throw std::runtime_error("Precondition failed: integer value corrupted:");
     }
 #endif
@@ -145,33 +125,21 @@ Any& Any::operator=(int x) {
 
 Any& Any::operator=(double x) {
     real = x;
-#ifdef DEBUG
-    if ((integer & 0x7FF0000000000000) == DOUBLE_UP) {
-        throw std::runtime_error("Precondition failed: Nan or Inf value.");
-        return {};
-    }
-#endif
     integer += BIAS;
+    assert(is_real(x));
     return *this;
 }
 
-Any& Any::operator=(String x) {
-    integer = x.data;
-    // x is already a copy of the actual parameter, and x will be
-    // destroyed on return. We've taken ownership of the string, so
-    // fix x so that the string will not be destroyed.
-    x.data = 0;
+Any& Any::operator=(String *x) {
+   integer = reinterpret_cast<uint64_t>(x) | STR_TAG;
+   return *this;
+}
+
+Any& Any::operator=(Symbol *x) {
+    integer = reinterpret_cast<uint64_t>(x) | SYMBOL_TAG;
     return *this;
 }
 
-Any& Any::operator=(Symbol x) {
-    integer = x.data;
-    // x is already a copy of the actual parameter, and x will be
-    // destroyed on return. We've taken ownership of the string, so
-    // fix x so that the string will not be destroyed.
-    x.data = 0;
-    return *this;
-}
 
 //Any& Any::operator=(void* x) {
 //    // not integer = reinterpret_cast<uint64_t>(x);?
@@ -185,39 +153,61 @@ Any& Any::operator=(Symbol x) {
 //    return *this;
 //}
 
-Any& Any::operator=(const Array& x) {
-    integer = reinterpret_cast<uint64_t>(&x);
+Any& Any::operator=(Array *x) {
+    integer = reinterpret_cast<uint64_t>(x);
     return *this;
 }
 
-Any &Any::operator=(const Dictionary &x) {
-    integer = reinterpret_cast<uint64_t>(&x);
+Any &Any::operator=(Dict *x) {
+    integer = reinterpret_cast<uint64_t>(x);
     return *this;
 }
 
-Any &Any::operator=(const Obj &x) {
-    integer = reinterpret_cast<uint64_t>(&x);
+Any &Any::operator=(Obj *x) {
+    integer = reinterpret_cast<uint64_t>(x);
     return *this;
 }
 
 Any& Any::operator=(bool x) {
-    integer = x ? t.integer : nil.integer;
+    integer = x ? symbol_t.integer : 0;
     return *this;
 }
+
+Any& Any::operator=(const char *s) {
+    size_t len = strlen(s);
+    if (len < 6) {
+        integer = SHORT_TAG;
+        strncpy(bytes + SHORTSTR_BASE, s, 6);
+    } else {
+        String *ss = new String(s);
+        integer = reinterpret_cast<uint64_t>(ss) | STR_TAG;
+    }
+    return *this;
+}
+
 
 bool is_int(Any x) {
     return (x.integer & INT_TAG) == INT_TAG;
 }
 
 bool is_real(Any x) {
-    return x.integer - BIAS < 0xFFF9000000000000uLL;
+    return x.integer - BIAS < REAL_LIMIT;
 }
 
-bool is_ptr(Any x) {
+bool is_basic_obj(Any x) {
     return (x.integer & TAG_MASK) == PTR_TAG;
 }
 
 bool is_str(Any x) {
+    uint64_t tag = x.integer & TAG_MASK;
+    return (tag == STR_TAG || tag == SHORT_TAG);
+}
+
+bool is_short(Any x) {
+    return (x.integer & TAG_MASK) == SHORT_TAG;
+}
+
+bool is_string(Any x) {
     return (x.integer & TAG_MASK) == STR_TAG;
 }
 
@@ -226,46 +216,48 @@ bool is_symbol(Any x) {
 }
 
 int64_t to_int(Any x) {
-    return (static_cast<int64_t>(x.integer) << 14) >> 14;
+    // precondition: is_int()
+    return (static_cast<int64_t>(x.integer) << 15) >> 15;
 }
 
 double to_real(Any x) {
+    // precondition: is_real()
     x.integer -= BIAS;
     return x.real;
 }
 
-Basic_obj* to_ptr(Any x) {
+Basic_obj* to_basic_obj(Any x) {
+    // precondition: is_basic_obj()
     return reinterpret_cast<Basic_obj*>(x.integer);
 }
 
-String to_str(Any x) {
-    String result {};
-    result.data = x.integer;
-    String copy = result; // We want to invoke String's copy constructor so that the original Any isn't affected.
-    result.data = 0;
-    return copy;
+String *to_string(Any x) {
+    // precondition: is_string()
+    return reinterpret_cast<String *>(x.integer & ~TAG_MASK
+                                      );
 }
 
-Symbol to_symbol(Any x) {
-    Symbol result {};
-    result.data = x.integer;
-    Symbol copy = result;
-    result.data = 0;
-    return copy;
+Symbol *to_symbol(Any x) {
+    // precondition: is_symbol()
+    return reinterpret_cast<Symbol *>(x.integer & ~TAG_MASK);
 }
 
-//std::string to_shortstr(Any x) {
-//    // copies from 3rd byte onwards (skips tag) until nul terminator is encountered
-//    return std::string {&((char *) &(x.integer))[2]};
-//}
+/*std::string to_shortstr(Any x) {
+    return std::string {&((char *) &(x.integer)) + BIAS};
+}*/
 
-Array& to_array(Any x) {
-    return *reinterpret_cast<Array*>(x.integer);
+Array *to_array(Any x) {
+    return reinterpret_cast<Array *>(x.integer);
 }
 
-Dictionary& to_dict(Any x) {
-    return *reinterpret_cast<Dictionary*>(x.integer);
+Dict *to_dict(Any x) {
+    return reinterpret_cast<Dict *>(x.integer);
 }
+
+Obj *to_obj(Any x) {
+    return reinterpret_cast<Obj *>(x.integer);
+}
+
 
 // check is like assert except it always executes, even in optimized code
 // since the expression could be int, bool, or a test for non-null pointer,
@@ -284,38 +276,39 @@ double as_real(Any x) {
     return to_real(x);
 }
 
-String as_str(Any x) {
-    check(is_str(x));
-    return to_str(x);
+String *as_string(Any x) {
+    check(is_string(x));
+    return to_string(x);
 }
 
-Symbol as_symbol(Any x) {
+Symbol *as_symbol(Any x) {
     check(is_symbol(x));
     return to_symbol(x);
 }
 
-Array &as_array(Any x) {
-    check(is_ptr(x));
+Array *as_array(Any x) {
+    check(is_basic_obj(x));
     return to_array(x);
 }
 
-void *as_ptr(Any x) {
-    check(is_ptr(x));
-    return to_ptr(x);
+Basic_obj *as_basic_obj(Any x) {
+    check(is_basic_obj(x));
+    return to_basic_obj(x);
 }
 
 Any_type get_type(Any x) {
     if (x.integer == 0) return Any_type::NIL;
-    else if (x.integer == t.integer) return Any_type::T;
     else if (is_int(x)) return Any_type::INT;
     else {
         switch (x.integer & TAG_MASK) {
             case STR_TAG:
-                return Any_type::STR;
+                return Any_type::STRING;
+            case SHORT_TAG:
+                return Any_type::SHORT;
             case SYMBOL_TAG:
                 return Any_type::SYMBOL;
             case PTR_TAG:
-                switch (to_ptr(x)->get_tag()) {
+                switch (to_basic_obj(x)->get_tag()) {
                     case tag_array:
                         return Any_type::ARRAY;
                     case tag_dict:
@@ -332,7 +325,7 @@ Any_type get_type(Any x) {
 }
 
 std::string get_type_str(Any x) {
-    if (is_ptr(x)) return "pointer";
+    if (is_basic_obj(x)) return "pointer";
     else if (is_int(x)) return "integer";
     else if (is_real(x)) return "real";
     else if (is_str(x)) return "string";
@@ -340,6 +333,32 @@ std::string get_type_str(Any x) {
     else return "unknown";
 }
 
+
+const char *get_c_str(Any s, int64_t *len_ptr)
+{
+    const char *str;
+    if (is_string(s)) {
+        str = to_string(s)->get_c_str();
+        if (len_ptr) {
+            *len_ptr = to_string(s)->len();
+        }
+    } else {
+        str = s.bytes + SHORTSTR_BASE;
+        if (len_ptr) {
+            *len_ptr = strlen(str);
+        }
+    }
+    return str;
+}
+
+/* Automatic coercions here. I am hiding them because they can allow you
+ to call unexpected functions, e.g. you might expect to call bar(Any, int) but
+ you mistakenly write bar(Any, int). This will not fail if there is a
+ bar(int, int) somewhere if we define Any::operator int64_t(). I think it is
+ better (but maybe a little uglier) to explicitly write bar(as_int(Any), int)
+ if that's really what you want to do. I don't like it when the compiler
+ generates extra checks and conversion code that's not visible in the program.
+ 
 Any::operator int64_t() {
     return as_int(*this);
 }
@@ -348,15 +367,15 @@ Any::operator double() {
     return as_real(*this);
 }
 
-Any::operator String() {
-    return as_str(*this);
+Any::operator String *() {
+    return as_string(*this);
 }
 
-Any::operator Symbol() {
+Any::operator Symbol *() {
     return as_symbol(*this);
 }
 
-Any::operator Array&() {
+Any::operator Array *() {
     return as_array(*this);
 }
 
@@ -364,22 +383,21 @@ Any::operator bool() {
     return integer != 0;
 }
 
+ */
+        
 static bool is_string_or_symbol(Any x) {
-    uint64_t string_or_symbol_mask = 0xFFFE000000000000uLL;
-    // return (x.integer & string_or_symbol_mask) == STR_TAG;
     return is_str(x) || is_symbol(x);
 }
 
 
+bool Any::is(Any x) {
+    return integer == x.integer;
+}
+
 void Any::append(Any x) {
-    if (is_ptr(*this)) {
-        Basic_obj *basic_ptr = to_ptr(*this);
-        if (basic_ptr->get_tag() == tag_array) {
-            Array *arr(static_cast<Array *>(basic_ptr));
-            arr->append(x);
-        }
-    }
-    else {
+    if (is_basic_obj(*this)) {
+        to_array(*this)->append(x);
+    } else {
         type_error(*this);
     }
 }
@@ -392,27 +410,23 @@ void Any::append(double x) {
     append(Any {x});
 }
 
-//Any::Any(const Basic_obj &x) {
-//    integer = reinterpret_cast<uint64_t>(&x);
-//}
 
-Any Any::call(const Symbol& method, const Array &args, const Dictionary &kwargs) {
-    if (is_ptr(*this)) {
-        Basic_obj *basic_ptr = to_ptr(*this);
+Any Any::call(Any method, Array *args, Dict *kwargs) {
+    if (is_basic_obj(*this)) {
+        Basic_obj *basic_ptr = to_basic_obj(*this);
         switch (basic_ptr->get_tag()) {
             case tag_object: {
+                // TODO: define and use to_obj():
                 Obj *obj_ptr = reinterpret_cast<Obj*>(basic_ptr);
-                return obj_ptr->call(method, args, kwargs);
+                return obj_ptr->call(as_symbol(method), args, kwargs);
             }
             case tag_array: {
-                Array *arr_ptr = reinterpret_cast<Array*>(basic_ptr);
-                return arr_ptr->call(method, args, kwargs);
+                return to_array(*this)->call(method, args, kwargs);
             }
             default:
                 type_error(*this);
         }
-    }
-    else {
+    } else {
         type_error(*this);
     }
 }
@@ -420,4 +434,3 @@ Any Any::call(const Symbol& method, const Array &args, const Dictionary &kwargs)
 Any::Any(const std::ostream &x) {
     integer = 0;
 }
-

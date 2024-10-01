@@ -5,11 +5,12 @@
 
 #include "any.h"
 #include "op_overload.h"
-#include "csstring.h"
 #include "gc.h"
+#include "basic_obj.h"
 #include "obj.h"
+#include "csstring.h"
 #include "array.h"
-#include "dictionary.h"
+#include "dict.h"
 #include "symbol.h"
 #include "csmem.h"
 
@@ -44,21 +45,7 @@ void gc_trace_2(Basic_obj *obj, const char *msg, int index)
 }
 #endif
 
-enum {
-    GC_START,
-    GC_MARK,
-    GC_MARKB,
-    GC_MARK_ARRAY,
-    GC_MARK_ARRAYB,
-    GC_MARK2,
-    GC_MARK_STACK,
-    GC_MARK3,
-    GC_SWEEP,
-    GC_SWEEP1,
-    GC_SWEEP2,
-    GC_FINAL,
-    GC_IDLE
-} gc_state = GC_START;
+Gc_states gc_state = GC_START;
 
 Gc_color gc_initial_color = GC_WHITE;
 bool gc_write_block = false;
@@ -68,8 +55,8 @@ int64_t gc_cycles = 0;
 Basic_obj *gc_gray_list = nullptr;
 static Chunk *sweep_chunk = nullptr;
 static char *sweep_ptr = nullptr;
-static Array *gc_array = nullptr;
-static int64_t gc_array_index = 0;
+Array *gc_array = nullptr;
+int64_t gc_array_index = 0;
 int64_t gc_high_water = CHUNK_SIZE / 2;
 Gc_frame *gc_frame_ptr = NULL;
 void *gc_stack_top;  // link to top stack frame
@@ -84,8 +71,8 @@ static const int WORK_PER_POLL = 1000;
 
 
 void if_node_make_gray(Any x) {
-    if (is_ptr(x)) {
-        basic_obj_make_gray(to_ptr(x));
+    if (is_basic_obj(x)) {
+        basic_obj_make_gray(to_basic_obj(x));
     }
     // in the case of String and Symbol, each is either self-contained
     // as a short string or a pointer to a std::string, so there is
@@ -111,6 +98,7 @@ void gc_poll()
     Basic_obj *obj;
     char *ptr;
     while (work_done < WORK_PER_POLL) {
+        printf("gc_poll (top loop) state %d\n", gc_state);
         switch (gc_state) {
         case GC_START:
             // printf("*** Starting GC cycle ***\n");
@@ -155,7 +143,8 @@ void gc_poll()
                 case tag_string:
                     work_done += MARK_NODE_COST;
                     break;
-                case tag_array: {
+                case tag_array: 
+                case tag_dict: {
                     Array *array = (Array *) obj;
                     std::vector<Any> *data = (std::vector<Any> *) obj->slots;
                     // if the array is big, we want to mark the array
@@ -165,7 +154,7 @@ void gc_poll()
                     int64_t work_to_do = (len + 2) * MARK_NODE_COST;
                     int64_t time_left = WORK_PER_POLL - work_done;
                     if (time_left > work_to_do) {  // do it all here and now:
-                        for (int64_t i = 0; i < len; i++) {
+                        for (int64_t  i = 0; i < len; i++) {
                             Any element = (*data)[i];
                             if_node_make_gray(element);
                         }
@@ -175,17 +164,6 @@ void gc_poll()
                                                           GC_MARK_ARRAYB);
                         gc_array = array;
                         gc_array_index = 0;
-                    }
-                    break;
-                }
-                case tag_dict: {
-                    // TODO: For incremental GC with large dictionaries, you
-                    // cannot use C++ map because you cannot iterate over
-                    // entries in small batches, allowing inserts to take
-                    // place while iterating.
-                    for (auto const& x : *to_map((Dictionary &) obj)) {
-                        if_node_make_gray(x.first);
-                        if_node_make_gray(x.second);
                     }
                     break;
                 }
@@ -237,12 +215,14 @@ void gc_poll()
             gc_local_write_block = true;
             gc_state = GC_MARK_STACK;
         case GC_MARK_STACK:
+            printf("gc_poll state %d\n", gc_state);
             while (work_done < WORK_PER_POLL && gc_frame_ptr) {
                 if (static_cast<Gc_color>(
                         (gc_frame_ptr->header >> 57) & 0x03) != GC_WHITE) {
                     int n = (gc_frame_ptr->header >> 45) & 0xFFF;  // slot cnt
                     for (int i = 0; i < n; i++) {
-                        basic_obj_make_gray(to_ptr(gc_frame_ptr->anys[i]));
+                        basic_obj_make_gray(to_basic_obj(
+                                                    gc_frame_ptr->anys[i]));
                     }
                     work_done += n * MARK_NODE_COST;
                 }
@@ -262,6 +242,7 @@ void gc_poll()
             work_done += SWEEP_NODE_COST;
             gc_state = GC_SWEEP;
             // fall through to GC_SWEEP
+            printf("gc_poll state %d\n", gc_state);
         case GC_SWEEP: {  // free black nodes, oh sweet jesus this sounds
             // so racist; I'd switch to RED/GREEN right now, but I'm a member
             // of the Cherokee nation.
@@ -269,29 +250,19 @@ void gc_poll()
             // find these WHITE/GRAY/BLACK labels inappropriate or insensitive.
             // Maybe HOT, WARM, COLD?
             while (work_done < WORK_PER_POLL) {
-                // printf("    sweep_ptr %p sweep_chunk %p\n",
-                //        sweep_ptr, sweep_chunk);
+                printf("    sweep_ptr %p sweep_chunk %p work_done %lld\n",
+                       sweep_ptr, sweep_chunk, work_done);
                 Basic_obj *obj = (Basic_obj *) sweep_ptr;
                 gc_trace(obj, "GC_SWEEP");
                 int64_t sz = obj->get_size();
                 // printf("sweep_ptr %p, color %d, obj size %lld\n", sweep_ptr,
                 //        obj->get_color(), sz);
                 if (obj->get_color() == GC_BLACK) {
-                    if (obj->has_tag(tag_object)) {
-                        // find all strings and free them. Symbols may point
-                        // to a unique, shared std::string, which is not freed.
-                        Obj *o = (Obj *) obj;
-                        int64_t slots = o->get_slot_count();
-                        // returns bit set
-                        uint64_t anyslots = o->get_any_slots();
-                        for (int i = 0; i < slots; i++) {
-                            if (((1 << i) & anyslots) && is_str(o->slots[i])) {
-                                gc_trace_2(obj, "free string slot", i);
-                                (reinterpret_cast<
-                                 String &>(o->slots[i])).~String();
-                            }
-                        }
-                        work_done += slots * MARK_NODE_COST;
+                    if (obj->has_tag(tag_string)) {
+                        delete (reinterpret_cast<std::string *>(
+                                                    obj->slots[0].integer));
+                        work_done += MARK_NODE_COST;
+                        CSFREE(obj);
                     } else if (obj->has_tag(tag_file)) {
                         /* TODO: implement Cs_file
                         Cs_file *csfile = (Cs_file *) obj;
@@ -320,6 +291,7 @@ void gc_poll()
                     if (sweep_chunk) {
                         sweep_ptr = sweep_chunk->chunk;
                     } else {
+                        printf("    sweep_chunk is null\n");
                         gc_initial_color = GC_BLACK;
                         // prepare to change stack frames to black
                         gc_frame_ptr = (Gc_frame *) gc_stack_top;
@@ -366,7 +338,7 @@ void gc_poll()
             gc_high_water += (gc_high_water >> 1);
             gc_state = GC_IDLE;
             gc_cycles++;
-            // printf("*** GC cycle ended ***\n");
+            printf("*** GC cycle ended ***\n");
             return;  // exit loop; do not look for more work
         case GC_IDLE:
             if (cs_current_bytes_allocated > gc_high_water) {

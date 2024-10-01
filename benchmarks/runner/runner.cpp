@@ -38,6 +38,7 @@
 #include <string>
 #include <ctime>
 #include "any.h"
+#include "gc.h"
 #include "op_overload.h"
 #include "basic_obj.h"
 #include "obj.h"

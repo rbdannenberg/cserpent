@@ -5,7 +5,7 @@
 #include "gc.h"
 #include "obj.h"
 #include "op_overload.h"
-#include "dictionary.h"
+#include "dict.h"
 #include "op_overload.h"
 
 
