@@ -1,5 +1,8 @@
 runtime.txt -- notes on cserpent runtime.
 
+(This is probably obsolete and may be wrong. See nanboxing.txt for
+updated actual implementation notes.)
+
 Here's an initial implementation of Nan-boxing, adapted from my
 proof-of-concept implementation:
 

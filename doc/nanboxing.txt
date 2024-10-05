@@ -110,24 +110,21 @@ In CSerpent, we do not have so many types of Heap_obj.
 For the GC to "understand" all data structures, everything in the
 cserpent heap must be a Heap_obj.
 
-Length is encoded in the header (usually) so that we can have only 8
-bytes of overhead vs 16 with a separate word for length, although I
-don't think the argument to save space is very strong. Maybe function
-pointers can be header+pointer = 16bytes, and maybe the best argument
-is strings: 8byte+sizeof(string) = 32bytes. If either was 8 bytes
-longer due to a dedicated 64-bit length count, the sizes would become
-32 and 48 bytes because we're allocating in 16byte units. (Of course,
-all of these are design choices, so who knows what's really best?)
-
+Length is encoded in the header so that we avoid an extra 8-byte
+length field, but the header does not have much room. 
 Since there's only room for 12 bits of length, we get objects up to
 4095 words or 32K bytes. Maybe that's enough for ordinary objects,
-but what about array data? For those, Heap_obj has to define a place
-after the header to store a longer length count. The convention is
-that if the short 12-bit length is zero, the actual length is stored
-in the next word.
+but what about array data? In CSerpent, we use the "native"
+vector<Any> for array data, and length is stored in the vector.
 
-So the 2nd word of Heap_obj does double duty as either a length (for
-array data) or the first field of an object.
+Note: We get to use C++ methods for vectors, but the CSerpent Array
+representation might be less than optimal. An Array must be a Heap_obj
+so that Arrays can be garbage collected. Within the Array (which
+already has a header, we have a vector<Any>. Overall, the Array takes
+48 bytes (size of the heap object, header, 3 words for vector<Any>,
+and another 8 byte pad to get a multiple of 16 bytes for memory
+allocation). Plus, we have the object allocated by C++ to store the
+vector content.
 
 For objects, there's not nearly enough space in the header to encode
 all possible (user defined) classes, so the first field will be a
@@ -141,16 +138,34 @@ For strings, the first field after the header will be a C++ string.
 
 In Cserpent, like real and int, you can declare a string, allowing the
 compiler to use the built-in string class directly. If you convert a
-string to an Any*, you must construct a CSString (inherits from
+string to an Any*, you must construct a String (inherits from
 Heap_obj) and copy the string into it (in C++ this is a shallow copy
 that does not copy the actual string data). So you could end up with
-multiple CSString objects referencing the same underlying string. On
+multiple String objects referencing the same underlying string. On
 the other hand, if you copy an Any* to an Any*, e.g.
     var x = "foo"
     var y = x
 then you just need to copy the 8-bytes of the Any, and you do not
-allocate another CSString. The CSString is now referenced by multiple
+allocate another String. The String is now referenced by multiple
 pointers, but it's on the heap and will get GC'd when the references
-all go away. When the CSString is deleted, C++ reference counting will
+all go away. When the String is deleted, C++ reference counting will
 free the actual string data.
+
+We also have short strings which are encoded directly into the
+Any. This add a special case to every string operation but (we think)
+makes it much more efficient to work with characters (strings of
+length 1) which is probably the most common form of string. It is
+common to use the get_c_str() function which returns a direct pointer
+to const char *, whether the Any argument is a regular String or a short
+string, and we have is_str() which returns true if the Any argument is
+a regular String or a short string.
+
+But be warned that with short strings, when you pass a short string
+Any as an argument, the short string is copied. For this reason,
+get_c_str() takes an Any* rather than an Any, allowing it to reference
+the string data in the caller's Any instead of a copied string.  If
+you pass an Any to a function, call get_c_str() on it, and return the
+const char *, you are returning pointer to a short string on the
+stack.  This is an error (!) because the copy on the stack will be out
+of scope as soon as the function returns.
 

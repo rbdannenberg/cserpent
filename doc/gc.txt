@@ -1,5 +1,12 @@
 Notes on garbage collection
 
+See section "Garbage Collection" in serpent/doc/design.txt (not in
+this repo; serpent is a project on SourceForge) for a description of
+how GC works in general. Serpent GC was adapted to CSerpent, but it's
+very similar.
+
+Stack Frames
+
 To implement GC similar to Serpent, we need to scan all
 objects. Options are scanning the C++ stack for pointers to a "magic
 token" that appears in all objects, or rather than allocating locals
@@ -11,9 +18,14 @@ The second option adds some overhead, but seems safer and easier to
 debug since you know if a reference should point to an object.
 
 On entering a function with any dynamic types for parameters, locals
-or temporaries, you need a local struct that can hold them. Parameters
-are copied into the local struct, and the struct is linked to a
-struct list. A cs_stack_top points to the top of the stack.
+or temporaries, you need a local struct that can hold them. By
+convention, this struct is named L. The struct, inheriting from
+Cs_frame, has a header similar to a Heap_obj except that the "pointer"
+field is used to link stack frames into a list. The frame L is zeroed
+first to make all values valid (nil), and the header is initialized
+and linked into the gc_stack_top list.  Parameters are copied into L
+and then local variable initialization expressions are evaluated and
+local variables (slots in L) are set.
 
 Before you return, you must unlink the struct from cs_stack_top.
 

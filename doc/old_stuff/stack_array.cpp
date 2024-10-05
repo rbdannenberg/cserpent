@@ -17,8 +17,9 @@ Any some_function1(void) {
     return &a;
 }
 
-/// This is a problem because a is allocated on the stack and will be deallocated when the function returns.
-/// Returning a pointer to a stack-allocated variable is a bad idea.
+/// This is a problem because a is allocated on the stack and will be
+/// deallocated when the function returns.  Returning a pointer to a
+/// stack-allocated variable is a bad idea.
 
 // How about move semantics? Can a rvalue reference fit in a 64 bit variable?
 Any some_function2(void) {
