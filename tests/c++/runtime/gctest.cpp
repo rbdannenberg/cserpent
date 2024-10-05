@@ -31,15 +31,15 @@ void gc_mark_roots()
 {
     // the only "global" in this test is cs_obj_class and cs_class_class, but
     // cs_class_class is referenced by cs_obj_class, so no need to mark it here.
-    basic_obj_make_gray(cs_class_class);
-    basic_obj_make_gray(cs_obj_class);
+    heap_obj_make_gray(cs_class_class);
+    heap_obj_make_gray(cs_obj_class);
     for (int i = 0; i < obj_cache_size; i++) {
         /* if (obj_cache[i]) {
             printf("%d: %p\n", i, obj_cache[i]);
         } */
-        basic_obj_make_gray(obj_cache[i]);
+        heap_obj_make_gray(obj_cache[i]);
     }
-    basic_obj_make_gray(the_array);
+    heap_obj_make_gray(the_array);
 }
 
 int main()
@@ -124,7 +124,7 @@ int main()
             obj_cache[random() % obj_cache_size] = obj;
             // now obj has a reference to it. Does GC need to know?
             if (gc_write_block) {
-                basic_obj_make_gray(obj);
+                heap_obj_make_gray(obj);
             }
         }
 
@@ -142,7 +142,7 @@ int main()
             if (the_array) {  // test for valid-looking elements
                 int64_t n = the_array->len();
                 for (int k = 0; k < n; k++) {
-                    Obj *elem = (Obj *) to_basic_obj((*the_array)[k]);
+                    Obj *elem = (Obj *) to_heap_obj((*the_array)[k]);
                     assert(elem == nullptr || (int64_t) elem > 0x100000000);
                     assert(elem == nullptr || elem->get_tag() == tag_object);
                     assert(elem == nullptr || elem->get_color() != GC_FREE);

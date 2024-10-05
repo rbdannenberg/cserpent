@@ -1,6 +1,6 @@
 #include "any.h"
 #include "gc.h"
-#include "basic_obj.h"
+#include "heap_obj.h"
 #include "any_utils.h"
 #include "symbol.h"
 #include "op_overload.h"
@@ -401,12 +401,12 @@ bool operator!=(Any lhs, Any rhs) {
 
 //Any& Any::operator[](int64_t i) {
 //    if (is_ptr(*this)) {
-//        Basic_obj *basic_ptr= to_basic_obj(*this);
-//        if (basic_ptr->get_tag() == tag_array) {
+//        Heap_obj *heap_obj= to_heap_obj(*this);
+//        if (heap_obj->get_tag() == tag_array) {
 //            assert(false);  // do not use a[i] = x; instead use a.set(i, x);
-////            std::vector<Any> *data = (std::vector<Any> *) basic_ptr->slots;
+////            std::vector<Any> *data = (std::vector<Any> *) heap_obj->slots;
 ////            return data->at(i);
-////            Array arr (static_cast<Array_heap*>(basic_ptr));
+////            Array arr (static_cast<Array_heap*>(heap_obj));
 ////            return arr[i];
 //        }
 //    }
@@ -424,10 +424,10 @@ bool operator!=(Any lhs, Any rhs) {
 //    }
 //}
 void Any::set(int64_t i, Any val) {
-    if (is_basic_obj(*this)) {
-        Basic_obj *basic_ptr = to_basic_obj(*this);
-        if (basic_ptr->get_tag() == tag_array) {
-            (static_cast<Array*>(basic_ptr))->set(i, val);
+    if (is_heap_obj(*this)) {
+        Heap_obj *heap_obj = to_heap_obj(*this);
+        if (heap_obj->get_tag() == tag_array) {
+            (static_cast<Array*>(heap_obj))->set(i, val);
             return;
         }
     }
@@ -435,10 +435,10 @@ void Any::set(int64_t i, Any val) {
 }
 
 Any Any::operator[](int64_t i) const {
-    if (is_basic_obj(*this)) {
-        Basic_obj *basic_ptr= to_basic_obj(*this);
-        if (basic_ptr->get_tag() == tag_array) {
-            return (*(static_cast<Array*>(basic_ptr)))[i];
+    if (is_heap_obj(*this)) {
+        Heap_obj *heap_obj= to_heap_obj(*this);
+        if (heap_obj->get_tag() == tag_array) {
+            return (*(static_cast<Array*>(heap_obj)))[i];
         }
     } else if (is_string(*this)) {
         // TODO: this is not correct for Unicode 

@@ -19,7 +19,7 @@ enum Tag {
 
 // all garbage-collected objects inherit this base class
 //
-class Basic_obj {
+class Heap_obj {
 public:    
     /* fields in header:
      *
@@ -35,7 +35,7 @@ public:
     uint64_t header;   // contains type info, GC color, size
     Any slots[1];  // can actually be any number of slots
 
-    // on return, Basic_obj header will have #SLOTS initialized.  If
+    // on return, Heap_obj header will have #SLOTS initialized.  If
     // #SLOTS is zero, then slots[0] will be an unencoded integer slot
     // count. The number of slots is based on size which is rounded up
     // to a multiple of 8 (the slot size).  Initially, TAG will be
@@ -46,7 +46,7 @@ public:
     // most 64 slots, so #SLOTS is never zero. (Other types such as
     // array data or strings can have any number of slots.) The limit
     // of 64 allows for a 64-bit word of bits indicating whether each slot
-    // is a pointer to another Basic_obj or is of type Any. Either
+    // is a pointer to another Heap_obj or is of type Any. Either
     // way, if the bit is 1 AND the high-order slot bits are zero, we
     // trace the pointer in the low-order (48) bits in the mark phase
     // of GC.  If the bit is 0, the slot has a declared static type
@@ -56,17 +56,17 @@ public:
     // Any.
 
     // If TAG is not tag_object, the layout is fixed, and this
-    // Basic_obj is sub-classed. E.g. Array inherits from Basic_obj
+    // Heap_obj is sub-classed. E.g. Array inherits from Heap_obj
     // and has tag==tag_array.
 
     void *operator new(size_t size);
 
     void operator delete(void *p) { assert(false);  /* use GC instead */ };
     
-    // Note: since Basic_obj has variable size, the real constructor
+    // Note: since Heap_obj has variable size, the real constructor
     // is csmalloc, which sets the header and possibly puts large
     // sizes in slot[0]:
-    Basic_obj() { }
+    Heap_obj() { }
 
     Tag get_tag(); // replace after implementation
     void set_tag(Tag t);
@@ -82,8 +82,8 @@ public:
 
     bool has_color(int tag);
 
-    Basic_obj *get_next();
-    void set_next(Basic_obj *ptr);
+    Heap_obj *get_next();
+    void set_next(Heap_obj *ptr);
 
     int64_t get_size();
 
@@ -94,7 +94,7 @@ public:
     // if it is important. Since Obj has get_any_slots() to return 1-bits
     // at the slots of type Any, the garbage collector will not treat
     // "extra" object slots as Any or pointers, thus garbage in extra
-    // slots will not cause problems. For other Basic_obj's such as
+    // slots will not cause problems. For other Heap_obj's such as
     // Array data, there is an array length pointer to tell GC which
     // slots are valid Any data and which are "extra" to ignore.
     int64_t get_slot_count();
@@ -103,5 +103,5 @@ public:
 };
 
 
-// get the size of a Basic_obj in bytes as a function of the slot count:
+// get the size of a Heap_obj in bytes as a function of the slot count:
 int64_t slot_count_to_size(int64_t n);

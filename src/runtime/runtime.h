@@ -8,7 +8,7 @@ void runtime_mark_roots();
 struct Cs_frame {
 public:
     int64_t header;
-    void set(int i, Any x) { ((Basic_obj *) this)->set_slot(i, x); }
+    void set(int i, Any x) { ((Heap_obj *) this)->set_slot(i, x); }
 };
 
 

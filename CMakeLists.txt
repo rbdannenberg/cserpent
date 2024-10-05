@@ -34,8 +34,8 @@ add_library(runtime STATIC
         src/runtime/data_structures/csstring.cpp
         src/gc/gc.h
         src/gc/gc.cpp
-        src/runtime/basic_obj.cpp
-        src/runtime/basic_obj.h
+        src/runtime/heap_obj.cpp
+        src/runtime/heap_obj.h
         src/runtime/data_structures/symbol.cpp
         src/runtime/data_structures/symbol.h
         src/runtime/runtime.cpp

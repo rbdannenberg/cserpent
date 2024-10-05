@@ -1,6 +1,6 @@
 What is a string?
 
-1) A class that inherits from Basic_obj and contains a std::string.
+1) A class that inherits from Heap_obj and contains a std::string.
 Benefits: tag_string, length information and convenience of std::string
 Issue: its pointer (which is what gets stored in an Any) would point to somewhere on the heap
 - Currently, the hash function hashes the raw bytes in the Any. If two variables with the same string literal get

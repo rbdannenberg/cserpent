@@ -8,7 +8,7 @@
 #include <cstdint>
 #include <limits>
 
-class Symbol : public Basic_obj {
+class Symbol : public Heap_obj {
 public:
     // we need symbol name, symbol value and function value:
     int64_t more_slots[2];

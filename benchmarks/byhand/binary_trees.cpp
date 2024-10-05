@@ -96,7 +96,7 @@ void free_tree(Any tree) {
         free_tree(left);
         free_tree(tree.call("get_right", empty_array, empty_dict));
     }
-    delete reinterpret_cast<Tree*>(to_basic_obj(tree));
+    delete reinterpret_cast<Tree*>(to_heap_obj(tree));
 }
 
 std::string test_trees(Any arg) {

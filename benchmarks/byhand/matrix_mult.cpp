@@ -23,7 +23,7 @@ def matmul(a, b):
 #include <cstdint>
 #include "any.h"
 #include "gc.h"
-#include "basic_obj.h"
+#include "heap_obj.h"
 #include "obj.h"
 #include "runtime.h"
 #include "data_structures/array.h"

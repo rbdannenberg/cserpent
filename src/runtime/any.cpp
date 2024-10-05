@@ -5,7 +5,7 @@
 #include "any.h"
 #include "op_overload.h"
 #include "gc.h"
-#include "basic_obj.h"
+#include "heap_obj.h"
 #include "obj.h"
 #include "any_utils.h"
 #include "array.h"
@@ -200,7 +200,7 @@ bool is_real(Any x) {
     return x.integer - BIAS < REAL_LIMIT;
 }
 
-bool is_basic_obj(Any x) {
+bool is_heap_obj(Any x) {
     return (x.integer & TAG_MASK) == PTR_TAG;
 }
 
@@ -232,9 +232,9 @@ double to_real(Any x) {
     return x.real;
 }
 
-Basic_obj* to_basic_obj(Any x) {
-    // precondition: is_basic_obj()
-    return reinterpret_cast<Basic_obj*>(x.integer);
+Heap_obj* to_heap_obj(Any x) {
+    // precondition: is_heap_obj()
+    return reinterpret_cast<Heap_obj*>(x.integer);
 }
 
 String *to_string(Any x) {
@@ -293,13 +293,13 @@ Symbol *as_symbol(Any x) {
 }
 
 Array *as_array(Any x) {
-    check(is_basic_obj(x));
+    check(is_heap_obj(x));
     return to_array(x);
 }
 
-Basic_obj *as_basic_obj(Any x) {
-    check(is_basic_obj(x));
-    return to_basic_obj(x);
+Heap_obj *as_heap_obj(Any x) {
+    check(is_heap_obj(x));
+    return to_heap_obj(x);
 }
 
 Any_type get_type(Any x) {
@@ -314,7 +314,7 @@ Any_type get_type(Any x) {
             case SYMBOL_TAG:
                 return Any_type::SYMBOL;
             case PTR_TAG:
-                switch (to_basic_obj(x)->get_tag()) {
+                switch (to_heap_obj(x)->get_tag()) {
                     case tag_array:
                         return Any_type::ARRAY;
                     case tag_dict:
@@ -331,7 +331,7 @@ Any_type get_type(Any x) {
 }
 
 std::string get_type_str(Any x) {
-    if (is_basic_obj(x)) return "pointer";
+    if (is_heap_obj(x)) return "pointer";
     else if (is_int(x)) return "integer";
     else if (is_real(x)) return "real";
     else if (is_str(x)) return "string";
@@ -401,7 +401,7 @@ bool Any::is(Any x) {
 }
 
 void Any::append(Any x) {
-    if (is_basic_obj(*this)) {
+    if (is_heap_obj(*this)) {
         to_array(*this)->append(x);
     } else {
         type_error(*this);
@@ -418,12 +418,12 @@ void Any::append(double x) {
 
 
 Any Any::call(Any method, Array *args, Dict *kwargs) {
-    if (is_basic_obj(*this)) {
-        Basic_obj *basic_ptr = to_basic_obj(*this);
-        switch (basic_ptr->get_tag()) {
+    if (is_heap_obj(*this)) {
+        Heap_obj *heap_obj = to_heap_obj(*this);
+        switch (heap_obj->get_tag()) {
             case tag_object: {
                 // TODO: define and use to_obj():
-                Obj *obj_ptr = reinterpret_cast<Obj*>(basic_ptr);
+                Obj *obj_ptr = reinterpret_cast<Obj*>(heap_obj);
                 return obj_ptr->call(as_symbol(method), args, kwargs);
             }
             case tag_array: {

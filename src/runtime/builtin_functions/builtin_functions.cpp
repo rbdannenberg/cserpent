@@ -5,7 +5,7 @@
 #include <cmath>
 #include "any.h"
 #include "gc.h"
-#include "basic_obj.h"
+#include "heap_obj.h"
 #include "obj.h"
 #include "builtin_functions.h"
 #include "op_overload.h"
@@ -16,9 +16,9 @@
 #include "dict.h"
 
 int64_t len(Any x) {
-    if (is_basic_obj(x)) {
-        Basic_obj *basic_ptr= to_basic_obj(x);
-        if (basic_ptr->get_tag() == tag_array) {
+    if (is_heap_obj(x)) {
+        Heap_obj *heap_obj= to_heap_obj(x);
+        if (heap_obj->get_tag() == tag_array) {
             return len(to_array(x));
         }
     } else if (is_string(x)) {
@@ -90,7 +90,7 @@ Any subseq(Any s, int64_t start, int64_t end) {
         return subseq(to_str(s), start, end);
     }
     else if (is_ptr(s)) {
-        if (to_basic_obj(s)->get_tag() == tag_array) {
+        if (to_heap_obj(s)->get_tag() == tag_array) {
             return subseq(to_array(s), start, end);
         }
         type_error(s);

@@ -14,7 +14,7 @@
 using namespace std;
 
 constexpr int nobjs = 1000000;
-Basic_obj *objects[nobjs];
+Heap_obj *objects[nobjs];
 long allocation_j[nobjs];
 
 // This test does not use GC so gc_mark_roots() is only here to satisfy
@@ -42,12 +42,12 @@ int main()
     // simplest test first: free immediately
     for (long i = 0; i < 100; i++) {
         long size = ((random() % 1000) & 0x07) + 16;
-        Basic_obj *obj = (Basic_obj *) csmalloc(size);
+        Heap_obj *obj = (Heap_obj *) csmalloc(size);
         csfree(obj);
     }
     
     // test special size 47353
-    Basic_obj *obj = (Basic_obj *) csmalloc(47353);
+    Heap_obj *obj = (Heap_obj *) csmalloc(47353);
     csfree(obj);
 
     for (long j = 0; j < 1000; j++) {
@@ -71,7 +71,7 @@ int main()
         }
 
         // allocate new object
-        objects[index] = (Basic_obj *) csmalloc(size);
+        objects[index] = (Heap_obj *) csmalloc(size);
         allocation_j[index] = j;  // at what iteration was this allocated?
 
         // fill object slots

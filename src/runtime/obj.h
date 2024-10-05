@@ -12,7 +12,7 @@ extern Cs_class *cs_class_class;  // Cs_class inherits from Obj, so instqnces of
 
 //// all user-defined objects inherit from this, which has a class
 //// pointer in slots[0]
-class Obj : public Basic_obj {
+class Obj : public Heap_obj {
 public:
     // Note: there should be no member variables here.
     // All data should be stored in slots.

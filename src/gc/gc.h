@@ -21,13 +21,13 @@
 #endif
 
 #if GC_DEBUG
-class Basic_obj;
+class Heap_obj;
 
 // if obj matches GC_TRACE_ADDR, print msg and some object info
-void gc_trace(Basic_obj *obj, const char *msg);
+void gc_trace(Heap_obj *obj, const char *msg);
 
 // same as gc_trace, but also prints index, e.g. a slot number
-void gc_trace_2(Basic_obj *obj, const char *msg, int index);
+void gc_trace_2(Heap_obj *obj, const char *msg, int index);
 #else
 #define gc_trace(ptr, msg)
 #define gc_trace_2(ptr, msg, index)
@@ -73,7 +73,7 @@ extern struct Gc_frame {
 extern void *gc_stack_top;  // link to top stack frame
 extern Gc_color gc_frame_color;  // initial color for new frames
 extern Gc_color gc_initial_color;
-extern Basic_obj *gc_gray_list;
+extern Heap_obj *gc_gray_list;
 extern bool gc_write_block;
 extern bool gc_local_write_block;
 extern Array *gc_array;
@@ -83,10 +83,10 @@ extern int64_t gc_array_index;
 extern int64_t gc_cycles;
 
 void if_node_make_gray(Any x);
-void basic_obj_make_gray(Basic_obj *obj);
+void heap_obj_make_gray(Heap_obj *obj);
 void gc_poll();
 
-// this function is defined by the runtime system to call basic_obj_make_gray
+// this function is defined by the runtime system to call heap_obj_make_gray
 // on all heap objects accessible through globals
 void gc_mark_roots();
 

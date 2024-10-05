@@ -40,7 +40,7 @@
 #include "any.h"
 #include "gc.h"
 #include "op_overload.h"
-#include "basic_obj.h"
+#include "heap_obj.h"
 #include "obj.h"
 #include "runtime.h"
 

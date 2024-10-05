@@ -4,9 +4,9 @@
 class Array;
 
 
-class Array : public Basic_obj {
+class Array : public Heap_obj {
 public:
-    // vector takes 24 bytes, so we need 3 slots. Basic_obj has 1, so
+    // vector takes 24 bytes, so we need 3 slots. Heap_obj has 1, so
     // we need 2 more. This expression is essentially roundup(24 / 8) - 1:
     int64_t more_slots[((sizeof(std::vector<Any>) + sizeof(int64_t) - 1) /
                         sizeof(int64_t)) - 1];

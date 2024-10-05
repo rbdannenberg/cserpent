@@ -7,7 +7,7 @@
 #include <cstdint>
 #include <limits>
 
-class String : public Basic_obj {
+class String : public Heap_obj {
 public:
     String(const std::string &s);
     String(const char *s = NULL);

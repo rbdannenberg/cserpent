@@ -8,7 +8,7 @@
 #include <utility>
 #include "any.h"
 #include "gc.h"
-#include "basic_obj.h"
+#include "heap_obj.h"
 #include "obj.h"
 #include "runtime.h"
 #include "csstring.h"
@@ -34,7 +34,7 @@ Symbol::Symbol(Any name, Any value, Any func)
 Symbol::Symbol(const char *name_string, Any value, Any func)
 {
     // precondition: name is not in symbol table
-    // This is tricky: since this constructor puts a Basic_obj on the heap,
+    // This is tricky: since this constructor puts a Heap_obj on the heap,
     // but there is no reference to it yet, it could get GC'd when we convert
     // name to an Any or do a symbol table insert, so we have to store this
     // as a local variable:

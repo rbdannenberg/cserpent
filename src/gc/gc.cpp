@@ -6,7 +6,7 @@
 #include "any.h"
 #include "op_overload.h"
 #include "gc.h"
-#include "basic_obj.h"
+#include "heap_obj.h"
 #include "obj.h"
 #include "csstring.h"
 #include "array.h"
@@ -21,16 +21,16 @@ const char *tag_name[] = { "free", "symbol", "integer", "string",
                      "array", "dict", "object", "file" };
 
 
-void gc_trace(Basic_obj *obj, const char *msg)
+void gc_trace(Heap_obj *obj, const char *msg)
 {
     gc_trace_2(obj, msg, -9999);
 }
 
 
-void gc_trace_2(Basic_obj *obj, const char *msg, int index)
+void gc_trace_2(Heap_obj *obj, const char *msg, int index)
 {
-    if (obj == (Basic_obj *) GC_TRACE_ADDR) {
-        Basic_obj *next = obj->get_next();
+    if (obj == (Heap_obj *) GC_TRACE_ADDR) {
+        Heap_obj *next = obj->get_next();
         assert((uint64_t) next == 0 || (uint64_t) next > 0x100000000);
         printf("gc_trace %p in %s,", obj, msg);
         if (index != -9999) {
@@ -50,7 +50,7 @@ bool gc_write_block = false;
 bool gc_local_write_block = false;
 int64_t gc_cycles = 0;
 
-Basic_obj *gc_gray_list = nullptr;
+Heap_obj *gc_gray_list = nullptr;
 static Chunk *sweep_chunk = nullptr;
 static char *sweep_ptr = nullptr;
 Array *gc_array = nullptr;
@@ -75,8 +75,8 @@ void if_node_make_gray(Any x) {
                    x.integer, gc_state);
         }
     }
-    if (is_basic_obj(x)) {
-        basic_obj_make_gray(to_basic_obj(x));
+    if (is_heap_obj(x)) {
+        heap_obj_make_gray(to_heap_obj(x));
     }
     // in the case of String and Symbol, each is either self-contained
     // as a short string or a pointer to a std::string, so there is
@@ -84,8 +84,8 @@ void if_node_make_gray(Any x) {
 }
 
 
-void basic_obj_make_gray(Basic_obj *obj) {
-    GCT gc_trace(obj, "basic_obj_make_gray");
+void heap_obj_make_gray(Heap_obj *obj) {
+    GCT gc_trace(obj, "heap_obj_make_gray");
     if (obj && obj->get_color() == GC_BLACK) {
         obj->set_color(GC_GRAY);
         obj->set_next(gc_gray_list);
@@ -99,7 +99,7 @@ void basic_obj_make_gray(Basic_obj *obj) {
 void gc_poll()
 {
     int64_t work_done = 0;
-    Basic_obj *obj;
+    Heap_obj *obj;
     char *ptr;
     while (work_done < WORK_PER_POLL) {
         GCS printf("gc_poll (top loop) state %d\n", gc_state);
@@ -108,7 +108,7 @@ void gc_poll()
             // printf("*** Starting GC cycle ***\n");
             gc_initial_color = GC_WHITE;
             gc_write_block = true;
-//            basic_obj_make_gray(cs_symbols); I think this is no longer
+//            heap_obj_make_gray(cs_symbols); I think this is no longer
 //            necessary because the symbol table is in
 //            global memory, not on either heap. [RBD:] But then we need
 //            to mark everything referenced by globals. Isn't it better to
@@ -135,12 +135,12 @@ void gc_poll()
                 case tag_symbol:
                     // since this is a Symbol, we know the 3 slots are pointers
                     // or nil, so we don't have to decode Any to see if it is
-                    // a Basic_obj, and we can call basic_obj_make_gray directly
-                    basic_obj_make_gray((Basic_obj *)
+                    // a Heap_obj, and we can call heap_obj_make_gray directly
+                    heap_obj_make_gray((Heap_obj *)
                                         (obj->slots[0].integer));  // name
-                    basic_obj_make_gray((Basic_obj *)
+                    heap_obj_make_gray((Heap_obj *)
                                         (obj->slots[1].integer));  // value
-                    basic_obj_make_gray((Basic_obj *)
+                    heap_obj_make_gray((Heap_obj *)
                                         (obj->slots[2].integer));  // function
                     work_done += 4 * MARK_NODE_COST;
                     break;
@@ -226,7 +226,7 @@ void gc_poll()
                         (gc_frame_ptr->header >> 57) & 0x03) != GC_WHITE) {
                     int n = (gc_frame_ptr->header >> 45) & 0xFFF;  // slot cnt
                     for (int i = 0; i < n; i++) {
-                        if_node_make_gray(to_basic_obj(gc_frame_ptr->anys[i]));
+                        if_node_make_gray(to_heap_obj(gc_frame_ptr->anys[i]));
                     }
                     work_done += n * MARK_NODE_COST;
                 }
@@ -256,7 +256,7 @@ void gc_poll()
             while (work_done < WORK_PER_POLL) {
                 GCS printf("    sweep_ptr %p sweep_chunk %p work_done %lld\n",
                            sweep_ptr, sweep_chunk, work_done);
-                Basic_obj *obj = (Basic_obj *) sweep_ptr;
+                Heap_obj *obj = (Heap_obj *) sweep_ptr;
                 GCT gc_trace(obj, "GC_SWEEP");
                 int64_t sz = obj->get_size();
                 // printf("sweep_ptr %p, color %d, obj size %lld\n", sweep_ptr,
@@ -377,7 +377,7 @@ void gc_alter_array(Array *a)
 }
 
 #if GC_DEBUG
-void list_check(Basic_obj *head, long slots) {
+void list_check(Heap_obj *head, long slots) {
     extern Cs_class *cs_obj_class;  // defined in gc_test
     while (head) {
         // printf("list_check for %ld slots: %p\n", slots, head);
@@ -399,8 +399,8 @@ void list_check(Basic_obj *head, long slots) {
 #define LOG2_MAX_EXPONENTIAL_BYTES 25 // up to 16MB = 2^24
 #define LOG2_MEM_QUANTUM 4  // linear sizes increment by this
 #define MEM_QUANTUM (1 << LOG2_MEM_QUANTUM)
-extern Basic_obj *linear_free[MAX_LINEAR_BYTES / MEM_QUANTUM - 1];
-extern Basic_obj *exponential_free[LOG2_MAX_EXPONENTIAL_BYTES -
+extern Heap_obj *linear_free[MAX_LINEAR_BYTES / MEM_QUANTUM - 1];
+extern Heap_obj *exponential_free[LOG2_MAX_EXPONENTIAL_BYTES -
                                    LOG2_MAX_LINEAR_BYTES];
 //
 // controls for what heap_scan does:
@@ -412,15 +412,15 @@ static void heap_scan(int fn)
 {
     Chunk *chunk = cs_chunk_list;
     char *ptr = chunk->chunk;  // iterates over objects
-    Basic_obj *obj = nullptr;
-    Basic_obj *prev = nullptr;
+    Heap_obj *obj = nullptr;
+    Heap_obj *prev = nullptr;
     int64_t sz = 0;
     
     while (true) {
         prev = obj;
         int64_t prev_size = sz;
         
-        obj = (Basic_obj *) ptr;  // iterates over objects
+        obj = (Heap_obj *) ptr;  // iterates over objects
         sz = obj->get_size();
         obj->get_next();  // checks reasonable next field
         if (obj->has_tag(tag_object)) {

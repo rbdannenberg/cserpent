@@ -54,10 +54,10 @@ std::string nq_solve(Any n) {
     //do_not_optimize(m);
     std::string result = std::to_string(to_int(m));
 #ifdef FREE
-    delete reinterpret_cast<Array*>(to_basic_obj(a));
-    delete reinterpret_cast<Array*>(to_basic_obj(l));
-    delete reinterpret_cast<Array*>(to_basic_obj(c));
-    delete reinterpret_cast<Array*>(to_basic_obj(r));
+    delete reinterpret_cast<Array*>(to_heap_obj(a));
+    delete reinterpret_cast<Array*>(to_heap_obj(l));
+    delete reinterpret_cast<Array*>(to_heap_obj(c));
+    delete reinterpret_cast<Array*>(to_heap_obj(r));
 #endif
     return result;
 }

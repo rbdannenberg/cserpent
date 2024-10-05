@@ -4,7 +4,7 @@
 //
 #include "any.h"
 #include "gc.h"
-#include "basic_obj.h"
+#include "heap_obj.h"
 #include "obj.h"
 #include <iostream>
 #include <cassert>
@@ -42,7 +42,7 @@ int64_t cs_chunkmem()
 }
 
 
-//----------- free lists store freed Basic_objects ----------
+//----------- free lists store freed Heap_objects ----------
 #define LOG2_MAX_LINEAR_BYTES 9 // up to (512 - 16) byte chunks
 #define MAX_LINEAR_BYTES (1 << LOG2_MAX_LINEAR_BYTES)
 #define LOG2_MAX_EXPONENTIAL_BYTES 25 // up to 16MB = 2^24
@@ -51,10 +51,10 @@ int64_t cs_chunkmem()
 #define MEM_QUANTUM (1 << LOG2_MEM_QUANTUM)
 
 // blocks from size 16 to 512-16 in steps of 16
-Basic_obj *linear_free[MAX_LINEAR_BYTES / MEM_QUANTUM - 1];
+Heap_obj *linear_free[MAX_LINEAR_BYTES / MEM_QUANTUM - 1];
 // blocks from size 512 to 16MB increasing by factors of 2
 // (index 0 -> 512, index 15-> 16MB)
-Basic_obj *exponential_free[LOG2_MAX_EXPONENTIAL_BYTES - LOG2_MAX_LINEAR_BYTES];
+Heap_obj *exponential_free[LOG2_MAX_EXPONENTIAL_BYTES - LOG2_MAX_LINEAR_BYTES];
 
 
 void csmem_init()
@@ -79,7 +79,7 @@ static int power_of_2_block_size(size_t size)
 
 // find head of free list for this size object.
 // Sets *size to the actual object size, which is >= requested size
-static Basic_obj **head_ptr_for_size(size_t *size)
+static Heap_obj **head_ptr_for_size(size_t *size)
 {
     // index to linear_free: shift to divide by MEM_QUANTUM. We want to
     // round up to next multiple of MEM_QUANTUM, so we want something like
@@ -112,7 +112,7 @@ void *csmalloc(size_t size)
     // actual slot count stored in the first slot location, so we have no
     // way to encode 0 slots.
     assert(size >= 16);
-    Basic_obj **head = head_ptr_for_size(&size);
+    Heap_obj **head = head_ptr_for_size(&size);
     int64_t slots = (size - 1) >> 3;  // 8 bytes per slot, not counting header,
     // so if there are 2 slots, the object size is 24, and 23 / 8 = 2.;
     // now size is the actual allocation size, not the object size
@@ -171,7 +171,7 @@ got_it:  // set header and return object
     // rewrite slots because each size category supports at least 2
     // different slot counts, e.g. it could be 2 or 3 and be on the
     // same free list:
-    Basic_obj *obj = (Basic_obj *) result;
+    Heap_obj *obj = (Heap_obj *) result;
     if (slots >= 4096) {
         obj->slots[0].integer = slots;
         slots = 0;
@@ -196,7 +196,7 @@ got_it:  // set header and return object
 
 #ifdef SUMMARY
 
-long list_len(Basic_obj *head) {
+long list_len(Heap_obj *head) {
     long len = 0;
     while (head) {
         len++;
@@ -238,8 +238,8 @@ void cssummary()
 
 void csfree(void *object)
 {
-    // can only free Basic_obj objects
-    Basic_obj *obj = (Basic_obj *) object;
+    // can only free Heap_obj objects
+    Heap_obj *obj = (Heap_obj *) object;
     
     // check for plausible pointer
     assert(((int64_t) obj) > 0x100000000);
@@ -248,7 +248,7 @@ void csfree(void *object)
     size_t size = (size_t) (obj->get_size());
     cs_current_bytes_allocated -= size;
 
-    Basic_obj **head = head_ptr_for_size(&size);
+    Heap_obj **head = head_ptr_for_size(&size);
     assert(head);
     obj->set_next(*head);
     obj->set_tag(tag_free);

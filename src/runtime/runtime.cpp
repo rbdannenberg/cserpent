@@ -8,7 +8,7 @@
 #include "any.h"
 #include "op_overload.h"
 #include "gc.h"
-#include "basic_obj.h"
+#include "heap_obj.h"
 #include "obj.h"
 #include "array.h"
 #include "dict.h"
@@ -67,6 +67,6 @@ void runtime_init()
 
 void runtime_mark_roots()
 {
-    basic_obj_make_gray(cs_obj_class);
-    basic_obj_make_gray(cs_symbol_table);
+    heap_obj_make_gray(cs_obj_class);
+    heap_obj_make_gray(cs_symbol_table);
 }

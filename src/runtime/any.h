@@ -15,7 +15,7 @@ class String;
 class Array;
 class Symbol;
 class Dict;
-class Basic_obj;
+class Heap_obj;
 class Obj;
 
 constexpr uint64_t BIAS         =    0x1000000000000uLL;
@@ -132,7 +132,7 @@ enum class Any_type {
 
 bool is_int(Any x);
 bool is_real(Any x);
-bool is_basic_obj(Any x);
+bool is_heap_obj(Any x);
 bool is_str(Any x);     // tests for either short string or String
 bool is_string(Any x);  // tests for String
 bool is_short(Any x);   // tests for short string
@@ -143,7 +143,7 @@ Any_type get_type(Any x);
 // for that, use as_* functions
 int64_t to_int(Any x);
 double to_real(Any x);
-Basic_obj *to_basic_obj(Any x);
+Heap_obj *to_heap_obj(Any x);
 String *to_string(Any x);
 Symbol *to_symbol(Any x);
 Array *to_array(Any x);
@@ -156,7 +156,7 @@ Obj *to_obj(Any x);
 int64_t as_int(Any x);
 double as_real(Any x);
 String as_str(Any x);
-Basic_obj *as_basic_obj(Any x);
+Heap_obj *as_heap_obj(Any x);
 
 /// Obtains the underlying type of an Any, mainly for debugging.
 std::string get_type_str(Any x);

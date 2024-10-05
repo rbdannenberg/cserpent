@@ -2,7 +2,7 @@
 
 #include "any.h"
 #include "gc.h"
-#include "basic_obj.h"
+#include "heap_obj.h"
 #include "obj.h"
 #include "array.h"
 #include "csmem.h"
@@ -92,9 +92,9 @@ Array *Array::append(double x) {
 
 void Array::set(int64_t index, Any value) {
     std::vector<Any> *data = get_vector();
-    Basic_obj *vptr;
-    if (gc_write_block && is_basic_obj(value) && get_color() != GC_BLACK) {
-        basic_obj_make_gray(to_basic_obj(value));
+    Heap_obj *vptr;
+    if (gc_write_block && is_heap_obj(value) && get_color() != GC_BLACK) {
+        heap_obj_make_gray(to_heap_obj(value));
     }
     data->at(index) = value;
 }    
