@@ -65,6 +65,8 @@ static int64_t handle_index(int64_t i, int64_t len) {
 
 Array *Array::append(Any x) {
     std::vector<Any> *data = get_vector();
+    // push_back does not respect GC requirements to use set(), so first we 
+    // create space by pushing y; then we set the space to x:
     Any y;
     data->push_back(y);
     set(data->size() - 1, x);
@@ -73,12 +75,18 @@ Array *Array::append(Any x) {
 
 
 Array *Array::append(int64_t x) {
-    return append(Any {x});
+    // slight optimization of append since x does not need to be marked, so we
+    // do not need to use set():
+    std::vector<Any> *data = get_vector();
+    data->push_back(Any {x});
+    return this;
 }
 
 
 Array *Array::append(double x) {
-    return append(Any {x});
+    std::vector<Any> *data = get_vector();
+    data->push_back(Any {x});
+    return this;
 }
 
 
@@ -156,6 +164,13 @@ int64_t Array::len() const {
 }
 
 Array *subseq(Array *arr, int64_t start, int64_t end) {
+    // precondition: name is not in symbol table
+    struct Frame : public Cs_frame {
+        Any result;
+    } L;
+    constexpr int sl_result = 0;
+    memset(&L, 0, sizeof(L));
+    STD_FUNCTION_ENTRY(L, 1);
     int64_t arr_len = arr->len();
     if (end == std::numeric_limits<int64_t>::max()) {
         end = arr_len;
@@ -170,11 +185,12 @@ Array *subseq(Array *arr, int64_t start, int64_t end) {
     if (start < 0 || start > end || end > arr_len) {
         throw std::out_of_range("subseq: out of range");
     }
-    auto result = new Array {};
+    Array *result = new Array {};
+    L.set(sl_result, result);
     for (int64_t i = start; i < end; i++) {
         result->append((*arr)[i]);
     }
-    return result;
+    STD_FUNCTION_EXIT(L, result);
 }
 
 bool is_equal(Array *lhs, Array *rhs) {
@@ -230,6 +246,8 @@ Any Array::unappend() {
 }
 
 Array *Array::uninsert(int64_t i, int64_t j) {
+    // tricky because we could cause GC to miss marking an element that
+    // moves into a previous slot
     std::vector<Any> *data = get_vector();
     i = handle_index(i, data->size());
     if (j == std::numeric_limits<int64_t>::max()) {
@@ -238,12 +256,22 @@ Array *Array::uninsert(int64_t i, int64_t j) {
         j = handle_index(j, data->size());
         data->erase(data->begin() + i, data->begin() + j);
     }
+    // we could possibly optimize by checking to see if we actually need
+    // to adjust gc_array_index, but it's easier and certainly safe to
+    // just re-mark the entire array
+    if (this == gc_array) {
+        gc_array_index = 0;
+    }
     return this;
 }
 
 Array *Array::reverse() {
     std::vector<Any> *data = get_vector();
     std::reverse(data->begin(), data->end());
+    // watch out! if we are marking this array, restart the marking:
+    if (this == gc_array) {
+        gc_array_index = 0;
+    }
     return this;
 }
 

@@ -5,7 +5,8 @@
 Any operator+ (Any lhs, int rhs);
 Any operator+ (Any lhs, int64_t rhs);
 Any operator+ (Any lhs, double rhs);
-Any operator+ (Any lhs, const String& rhs);
+// Any operator+ (Any lhs, const String& rhs);
+Any operator+ (Any lhs, const char *rhs);
 Any operator+ (Any lhs, Any rhs);
 
 Any operator* (Any lhs, int rhs);

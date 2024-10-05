@@ -31,8 +31,11 @@ Any::Any() : integer {0} {}
 
 Any::Any(int64_t x) {
 #ifdef DEBUG
-    int64_t tmp = x & INT_MASK;
-    if (tmp != 0 && tmp != INT_MASK;
+    // check for int out of range: if x is positive, high-order bits are
+    // zero, so tmp == 0. If x is negative, high-order bits are 1's and
+    // tmp == ~INT_MASK.
+    int64_t tmp = x & ~INT_MASK;
+    if (tmp != 0 && tmp != ~INT_MASK;
         throw std::runtime_error("Precondition failed: integer value corrupted:");
     }
 #endif
@@ -109,8 +112,11 @@ Any::Any(bool x) {
 
 Any& Any::operator=(int64_t x) {
 #ifdef DEBUG
-    int64_t tmp = x & INT_MASK;
-    if (tmp != 0 && tmp != INT_MASK) {
+    // check for int out of range: if x is positive, high-order bits are
+    // zero, so tmp == 0. If x is negative, high-order bits are 1's and
+    // tmp == ~INT_MASK.
+    int64_t tmp = x & ~INT_MASK;
+    if (tmp != 0 && tmp != ~INT_MASK) {
         throw std::runtime_error("Precondition failed: integer value corrupted:");
     }
 #endif
@@ -334,16 +340,16 @@ std::string get_type_str(Any x) {
 }
 
 
-const char *get_c_str(Any s, int64_t *len_ptr)
+const char *get_c_str(const Any *s, int64_t *len_ptr)
 {
     const char *str;
-    if (is_string(s)) {
-        str = to_string(s)->get_c_str();
+    if (is_string(*s)) {
+        str = to_string(*s)->get_c_str();
         if (len_ptr) {
-            *len_ptr = to_string(s)->len();
+            *len_ptr = to_string(*s)->len();
         }
     } else {
-        str = s.bytes + SHORTSTR_BASE;
+        str = s->bytes + SHORTSTR_BASE;
         if (len_ptr) {
             *len_ptr = strlen(str);
         }

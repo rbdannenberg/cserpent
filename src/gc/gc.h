@@ -1,14 +1,29 @@
 // gc.h - garbage collection declarations
 #pragma once
 
-// enable tracing object allocation/marking/freeing
-#define GC_DEBUG 0
 // enable expensive GC debugging/checking:
-#define GC_DEBUG_2 0
+// enable selected GC debug printing, or turn it all off:
+// #define GC_DEBUG 1
+#define GC_DEBUG 0
+#define GCG if (GC_DEBUG)
+
+// printing gc_state changes:
+// #define GC_STATE_DEBUG
+#define GC_STATE_DEBUG 0
+#define GCS if (GC_DEBUG && GC_STATE_DEBUG)
+
+// trace GC activity around a particular address:
+#define GC_TRACE_ADDR 0
+#if (GC_TRACE_ADDR != 0) && (GC_DEBUG != 0)
+#define GCT if (1)
+#else
+#define GCT if (0)
+#endif
+
 #if GC_DEBUG
 class Basic_obj;
 
-// if obj matches gc_trace_ptr, print msg and some object info
+// if obj matches GC_TRACE_ADDR, print msg and some object info
 void gc_trace(Basic_obj *obj, const char *msg);
 
 // same as gc_trace, but also prints index, e.g. a slot number

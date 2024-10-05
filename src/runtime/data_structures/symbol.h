@@ -16,9 +16,9 @@ public:
     Symbol(Any name, Any value = nil, Any func = nil);
     Symbol(const char *name, Any value = nil, Any func = nil);
 
-    Any name() { return slots[0]; }
-    Any value() { return slots[1]; }
-    Any func() { return slots[2]; }
+    Any *name() { return slots; }
+    Any *value() { return slots + 1; }
+    Any *func() { return slots + 2; }
 };
 
 extern Dict *cs_symbol_table;

@@ -14,12 +14,10 @@
 #include "symbol.h"
 #include "csmem.h"
 
-#if GC_DEBUG
-// 1 is an address that will never match
-Basic_obj *gc_trace_ptr = (Basic_obj *) 0x00000001080098a8;
 
-char *color_name[] = {"FREE", "BLACK", "GRAY", "WHITE"};
-char *tag_name[] = { "free", "symbol", "integer", "string",
+#if GC_DEBUG
+const char *color_name[] = {"FREE", "BLACK", "GRAY", "WHITE"};
+const char *tag_name[] = { "free", "symbol", "integer", "string",
                      "array", "dict", "object", "file" };
 
 
@@ -31,7 +29,7 @@ void gc_trace(Basic_obj *obj, const char *msg)
 
 void gc_trace_2(Basic_obj *obj, const char *msg, int index)
 {
-    if (obj == gc_trace_ptr) {
+    if (obj == (Basic_obj *) GC_TRACE_ADDR) {
         Basic_obj *next = obj->get_next();
         assert((uint64_t) next == 0 || (uint64_t) next > 0x100000000);
         printf("gc_trace %p in %s,", obj, msg);
@@ -71,6 +69,12 @@ static const int WORK_PER_POLL = 1000;
 
 
 void if_node_make_gray(Any x) {
+    GCT {
+        if (x.integer == GC_TRACE_ADDR) {
+            printf("In if_node_make_gray: %llx found in gc_state %d\n",
+                   x.integer, gc_state);
+        }
+    }
     if (is_basic_obj(x)) {
         basic_obj_make_gray(to_basic_obj(x));
     }
@@ -81,7 +85,7 @@ void if_node_make_gray(Any x) {
 
 
 void basic_obj_make_gray(Basic_obj *obj) {
-    gc_trace(obj, "basic_obj_make_gray");
+    GCT gc_trace(obj, "basic_obj_make_gray");
     if (obj && obj->get_color() == GC_BLACK) {
         obj->set_color(GC_GRAY);
         obj->set_next(gc_gray_list);
@@ -98,7 +102,7 @@ void gc_poll()
     Basic_obj *obj;
     char *ptr;
     while (work_done < WORK_PER_POLL) {
-        printf("gc_poll (top loop) state %d\n", gc_state);
+        GCS printf("gc_poll (top loop) state %d\n", gc_state);
         switch (gc_state) {
         case GC_START:
             // printf("*** Starting GC cycle ***\n");
@@ -117,7 +121,7 @@ void gc_poll()
         case GC_MARK:
             while (work_done < WORK_PER_POLL) {
                 obj = gc_gray_list;
-                gc_trace(obj, "GC_MARK gray list");
+                GCT gc_trace(obj, "GC_MARK gray list");
                 if (!obj) {
                     gc_state = (gc_state == GC_MARK ? GC_MARK2 : GC_MARK3);
                     break;
@@ -203,6 +207,7 @@ void gc_poll()
             }
             if (gc_array_index >= data->size()) {
                 // we're done scanning the array
+                gc_array = nullptr;
                 gc_state = (gc_state == GC_MARK_ARRAY ? GC_MARK : GC_MARKB);
             } else {
                 return;  // we're out of time; come again soon
@@ -215,14 +220,13 @@ void gc_poll()
             gc_local_write_block = true;
             gc_state = GC_MARK_STACK;
         case GC_MARK_STACK:
-            printf("gc_poll state %d\n", gc_state);
+            GCS printf("gc_poll state %d\n", gc_state);
             while (work_done < WORK_PER_POLL && gc_frame_ptr) {
                 if (static_cast<Gc_color>(
                         (gc_frame_ptr->header >> 57) & 0x03) != GC_WHITE) {
                     int n = (gc_frame_ptr->header >> 45) & 0xFFF;  // slot cnt
                     for (int i = 0; i < n; i++) {
-                        basic_obj_make_gray(to_basic_obj(
-                                                    gc_frame_ptr->anys[i]));
+                        if_node_make_gray(to_basic_obj(gc_frame_ptr->anys[i]));
                     }
                     work_done += n * MARK_NODE_COST;
                 }
@@ -242,7 +246,7 @@ void gc_poll()
             work_done += SWEEP_NODE_COST;
             gc_state = GC_SWEEP;
             // fall through to GC_SWEEP
-            printf("gc_poll state %d\n", gc_state);
+            GCS printf("gc_poll state %d\n", gc_state);
         case GC_SWEEP: {  // free black nodes, oh sweet jesus this sounds
             // so racist; I'd switch to RED/GREEN right now, but I'm a member
             // of the Cherokee nation.
@@ -250,10 +254,10 @@ void gc_poll()
             // find these WHITE/GRAY/BLACK labels inappropriate or insensitive.
             // Maybe HOT, WARM, COLD?
             while (work_done < WORK_PER_POLL) {
-                printf("    sweep_ptr %p sweep_chunk %p work_done %lld\n",
-                       sweep_ptr, sweep_chunk, work_done);
+                GCS printf("    sweep_ptr %p sweep_chunk %p work_done %lld\n",
+                           sweep_ptr, sweep_chunk, work_done);
                 Basic_obj *obj = (Basic_obj *) sweep_ptr;
-                gc_trace(obj, "GC_SWEEP");
+                GCT gc_trace(obj, "GC_SWEEP");
                 int64_t sz = obj->get_size();
                 // printf("sweep_ptr %p, color %d, obj size %lld\n", sweep_ptr,
                 //        obj->get_color(), sz);
@@ -279,7 +283,7 @@ void gc_poll()
                 } else if (obj->get_color() == GC_FREE) {
                     work_done += SWEEP_NODE_COST;
                 } else if (obj->get_color() == GC_WHITE) {
-                    gc_trace(obj, "GC_SWEEP, changing white to black");
+                    GCT gc_trace(obj, "GC_SWEEP, changing white to black");
                     obj->set_color(GC_BLACK);
                     work_done += COLOR_NODE_COST;
                 }
@@ -291,7 +295,7 @@ void gc_poll()
                     if (sweep_chunk) {
                         sweep_ptr = sweep_chunk->chunk;
                     } else {
-                        printf("    sweep_chunk is null\n");
+                        GCS printf("    sweep_chunk is null\n");
                         gc_initial_color = GC_BLACK;
                         // prepare to change stack frames to black
                         gc_frame_ptr = (Gc_frame *) gc_stack_top;
@@ -322,7 +326,7 @@ void gc_poll()
             while (work_done < WORK_PER_POLL && gc_gray_list) {
                 obj = gc_gray_list;
                 gc_gray_list = gc_gray_list->get_next();
-                gc_trace(obj, "GC_SWEEP2, off gc_gray_list, set black");
+                GCT gc_trace(obj, "GC_SWEEP2, off gc_gray_list, set black");
                 obj->set_color(GC_BLACK);
                 work_done += COLOR_NODE_COST;
             }
@@ -338,7 +342,7 @@ void gc_poll()
             gc_high_water += (gc_high_water >> 1);
             gc_state = GC_IDLE;
             gc_cycles++;
-            printf("*** GC cycle ended ***\n");
+            GCG printf("*** GC cycle ended ***\n");
             return;  // exit loop; do not look for more work
         case GC_IDLE:
             if (cs_current_bytes_allocated > gc_high_water) {

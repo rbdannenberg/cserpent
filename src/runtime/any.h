@@ -19,15 +19,22 @@ class Basic_obj;
 class Obj;
 
 constexpr uint64_t BIAS         =    0x1000000000000uLL;
-constexpr uint64_t INT_TAG      = 0xFFFC000000000000uLL;
-constexpr uint64_t INT_MASK     = 0xFFFE000000000000uLL;  // 49 bits
-constexpr uint64_t TAG_MASK     = 0xFFFF000000000000uLL;
-constexpr uint64_t PTR_TAG      = 0x0000000000000000uLL;
-constexpr uint64_t SYMBOL_TAG   = 0xFFFB000000000000uLL;
-constexpr uint64_t SHORT_TAG    = 0xFFFC000000000000uLL;
-constexpr uint64_t STR_TAG      = 0xFFFD000000000000uLL;
+constexpr uint64_t INT_TAG      =  0xFFFC000000000000uLL;
+constexpr uint64_t INT_MASK     = ~0xFFFE000000000000uLL;  // 49 bits
+constexpr uint64_t TAG_MASK     =  0xFFFF000000000000uLL;
+constexpr uint64_t PTR_TAG      =  0x0000000000000000uLL;
+constexpr uint64_t SYMBOL_TAG   =  0xFFFB000000000000uLL;
+constexpr uint64_t SHORT_TAG    =  0xFFFC000000000000uLL;
+constexpr uint64_t STR_TAG      =  0xFFFD000000000000uLL;
 // after subtracting BIAS, valid real (double) bits should be less than:
-constexpr uint64_t REAL_LIMIT   = 0xFFFA000000000000uLL;
+constexpr uint64_t REAL_LIMIT   =  0xFFFA000000000000uLL;
+
+
+#if __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
+    #define LITTLE_ENDIAN_ORDER
+#else
+#error __BYTE_ORDER__ is undefined
+#endif
 
 #ifdef LITTLE_ENDIAN_ORDER
 #define SHORTSTR_BASE 0
@@ -95,7 +102,8 @@ public:
 
 
 //    Any& operator[](int64_t i);
-    void set(int64_t i, Any val); // Use this instead of assignment through [] (gc reasons).
+    // Use this instead of assignment through [] (gc reasons):
+    void set(int64_t i, Any val);
     Any operator[](int64_t i) const; // return-by-value is faster
 
     bool is(Any x);
@@ -154,4 +162,4 @@ Basic_obj *as_basic_obj(Any x);
 std::string get_type_str(Any x);
 
 /// Get a const char * from short or long string
-const char *get_c_str(Any s, int64_t *len_ptr = NULL);
+const char *get_c_str(const Any *s, int64_t *len_ptr = NULL);

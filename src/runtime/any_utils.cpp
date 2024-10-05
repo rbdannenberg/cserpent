@@ -37,15 +37,13 @@ Any force_str(Any x) {
         case Any_type::SYMBOL: return to_symbol(x)->name();
         case Any_type::INT: {
             std::string ias(std::to_string(to_int(x)));
-            Any int_as_string(ias);
-            return int_as_string;
+            return Any(ias);
         }
         case Any_type::REAL: {
             std::stringstream ss;
             ss << to_real(x);
             std::string ras(ss.str());
-            Any real_as_string(ras);
-            return real_as_string;
+            return Any(ras);
         }
         case Any_type::ARRAY: {
             std::string aas(debug_str(to_array(x)));
@@ -54,8 +52,7 @@ Any force_str(Any x) {
         }
         case Any_type::DICT: {
             std::string das(debug_str(to_dict(x)));
-            Any dict_as_string(das);
-            return dict_as_string;
+            return Any(das);
         }
         case Any_type::OBJ: {
             Any oas(to_obj(x)->get_class_ptr()->get_name());

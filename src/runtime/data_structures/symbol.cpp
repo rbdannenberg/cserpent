@@ -9,6 +9,8 @@
 #include "any.h"
 #include "gc.h"
 #include "basic_obj.h"
+#include "obj.h"
+#include "runtime.h"
 #include "csstring.h"
 #include "symbol.h"
 #include "array.h"
@@ -29,15 +31,27 @@ Symbol::Symbol(Any name, Any value, Any func)
 }
 
 
-Symbol::Symbol(const char *name, Any value, Any func)
+Symbol::Symbol(const char *name_string, Any value, Any func)
 {
     // precondition: name is not in symbol table
-    Any any_name = name;
-    set_slot(0, any_name);
-    set_slot(1, value);
+    // This is tricky: since this constructor puts a Basic_obj on the heap,
+    // but there is no reference to it yet, it could get GC'd when we convert
+    // name to an Any or do a symbol table insert, so we have to store this
+    // as a local variable:
+    struct Frame : public Cs_frame {
+        Any result;  // this
+    } L;
+    constexpr int sl_result = 0;
+    memset(&L, 0, sizeof(L));
+    STD_FUNCTION_ENTRY(L, 1);
+    L.set(sl_result, this);
+    set_slot(1, value);  // store Any parameters first to protect them from GC
     set_slot(2, func);
-    Any symbol(this);
-    cs_symbol_table->insert(name, symbol);
+    // now we can safely evaluate expressions that might allocate memory and
+    // invoke GC, including conversion of string to Any:
+    set_slot(0, Any(name_string));
+    cs_symbol_table->insert(name(), L.result);
+    STD_FUNCTION_EXIT(L, L.result);
 }
 
 

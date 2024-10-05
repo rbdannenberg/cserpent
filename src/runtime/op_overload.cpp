@@ -29,7 +29,7 @@ Any operator+ (Any lhs, double rhs) {
     return { force_real(lhs) + rhs };
 }
 
-Any operator+ (Any lhs, const String *rhs) {
+/* Any operator+ (Any lhs, const String *rhs) {
     assert(false);  // needs work
     if (is_string(lhs)) {
         assert(false);  // needs work
@@ -38,18 +38,26 @@ Any operator+ (Any lhs, const String *rhs) {
         return nil;
     }
 }
+ */
+
+Any operator+ (Any lhs, const char *rhs) {
+    if (is_str(lhs)) {
+        const char *lhs_c_str = get_c_str(&lhs);
+        std::string result(lhs_c_str);
+        result += rhs;
+        return Any(result);
+    } else {
+        assert(false);
+    }
+}
 
 Any operator+ (Any lhs, Any rhs) {
-    assert(false);  // needs work
     if (is_int(rhs)) {
         return lhs + to_int(rhs);
     } else if (is_real(rhs)) {
         return lhs + to_real(rhs);
-    } else if (is_string(rhs)) {
-        assert(false);  // needs work
-        // return lhs + to_string(rhs);
-    } else if (is_short(rhs)) {
-        assert(false);   // needs work
+    } else if (is_str(rhs)) {
+        return lhs + get_c_str(&rhs);
     } else type_error(rhs);
 }
 
@@ -348,28 +356,8 @@ int64_t operator>> (Any lhs, int rhs) {
 }
 
 std::ostream& operator<<(std::ostream& os, Any x) {
-    return os << force_str(x);
-    switch (get_type(x)) {
-        case Any_type::INT:
-            return os << to_int(x);
-        case Any_type::REAL:
-            return os << to_real(x);
-        case Any_type::STRING:
-        case Any_type::SHORT:
-            return os << get_c_str(x);
-        case Any_type::SYMBOL:
-            return os << to_symbol(x);
-        case Any_type::ARRAY:
-            return os << to_array(x);
-        case Any_type::DICT:
-            return os << to_dict(x);
-        case Any_type::OBJ:
-            return os << "Not implemented yet";
-        case Any_type::NIL:
-            return os << "nil";
-        default:
-            return os << "unknown";
-    }
+    Any s(force_str(x));
+    return os << get_c_str(&s);
 }
 
 bool operator==(Any lhs, int64_t rhs) {
@@ -453,8 +441,13 @@ Any Any::operator[](int64_t i) const {
             return (*(static_cast<Array*>(basic_ptr)))[i];
         }
     } else if (is_string(*this)) {
-        Any result = get_c_str(*this);
-        return result;
+        // TODO: this is not correct for Unicode 
+        int64_t len;
+        const char *s = get_c_str(this, &len);
+        if (i < 0 || i >= len) {
+            throw std::out_of_range("String index is out of range");
+        }
+        return Any(s[i]);
     } else {
         type_error(*this);
     }

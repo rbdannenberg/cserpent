@@ -1,23 +1,23 @@
 
 /**
 def matmul(a, b):
-var n = len(a)
-var m = len(b[0])
-var p = len(a[0])
+    var n = len(a)
+    var m = len(b[0])
+    var p = len(a[0])
 
-var c = []
+    var c = []
 
-for i = 0 to n
-var ci = [0.0 for z = 0 to m]
-for k = 0 to p
-var aik = a[i][k]
-var bk = b[k]
+    for i = 0 to n
+        var ci = [0.0 for z = 0 to m]
+        for k = 0 to p
+            var aik = a[i][k]
+            var bk = b[k]
 
-for j = 0 to m
-ci[j] = ci[j] + (aik * bk[j])
-c.append(ci)
+            for j = 0 to m
+                ci[j] = ci[j] + (aik * bk[j])
+            c.append(ci)
 
-return c
+    return c
  */
 
 #include <cstdint>
@@ -35,8 +35,7 @@ return c
 
 // a is a (Array *)
 Any matmul(Any a_, Any b_) {
-    struct Frame {
-        uint64_t header;
+    struct Frame : public Cs_frame {
         Any a;
         Any b;
         Any n;
@@ -46,35 +45,43 @@ Any matmul(Any a_, Any b_) {
         Any ci;
         Any aik;
         Any bk;
-    } locals;
-    memset(&locals, 0, sizeof(locals));
-    locals.a = a_;
-    locals.b = b_;
-    locals.n = len(locals.a);
-    locals.m = len(locals.b[0]);
-    locals.p = len(locals.a[0]);
-    locals.c = new Array {};
-    STD_FUNCTION_ENTRY(9);
+    } L;
+    constexpr int SL_a = 0;
+    constexpr int SL_b = 1;
+    constexpr int SL_n = 2;
+    constexpr int SL_m = 3;
+    constexpr int SL_p = 4;
+    constexpr int SL_c = 5;
+    constexpr int SL_ci = 6;
+    constexpr int SL_aik = 7;
+    constexpr int SL_bk = 8;
+    memset(&L, 0, sizeof(L));
+    STD_FUNCTION_ENTRY(L, 9);
+    L.set(SL_a, a_);
+    L.set(SL_b, b_);
+    L.set(SL_n, len(L.a));
+    L.set(SL_m, len(L.b[0]));
+    L.set(SL_p, len(L.a[0]));
+    L.set(SL_c, new Array {});
 
-    for (int64_t i = 0; i < locals.n; i++) {
+    for (int64_t i = 0; i < L.n; i++) {
         // list comprehension
-        locals.ci = new Array(as_int(locals.m), 0.0);
-        for (int64_t k = 0; k < locals.p; k++) {
-            locals.aik = locals.a[i][k];
-            locals.bk = locals.b[k];
-            for (int64_t j = 0; j < locals.m; j++) {
-                locals.ci.set(j, locals.ci[j] + (locals.aik * locals.bk[j]));
+        L.set(SL_ci, new Array(as_int(L.m), 0.0));
+        for (int64_t k = 0; k < L.p; k++) {
+            L.set(SL_aik, L.a[i][k]);
+            L.set(SL_bk, L.b[k]);
+            for (int64_t j = 0; j < L.m; j++) {
+                L.ci.set(j, L.ci[j] + (L.aik * L.bk[j]));
             }
         }
-        locals.c.append(locals.ci);
+        L.c.append(L.ci);
     }
-    STD_FUNCTION_EXIT(locals.c);
+    STD_FUNCTION_EXIT(L, L.c);
 }
 
 
 std::string test_matmul(Any n_) {
-    struct Frame {
-        uint64_t header;
+    struct Frame : public Cs_frame {
         Any n;
         Any tmp;
         Any a;
@@ -82,25 +89,34 @@ std::string test_matmul(Any n_) {
         Any _tmp_a;
         Any _tmp_b;
         Any d;
-    } locals;
-    memset(&locals, 0, sizeof(locals));
-    locals.n = n_;
-    locals.tmp = 1.0 / (locals.n * locals.n);
-    locals.a = new Array;
-    locals.b = new Array;
-    STD_FUNCTION_ENTRY(7);
+    } L;
+    constexpr int sl_n = 0;
+    constexpr int sl_tmp = 1;
+    constexpr int sl_a = 2;
+    constexpr int sl_b = 3;
+    constexpr int sl__tmp_a = 4;
+    constexpr int sl__tmp_b = 5;
+    constexpr int sl_d = 6;
+    memset(&L, 0, sizeof(L));
+    STD_FUNCTION_ENTRY(L, 7);
+    L.set(sl_n, n_);
+    L.set(sl_tmp, 1.0 / (L.n * L.n));
+    L.set(sl_a, new Array);
+    L.set(sl_b, new Array);
 
-    for (int64_t i = 0; i < locals.n; i++) {
-        locals._tmp_a = new Array;
-        locals._tmp_b = new Array;
-        for (int64_t j = 0; j < locals.n; j++) {
-            locals._tmp_a.append(locals.tmp * (i - j) * (i + j));
-            locals._tmp_b.append(locals.tmp * (i + j) * (i - j));
+    for (int64_t i = 0; i < L.n; i++) {
+        L.set(sl__tmp_a, new Array);
+        L.set(sl__tmp_b, new Array);
+        for (int64_t j = 0; j < L.n; j++) {
+            L._tmp_a.append(L.tmp * (i - j) * (i + j));
+            L._tmp_b.append(L.tmp * (i + j) * (i - j));
         }
-        locals.a.append(locals._tmp_a);
-        locals.b.append(locals._tmp_b);
+        L.a.append(L._tmp_a);
+        L.b.append(L._tmp_b);
     }
-    locals.d = matmul(locals.a, locals.b);
+    Any test = L.a[0][0];
+    // std::cout << "matmul " << L.a << " " << L.b << std::endl;
+    L.set(sl_d, matmul(L.a, L.b));
 #ifdef IGNORE_CODE
     // do_not_optimize(d);
     /// This is an optimization blocker, makes it harder to inline and lets us check correctness
@@ -108,7 +124,7 @@ std::string test_matmul(Any n_) {
     return result;
 #endif
 
-    STD_FUNCTION_EXIT("");
+    STD_FUNCTION_EXIT(L, "");
 }
 
 void run_benchmark(int n)

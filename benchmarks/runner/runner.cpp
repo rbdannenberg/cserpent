@@ -97,8 +97,9 @@ int main(int argc, char* argv[]) {
     double avg_time = total_time / iters;
 
     // Output results
-    std::cout << argv[0] << " " << n << " " << iters << " " << warmup << " "
-              << avg_time << " " << min_time << " " << max_time << "\n";
+    std::cout << argv[0] << " param " << n << "\n    iters " << iters
+              << " warmup " << warmup << " avg " << avg_time
+              << " min " << min_time << " max " << max_time << "\n";
 
     // Append results to file
     std::ofstream outfile(std::string(argv[0]) + ".data", std::ios::app);

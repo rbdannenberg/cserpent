@@ -18,6 +18,7 @@
 #include "gc.h"
 #include "basic_obj.h"
 #include "obj.h"
+#include "runtime.h"
 #include "array.h"
 #include "csmem.h"
 #include "op_overload.h"
@@ -54,24 +55,31 @@ void Dict::show()
 
 Array *Dict::get_keys()
 {
+    struct Frame : public Cs_frame {
+        Any result;
+    } L;
+    constexpr int sl_result = 0;
+    memset(&L, 0, sizeof(L));
+    STD_FUNCTION_ENTRY(L, 1);
     std::vector<Any> *array = get_vector();
     // len is number of entries * 2
     int64_t slots = array->size() & ~1;  // make it even, round down
     // slots is now how many slots to scan for keys
     Array *result = new Array(used / 2, nil);
     assert(result);
+    L.set(sl_result, result);  // save as local to avoid GC
     int j = 0; // where to put key
     for (int i = 0; i < slots; i += 2) {
         Any key = (*array)[i];
         if ((key.integer != DICT_EMPTY.integer) &&
             (key.integer != DICT_DELETED.integer)) {
             assert(j < used / 2);
-            result->Array::set(j, key);
+            result->set(j, key);
             j++;
         }
     }
     assert(j * 2 == used);
-    return result;
+    STD_FUNCTION_EXIT(L, result);
 }
 
 #ifdef DO_WE_NEED_THIS_FUNCTION
@@ -102,10 +110,17 @@ Any Dict::find_var_holding(SVal val, Machine_ptr m)
 
 Array *Dict::get_values()
 {
+    struct Frame : public Cs_frame {
+        Any result;
+    } L;
+    constexpr int sl_result = 0;
+    memset(&L, 0, sizeof(L));
+    STD_FUNCTION_ENTRY(L, 1);
     std::vector<Any> *array = get_vector();
     int64_t slots = array->size() & ~1;  // make it even, round down
     Array *result = new Array(used / 2, nil);
     assert(result);
+    L.set(sl_result, result);  // save as local to avoid GC
     int j = 0; // where to put the value
     for (int i = 0; i < slots; i += 2) {
         Any key = (*array)[i];
@@ -113,12 +128,12 @@ Array *Dict::get_values()
             (key.integer != DICT_DELETED.integer)) {
             assert(j < used / 2);
             Any value = (*array)[i + 1];
-            result->Array::set(j + 1, value);
+            result->set(j + 1, value);
             j++;
         }
     }
     assert(j == used / 2);
-    return result;
+    STD_FUNCTION_EXIT(L, result);
 }
 
 
@@ -195,7 +210,7 @@ int64_t Dict::expand(int64_t newlen)
 uint64_t Dict::compute_string_hash(Any s, const char **str, int64_t *len)
 {
     int64_t slen;
-    const char *sstr = get_c_str(s, &slen);
+    const char *sstr = get_c_str(&s, &slen);
     uint64_t hash = 0;
     int i = 0;
     for (i = 0; i < slen - 4; i += 4) {
@@ -233,14 +248,15 @@ uint64_t Dict::compute_hash(Any key)
 }
 
     
-std::string debug_str(Dict *x) {
+std::string debug_str(Dict *x)
+{
     std::vector<Any> &data = *(x->get_vector());
     std::stringstream ss;
     ss << "{";
     int64_t slots = data.size() & ~1;
     bool need_comma = false;
     for (int64_t i = 0; i < slots; i += 2) {
-        Any key = data[i];
+        Any key = data[i];  // key is referenced by x, so no need for L.key
         if (need_comma) {
             ss << ", ";
         }
@@ -327,7 +343,7 @@ int64_t Dict::find(Any key, bool inserting)
                 if (deleted_index < 0) deleted_index = index;
             } else if (is_str(entry_key)) {
                 int64_t len2;
-                const char *str2 = get_c_str(entry_key);
+                const char *str2 = get_c_str(&entry_key);
                 if (((len1 == len2) &&
                      (memcmp(str1, str2, (len1 + 3) & (~3))) == 0)) {
                     return index * 2;
@@ -339,7 +355,7 @@ int64_t Dict::find(Any key, bool inserting)
                 // eventually touch all bins.
             index %= size;
             perturb >>= 5;
-            printf("find: new index %lld\n", index);
+            // printf("find: new index %lld\n", index);
         }
     } else { // pointer key, int or float
         index = hash % size;
