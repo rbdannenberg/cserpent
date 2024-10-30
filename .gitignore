@@ -14,6 +14,10 @@ compile_commands.json
 CTestTestfile.cmake
 _deps
 CMakeUserPresets.json
+Debug/
+Release/
+build/
+*.xcodeproj/
 
 # Serpent Debug Logs
 *.log
@@ -54,40 +58,7 @@ CMakeUserPresets.json
 # Mypyc files used for comparison
 benchmarks/mypyc-benchmarks
 
-
 /rbd-notes.txt
-
-/tests/c++/reprtest/CMakeCache.txt
-
-/tests/c++/reprtest/CMakeFiles/
-
-/tests/c++/reprtest/CMakeScripts/
-
-/tests/c++/reprtest/Debug/
-
-/tests/c++/reprtest/Release/
-
-/tests/c++/reprtest/build/
-
-/tests/c++/reprtest/cmake_install.cmake
-
-/tests/c++/reprtest/reprtest.xcodeproj/
-
-/src/runtime/test/cmake_install.cmake
-
-/src/runtime/test/CMakeCache.txt
-
-/src/runtime/test/CMakeFiles/
-
-/src/runtime/test/Release/
-
-/src/runtime/test/CMakeScripts/
-
-/src/runtime/test/build/
-
-/src/runtime/test/runtimetests.xcodeproj/
-
-/src/runtime/test/Debug/
 
 /cmake-build-debug/
 /cmake-build-release/
@@ -100,9 +71,5 @@ benchmarks/mypyc-benchmarks
 
 /cserpent.xcodeproj/
 
-
 /output_1.txt
-
 /output_2.txt
-
-/benchmarks/byhand/Debug/
