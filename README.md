@@ -2,6 +2,23 @@ CSerpent is an experimental compiler and runtime designed to compile Serpent pro
 
 For contributors, see TODO.md and FILE_STRUCTURE.md.
 
+## Basic testing:
+To compile a cserpent program:
+`    serpent64 compiler.srp file-to-compile.srp -o test_temp -c -d`
+The -c flag will create CMakeLists.txt and compile.
+The -d flag will run with more debug output.
+
+To (re)compile the generated C++ code in test_temp:
+```
+    cd test_temp
+    cmake --build build
+```
+### Example:
+```
+se compiler.srp tests/serpent/simple/oneplustwo.srp -o test_temp -c -d
+```
+compiles and runs oneplustwo.srp, printing the output "3".
+
 ## Tests:
 
 ./run_tests.sh automates the testing process.

@@ -79,7 +79,12 @@ if compile:
     for include_path in runtime_directories:
         cmake_lists.write("        " + wd + include_path + "\n")
     cmake_lists.write(")\n")
-    cmake_lists.write("set(RUNTIME_LIB_PATH \"" + wd + "cmake-build-release/libruntime.a\")\n")
+    cmake_lists.write("find_library(RUNTIME_LIB_PATH NAMES libruntime.a\n")
+    cmake_lists.write("        PATHS " + wd + "/Release " + wd + "/Debug " +
+                      wd + "/cmake-build-release\n")
+    cmake_lists.write("        DOC \"cserpent runtime library\")\n")
+    // cmake_lists.write("set(RUNTIME_LIB_PATH \"" + wd +
+    //                   "cmake-build-release/libruntime.a\")\n")
     cmake_lists.write("add_executable(output\n")
     for file in cmake_files:
         cmake_lists.write("        " + file + "\n")

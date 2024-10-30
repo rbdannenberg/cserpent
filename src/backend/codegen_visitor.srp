@@ -485,7 +485,6 @@ class CodegenVisitor(ASTVisitor):
         var main_file = open(output_folder + "/main.cpp", "w")
         var global_vars_file = open(output_folder + "/global_vars.h", "w")
         global_vars_file.write("#pragma once\n")
-        global_vars_file.write("#include <runtime.h>\n")
         main_includes.append("#include \"global_vars.h\"")
         for line in main_includes:
             main_file.write(line + "\n")
@@ -494,6 +493,14 @@ class CodegenVisitor(ASTVisitor):
             main_file.write("Any " + global_variable + ";\n")
         for line in main_lines:
             main_file.write(line + "\n")
+        main_file.write("// mark any global references to heap objects\n")
+        main_file.write("void gc_mark_roots()\n")
+        main_file.write("{\n")
+        main_file.write("runtime_mark_roots();\n")
+        main_file.write("}\n")
+        main_file.write("// other globals should be marked here:\n")
+        // TODO: mark the globals here
+        
         main_file.close()
         global_vars_file.close()
 
@@ -501,6 +508,7 @@ class CodegenVisitor(ASTVisitor):
         reset()
         ast.accept(this)
         var source_file = open(output_folder + "/" + filename + ".cpp", "w")
+        source_file.write("#include \"cserpent.h\"\n")
         source_file.write("#include \"" + filename + ".h\"\n\n")
         source_file.write("#include \"global_vars.h\"\n\n")
         for line in source_lines:
@@ -513,6 +521,7 @@ class CodegenVisitor(ASTVisitor):
         source_file.close()
         header_file.close()
         if main:
+            main_includes.append("#include \"cserpent.h\"\n")
             main_includes.append("#include \"" + filename + ".h\"")
             generate_main(filename, ast)
 
