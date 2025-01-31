@@ -73,36 +73,58 @@ if compile:
     cmake_lists.write("set(CMAKE_INTERPROCEDURAL_OPTIMIZATION_RELEASE TRUE)\n")
     cmake_lists.write("\n")
     cmake_lists.write("# normal set of include paths:\n")
-    cmake_lists.write("include_directories(\n")
-    wd = getcwd() # note this ends with "/"
-    runtime_directories = ["src/runtime", "src/runtime/data_structures", "src/runtime/builtin_functions", "src/gc", "src/runtime/globals"]
-    for include_path in runtime_directories:
-        cmake_lists.write("        " + wd + include_path + "\n")
-    cmake_lists.write(")\n")
-    cmake_lists.write("find_library(RUNTIME_LIB_PATH NAMES libruntime.a\n")
-    cmake_lists.write("        PATHS " + wd + "/Release " + wd + "/Debug " +
-                      wd + "/cmake-build-release\n")
-    cmake_lists.write("        DOC \"cserpent runtime library\")\n")
+    // cmake_lists.write("include_directories(\n")
+    // wd = getcwd() # note this ends with "/"
+    // runtime_directories = ["src/runtime", "src/runtime/data_structures", 
+    //         "src/runtime/builtin_functions", "src/gc", "src/runtime/globals"]
+    // for include_path in runtime_directories:
+    //     cmake_lists.write("        " + wd + include_path + "\n")
+    // cmake_lists.write(")\n")
+    // cmake_lists.write("find_library(RUNTIME_LIB_PATH NAMES libruntime.a\n")
+    // cmake_lists.write("        PATHS " + wd + "/Release " + wd + "/Debug " +
+    //                   wd + "/cmake-build-release\n")
+    // cmake_lists.write("        DOC \"cserpent runtime library\")\n")
     // cmake_lists.write("set(RUNTIME_LIB_PATH \"" + wd +
     //                   "cmake-build-release/libruntime.a\")\n")
+    cmake_lists.write("# runtime library\n")
+    cmake_lists.write("add_subdirectory(../src/runtime build)\n")
+
     cmake_lists.write("add_executable(output\n")
     for file in cmake_files:
         cmake_lists.write("        " + file + "\n")
     cmake_lists.write(")\n")
-    cmake_lists.write("target_link_libraries(output \"${RUNTIME_LIB_PATH}\")\n")
+    // cmake_lists.write("target_link_libraries(output \"${RUNTIME_LIB_PATH}\")\n")
+    cmake_lists.write("target_link_libraries(output runtime)\n")
     cmake_lists.close()
-
+    if debug:
+        print "--------------- wrote", output_folder + "CMakeLists.txt",
+        print         "----------------"
     # compile code
-    cmake_configure = "cmake -DCMAKE_BUILD_TYPE=Release -S " + output_folder + " -B " + output_folder + "build" +  " --fresh"
+    cmake_configure = "cmake -DCMAKE_BUILD_TYPE=Release -S " + output_folder +
+                      " -B " + output_folder + "build" +  " --fresh"
     cmake_build = "cmake --build " + output_folder + "build"
     if not debug:
         cmake_configure = cmake_configure + " > /dev/null"
         cmake_build = cmake_build + " > /dev/null"
     else:
-        print cmake_configure
-        print cmake_build
+        print "--------------- running cmake configure step ----------------"
+        print "-->", cmake_configure
     system(cmake_configure)
+    if debug:
+        print "--------------- finished cmake configure step ---------------"
+        print "--------------- running cmake build step --------------------"
+        print "-->", cmake_build
     system(cmake_build)
+    if debug:
+        print "--------------- finished cmake build step -------------------"
+        print "--------------- running compiled program --------------------"
+        print "-->", "./" + output_folder + "build/output"
     system("./" + output_folder + "build/output")
+    if debug:
+        print "--------------- compiled program finished -------------------"
+        print "--- to run it again, use this command:"
+        print "---", "./" + output_folder + "build/output"
+        print "-------------------------------------------------------------"
+    
 
 exit()
