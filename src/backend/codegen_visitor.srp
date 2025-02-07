@@ -117,12 +117,12 @@ class CodegenVisitor(ASTVisitor):
 
     def visitArray(array_node):
         # array literal, adds a 
-        curr_code_line = curr_code_line + "*(new Array {"
+        curr_code_line = curr_code_line + "new Array {"
         for element at i in array_node.elements:
             element.accept(this)
             if i < len(array_node.elements) - 1:
                 curr_code_line = curr_code_line + ", "
-        curr_code_line = curr_code_line + "})"
+        curr_code_line = curr_code_line + "}"
 
     def visitDictionary(dictionary_node):
         curr_code_line = curr_code_line + "*(new Dictionary {"
