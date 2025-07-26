@@ -35,7 +35,7 @@ Any::Any(int64_t x) {
     // zero, so tmp == 0. If x is negative, high-order bits are 1's and
     // tmp == ~INT_MASK.
     int64_t tmp = x & ~INT_MASK;
-    if (tmp != 0 && tmp != ~INT_MASK;
+    if (tmp != 0 && tmp != ~INT_MASK){
         throw std::runtime_error("Precondition failed: integer value corrupted:");
     }
 #endif
@@ -66,6 +66,11 @@ Any::Any(void* x) {
 Any::Any(String *x) {
     // make an Any to reference a String.
     integer = reinterpret_cast<uint64_t>(x) | STR_TAG;
+}
+
+Any::Any(StringPtr x) {
+    // make an Any to reference a StringPtr.
+    integer = reinterpret_cast<uint64_t>(x.ptr) | STR_TAG;
 }
 
 Any::Any(Symbol *x) {
@@ -139,6 +144,11 @@ Any& Any::operator=(double x) {
 Any& Any::operator=(String *x) {
    integer = reinterpret_cast<uint64_t>(x) | STR_TAG;
    return *this;
+}
+
+Any& Any::operator=(StringPtr x) {
+    integer = reinterpret_cast<uint64_t>(x.ptr) | STR_TAG;
+    return *this;
 }
 
 Any& Any::operator=(Symbol *x) {

@@ -23,6 +23,7 @@
 #include "csmem.h"
 #include "op_overload.h"
 #include "dict.h"
+#include <cstring>
 
 Any DICT_EMPTY;
 Any DICT_DELETED;

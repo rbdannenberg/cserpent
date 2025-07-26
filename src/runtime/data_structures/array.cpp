@@ -11,6 +11,7 @@
 #include <algorithm>
 #include <sstream>
 #include "runtime.h"
+#include <cstring>
 
 static std::vector<Any> *to_vector(Array *x) {
     return (std::vector<Any> *) x->slots;

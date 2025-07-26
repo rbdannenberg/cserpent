@@ -21,10 +21,12 @@ class CodegenVisitor(ASTVisitor):
     var user_defined_classes
     var global_variables
     var current_class
+    var hoisted_strings // maps literal to variable name
     # enums
     var source
     var header
     var main
+    var string_counter
 
     def init(_output_folder):
         super.init()
@@ -42,10 +44,12 @@ class CodegenVisitor(ASTVisitor):
         indentation = "    "
         user_defined_classes = []
         global_variables = {}
-        // these 3 act as enums
+        hoisted_strings = {}
+        // these 4 act as enums
         source = 0
         header = 1
         main = 2
+        string_counter = 0
 
     def switch_context(ctx):
         context = ctx
@@ -72,11 +76,30 @@ class CodegenVisitor(ASTVisitor):
     def visitLiteral(literal):
         # print literal.value, type(literal.value), isstring(literal.value)
         if literal.value[0] == "\"":
-            curr_code_line = curr_code_line + "String {" + str(literal.value) + "}"
+            var text = literal.value
+            if not hoisted_strings.has_key(text):
+                var var_name = "string_" + str(string_counter)
+                string_counter = string_counter + 1
+                hoisted_strings[text] = var_name
+                add_line(var_name + " = new String(" + text + ");", main)
+                global_variables[var_name] = "string"
+            curr_code_line = curr_code_line + "StringPtr(" + hoisted_strings[text] + ")"
         elif literal.value[0] == "'":
             curr_code_line = curr_code_line + "Symbol {\"" + subseq(str(literal.value), 1, -1) + "\"}"
         else:
-            curr_code_line = curr_code_line + str(literal.value)
+            # Check if it's a numeric literal and cast appropriately
+            var value_str = str(literal.value)
+            var has_dot = false
+            for char in value_str:
+                if char == ".":
+                    has_dot = true
+                    break
+            if has_dot:
+                # It's a floating point number
+                curr_code_line = curr_code_line + value_str
+            else:
+                # It's an integer, cast to int64_t to avoid ambiguity
+                curr_code_line = curr_code_line + "static_cast<int64_t>(" + value_str + ")"
 
     def visitIdentifier(identifier):
         if current_class and identifier.value in current_class.member_variables: # needs to encapsulate all inherited member variables
@@ -182,8 +205,10 @@ class CodegenVisitor(ASTVisitor):
                 print "Error: print function does not take keyword arguments"
                 exit()
             for i = 0 to len(args):
+                curr_code_line = curr_code_line + "("
                 args[i].accept(this)
-                if i < len(args) - 1
+                curr_code_line = curr_code_line + ")"
+                if i < len(args) - 1:
                     curr_code_line = curr_code_line + " << "
             curr_code_line = curr_code_line + " << std::endl"
         elif function_call.name == "exit":
@@ -256,6 +281,8 @@ class CodegenVisitor(ASTVisitor):
             curr_code_line = ""
             return
         assignment.identifier.accept(this)
+        if isinstance(assignment.identifier, Identifier) and current_class == nil:
+            global_variables[assignment.identifier.value] = "variable"
         curr_code_line = curr_code_line + " = "
         assignment.expression.accept(this)
         add_line(curr_code_line + ";")
@@ -267,7 +294,9 @@ class CodegenVisitor(ASTVisitor):
         curr_code_line = ""
 
     def visitDeclaration(declaration):
+        print "declaration"
         add_line(declaration.declared_type + " " + declaration.identifier.value + ";")
+        global_variables[declaration.identifier.value] = "variable" 
 
     def visitDeclarationNAssignment(declaration_n_assignment):
         # we don't use the declared type for now because we are using Any
@@ -489,8 +518,12 @@ class CodegenVisitor(ASTVisitor):
         for line in main_includes:
             main_file.write(line + "\n")
         for global_variable in global_variables.keys():
-            global_vars_file.write("extern Any " + global_variable + ";\n")
-            main_file.write("Any " + global_variable + ";\n")
+            if global_variables[global_variable] == "string":
+                global_vars_file.write("extern String* " + global_variable + ";\n")
+                main_file.write("String* " + global_variable + ";\n")
+            else:
+                global_vars_file.write("extern Any " + global_variable + ";\n")
+                main_file.write("Any " + global_variable + ";\n")
         for line in main_lines:
             main_file.write(line + "\n")
         main_file.write("// mark any global references to heap objects\n")
@@ -526,7 +559,3 @@ class CodegenVisitor(ASTVisitor):
             generate_main(filename, ast)
 
         reset()
-
-
-
-

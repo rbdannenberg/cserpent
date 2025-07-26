@@ -227,16 +227,59 @@ bool operator==(const String& a, const String& b) {
 }
 
 
-String operator+(const String& a, const String& b) {
-    return String {temp_str(a) + temp_str(b)};
+*/
+String operator+(const String& lhs, const String& rhs) {
+    std::string* left = lhs.get_string();
+    std::string* right = rhs.get_string();
+    return String(*left + *right);
 }
 
+String* operator+(const String* lhs, const String& rhs) {
+    if (lhs) {
+        std::string* left = lhs->get_string();
+        std::string* right = rhs.get_string();
+        return new String(*left + *right);
+    }
+    return NULL;
+}
 
 std::ostream& operator<<(std::ostream& os, const String& x) {
-    os << temp_str(x);
+    os << x.get_c_str();
     return os;
 }
 
+std::ostream& operator<<(std::ostream& os, String* x) {
+    if (x) os << *(x->get_string());
+    else os << "<null String>";
+    return os;
+}
+
+std::ostream& operator<<(std::ostream& os, StringPtr x) {
+    if (x.ptr) {
+        os << *(x.ptr->get_string());
+    } else {
+        os << "<null StringPtr>";
+    }
+    return os;
+}
+
+bool operator==(StringPtr lhs, StringPtr rhs) {
+    if (lhs.ptr && rhs.ptr) {
+        return *(lhs.ptr->get_string()) == *(rhs.ptr->get_string());
+    }
+    return lhs.ptr == rhs.ptr;  // both null or one null
+}
+
+StringPtr operator+(StringPtr lhs, StringPtr rhs) {
+    if (lhs.ptr && rhs.ptr) {
+        std::string* left = lhs.ptr->get_string();
+        std::string* right = rhs.ptr->get_string();
+        return StringPtr(new String(*left + *right));
+    }
+    return StringPtr(nullptr);
+}
+
+/*
 
 int64_t ord(const String& s) {
     if (is_short_string(s)) return s.chars[STR_BASE + 0];

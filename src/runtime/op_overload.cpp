@@ -40,24 +40,40 @@ Any operator+ (Any lhs, double rhs) {
 }
  */
 
+Any operator+ (Any lhs, StringPtr rhs) {
+    if (is_string(lhs)) {
+        String* lhs_str = to_string(lhs);
+        std::string result = *lhs_str->get_string() + *rhs.ptr->get_string();
+        return Any(new String(result));
+    } else type_error(lhs);
+}
+
+Any operator+ (StringPtr lhs, Any rhs) {
+    if (is_string(rhs)) {
+        String* rhs_str = to_string(rhs);
+        std::string result = *lhs.ptr->get_string() + *rhs_str->get_string();
+        return Any(new String(result));
+    } else type_error(rhs);
+}
+
 Any operator+ (Any lhs, const char *rhs) {
-    if (is_str(lhs)) {
+    if (is_string(lhs)) {
         const char *lhs_c_str = get_c_str(&lhs);
         std::string result(lhs_c_str);
         result += rhs;
-        return Any(result);
+        return Any(new String(result));
     } else {
         assert(false);
     }
 }
 
 Any operator+ (Any lhs, Any rhs) {
-    if (is_int(rhs)) {
+    if (is_string(rhs)) {
+        return lhs + get_c_str(&rhs);
+    } else if (is_int(rhs)) {
         return lhs + to_int(rhs);
     } else if (is_real(rhs)) {
         return lhs + to_real(rhs);
-    } else if (is_str(rhs)) {
-        return lhs + get_c_str(&rhs);
     } else type_error(rhs);
 }
 
@@ -355,9 +371,19 @@ int64_t operator>> (Any lhs, int rhs) {
     } else type_error(lhs);
 }
 
-std::ostream& operator<<(std::ostream& os, Any x) {
-    Any s(force_str(x));
-    return os << get_c_str(&s);
+std::ostream& operator<<(std::ostream& os, Any a) {
+    //Any s(force_str(x));
+    //return os << get_c_str(&s);
+    if (is_string(a)) {
+        os << get_c_str(&a);
+    } else if (is_int(a)) {
+        os << to_int(a);
+    } else if (is_real(a)) {
+        os << to_real(a);
+    } else {
+        os << "<unknown Any>";
+    }
+    return os;
 }
 
 bool operator==(Any lhs, int64_t rhs) {
@@ -384,6 +410,14 @@ bool operator==(Any lhs, Any rhs) {
 bool operator==(Any lhs, String rhs) {
     if (is_str(lhs)) {
         return to_string(lhs) == rhs;
+    }
+    else type_error(lhs, __func__);
+}
+
+bool operator==(Any lhs, StringPtr rhs) {
+    if (is_string(lhs)) {
+        String* lhs_str = to_string(lhs);
+        return *lhs_str->get_string() == *(rhs.ptr->get_string());
     }
     else type_error(lhs, __func__);
 }

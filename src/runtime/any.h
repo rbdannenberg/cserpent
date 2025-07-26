@@ -12,6 +12,7 @@ using std::size_t;
 // forward declaration of Array and Dict for call()
 
 class String;
+struct StringPtr;
 class Array;
 class Symbol;
 class Dict;
@@ -69,6 +70,7 @@ public:
      * @pre x.length () <= 5
      */
     Any(String *x); // take by value because we don't want aliasing
+    Any(StringPtr x);
     Any(Symbol *x); // likewise no aliasing wanted
     Any(Array *x);
     Any(Dict *x);
@@ -84,6 +86,7 @@ public:
     Any& operator=(int x);
     Any& operator=(double x);
     Any& operator=(String *x);
+    Any& operator=(StringPtr x);
     Any& operator=(Symbol *x);
     Any& operator=(Array *x);
     Any& operator=(Dict *x);

@@ -15,6 +15,7 @@
 #include "symbol.h"
 #include "array.h"
 #include "dict.h"
+#include <cstring>
 
 Dict *cs_symbol_table;
 
@@ -51,7 +52,6 @@ Symbol::Symbol(const char *name_string, Any value, Any func)
     // invoke GC, including conversion of string to Any:
     set_slot(0, Any(name_string));
     cs_symbol_table->insert(name(), L.result);
-    STD_FUNCTION_EXIT(L, L.result);
 }
 
 

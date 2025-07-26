@@ -14,6 +14,7 @@
 #include "csstring.h"
 #include "symbol.h"
 #include "dict.h"
+#include <cstring>
 
 int64_t len(Any x) {
     if (is_heap_obj(x)) {

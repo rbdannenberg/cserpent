@@ -320,7 +320,7 @@ class File:
     var elements # list of class/function/block elements, List[Class | Function | BlockElement] if you will
     def init(deps, _elements):
         this.deps = deps
-        elements = _elements
+        this.elements = _elements
 
     def accept(visitor):
         visitor.visitFile(this)
