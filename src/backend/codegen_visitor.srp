@@ -83,7 +83,7 @@ class CodegenVisitor(ASTVisitor):
                 hoisted_strings[text] = var_name
                 //add_line(var_name + " = new String(" + text + ");", main)
                 global_variables[var_name] = "string" + text
-            curr_code_line = curr_code_line + "StringPtr(" + hoisted_strings[text] + ")"
+            curr_code_line = curr_code_line + hoisted_strings[text]
         elif literal.value[0] == "'":
             curr_code_line = curr_code_line + "Symbol {\"" + subseq(str(literal.value), 1, -1) + "\"}"
         else:
@@ -525,8 +525,8 @@ class CodegenVisitor(ASTVisitor):
             string = global_variables[global_variable]
             prefix = subseq(string, 0, 6)
             if prefix == "string":
-                global_vars_file.write("extern String* " + global_variable + ";\n")
-                global_cpp_file.write("String* " + global_variable + ";\n")
+                global_vars_file.write("extern StringPtr " + global_variable + ";\n")
+                global_cpp_file.write("StringPtr " + global_variable + ";\n")
             else:
                 global_vars_file.write("extern Any " + global_variable + ";\n")
                 global_cpp_file.write("Any " + global_variable + ";\n")
@@ -537,7 +537,7 @@ class CodegenVisitor(ASTVisitor):
             prefix = subseq(string, 0, 6)
             text = subseq(string, 6, -1)
             if prefix == "string":
-                global_cpp_file.write("    " + global_variable + " = new String(" + text + "\");\n")
+                global_cpp_file.write("    " + global_variable + " = StringPtr{new String(" + text + "\")};\n")
         for line in main_lines:
             main_file.write(line + "\n")
         main_file.write("// mark any global references to heap objects\n")

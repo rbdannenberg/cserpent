@@ -32,6 +32,7 @@ int64_t len(String *x);
 struct StringPtr {
     String* ptr;
 
+    StringPtr() : ptr(nullptr) {}
     StringPtr(String* p) : ptr(p) {}
     operator String*() const { return ptr; }
 };
