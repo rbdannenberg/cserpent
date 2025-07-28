@@ -61,7 +61,7 @@ for target_file in session.get_topological_ordering():
         cmake_files.append("main.cpp")
     cmake_files.append(target_filename + ".cpp")
     cmake_files.append(target_filename + ".h")
-
+cmake_files.append("global_vars.cpp")
 if compile:
     # write CMakeLists.txt
     output_folder = output_folder + "/"

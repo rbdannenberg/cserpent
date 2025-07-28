@@ -81,8 +81,8 @@ class CodegenVisitor(ASTVisitor):
                 var var_name = "string_" + str(string_counter)
                 string_counter = string_counter + 1
                 hoisted_strings[text] = var_name
-                add_line(var_name + " = new String(" + text + ");", main)
-                global_variables[var_name] = "string"
+                //add_line(var_name + " = new String(" + text + ");", main)
+                global_variables[var_name] = "string" + text
             curr_code_line = curr_code_line + "StringPtr(" + hoisted_strings[text] + ")"
         elif literal.value[0] == "'":
             curr_code_line = curr_code_line + "Symbol {\"" + subseq(str(literal.value), 1, -1) + "\"}"
@@ -511,19 +511,33 @@ class CodegenVisitor(ASTVisitor):
     def generate_main(folder, ast):
         main_lines.append(indentation + "return 0;")
         main_lines.append("}")
+        main_lines.insert(1, "    cs_global_init();\n")
         var main_file = open(output_folder + "/main.cpp", "w")
         var global_vars_file = open(output_folder + "/global_vars.h", "w")
+        var global_cpp_file = open(output_folder + "/global_vars.cpp", "w")
+
         global_vars_file.write("#pragma once\n")
         main_includes.append("#include \"global_vars.h\"")
         for line in main_includes:
             main_file.write(line + "\n")
+            global_cpp_file.write(line + "\n")
         for global_variable in global_variables.keys():
-            if global_variables[global_variable] == "string":
+            string = global_variables[global_variable]
+            prefix = subseq(string, 0, 6)
+            if prefix == "string":
                 global_vars_file.write("extern String* " + global_variable + ";\n")
-                main_file.write("String* " + global_variable + ";\n")
+                global_cpp_file.write("String* " + global_variable + ";\n")
             else:
                 global_vars_file.write("extern Any " + global_variable + ";\n")
-                main_file.write("Any " + global_variable + ";\n")
+                global_cpp_file.write("Any " + global_variable + ";\n")
+        global_cpp_file.write("int cs_global_init() {\n")
+        global_cpp_file.write("    // Initialize global variables here\n")
+        for global_variable in global_variables.keys():
+            string = global_variables[global_variable]
+            prefix = subseq(string, 0, 6)
+            text = subseq(string, 6, -1)
+            if prefix == "string":
+                global_cpp_file.write("    " + global_variable + " = new String(" + text + "\");\n")
         for line in main_lines:
             main_file.write(line + "\n")
         main_file.write("// mark any global references to heap objects\n")
@@ -533,9 +547,12 @@ class CodegenVisitor(ASTVisitor):
         main_file.write("}\n")
         main_file.write("// other globals should be marked here:\n")
         // TODO: mark the globals here
-        
+        global_vars_file.write("int cs_global_init();\n")
+        global_cpp_file.write("    return 0;\n")
+        global_cpp_file.write("}\n")
         main_file.close()
         global_vars_file.close()
+        global_cpp_file.close()
 
     def generate_code(filename, ast, deps, keyword main):
         reset()
