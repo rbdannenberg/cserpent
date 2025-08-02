@@ -1,0 +1,49 @@
+def change_file_suffix(name, new_suffix):
+    # remove file suffix if any and replace it
+    # new_suffix should not have ".", e.g. use "wav", not ".wav"
+    # if new_suffix is nil, return just the name
+    var base = filename_and_suffix(name)[0]
+    if not new_suffix:
+        base
+    else
+        base + ("." + new_suffix)
+
+def filename_and_suffix(name)
+    # return the array [filename, suffix] where
+    # suffix is everything starting with the last 
+    # period (could be an empty string or just ".")
+    var last_pos = len(name)
+    var pos = find(name, ".")
+    while pos >= 0:
+        last_pos = pos
+        pos = find(name, ".", last_pos + 1)
+    if pos < 0:
+        pos = len(name)
+    [subseq(name, 0, last_pos), subseq(name, last_pos)]
+
+def path_parent(path)
+    path = file_path_with_sep(path).reverse()
+    var loc = find(path, "/", 1)
+    if loc >= 0
+        return subseq(path, loc).reverse()
+    return "" // error, no parent (we must have been at the root)
+
+def file_from_path(path, optional return_path):
+# algorithm: look backward from end to first occurrence of "\/:"
+# note that if the file name contains one of "\/:", then this 
+# function will fail by returning only a partial file name
+    var pos = len(path) - 1
+    while pos >= 0:
+        // (note that backslash has to be quoted)
+        if find("\\/:", path[pos]) > -1:
+            # we found a path separator at pos
+            if return_path
+                return subseq(path, 0, pos + 1)
+            return subseq(path, pos + 1)
+        pos = pos - 1
+    # no separator was found
+    if return_path:
+        return ""
+    return path
+
+load "compiler"

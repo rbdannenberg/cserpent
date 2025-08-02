@@ -14,6 +14,7 @@ using std::size_t;
 class String;
 struct StringPtr;
 class Array;
+struct ArrayPtr;
 class Symbol;
 class Dict;
 class Heap_obj;
@@ -73,6 +74,7 @@ public:
     Any(StringPtr x);
     Any(Symbol *x); // likewise no aliasing wanted
     Any(Array *x);
+    Any(ArrayPtr x);
     Any(Dict *x);
     Any(Obj *x);
     Any(const char *x);
@@ -93,6 +95,7 @@ public:
     Any& operator=(Obj *x);
     Any& operator=(const char *x);
     Any& operator=(bool x);
+    Any& operator=(ArrayPtr x);
 
     /* Implicit conversion: type-cast operator - see note in Any.cpp
     operator int64_t();

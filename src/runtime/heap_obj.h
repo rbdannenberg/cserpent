@@ -67,6 +67,7 @@ public:
     // is csmalloc, which sets the header and possibly puts large
     // sizes in slot[0]:
     Heap_obj() { }
+    virtual ~Heap_obj() = default;
 
     Tag get_tag(); // replace after implementation
     void set_tag(Tag t);

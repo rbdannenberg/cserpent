@@ -81,6 +81,10 @@ Any::Any(Array *x) {
     integer = reinterpret_cast<uint64_t>(x);
 }
 
+Any::Any(ArrayPtr x) {
+    integer = reinterpret_cast<uint64_t>(x.ptr);
+}
+
 Any::Any(Dict *x) {
     integer = reinterpret_cast<uint64_t>(x);
 }
@@ -198,6 +202,11 @@ Any& Any::operator=(const char *s) {
         String *ss = new String(s);
         integer = reinterpret_cast<uint64_t>(ss) | STR_TAG;
     }
+    return *this;
+}
+
+Any& Any::operator=(ArrayPtr x) {
+    integer = reinterpret_cast<uint64_t>(x.ptr);
     return *this;
 }
 

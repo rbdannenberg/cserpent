@@ -380,6 +380,19 @@ std::ostream& operator<<(std::ostream& os, Any a) {
         os << to_int(a);
     } else if (is_real(a)) {
         os << to_real(a);
+    } else if (is_heap_obj(a)) {
+        Heap_obj* base_obj = to_heap_obj(a);
+        Array* arr = dynamic_cast<Array*>(base_obj);
+        os << "[";
+        for (size_t i = 0; i < arr->len(); ++i) {
+            // Recursively call this print function for each element
+            os << (*arr)[i];
+            // Add a space, but not for the last element
+            if (i < arr->len() - 1) {
+                os << " ";
+            }
+        }
+        os << "]";
     } else {
         os << "<unknown Any>";
     }

@@ -53,3 +53,11 @@ Array *subseq(Array *x, int64_t start, int64_t end = std::numeric_limits<int64_t
 bool is_equal(Array *lhs, Array *rhs);
 
 inline Array empty_array {};
+
+struct ArrayPtr {
+    Array* ptr;
+
+    ArrayPtr() : ptr(nullptr) {}
+    ArrayPtr(Array* p) : ptr(p) {}
+    operator Array*() const { return ptr; }
+};
