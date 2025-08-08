@@ -178,6 +178,11 @@ Any& Any::operator=(Array *x) {
     return *this;
 }
 
+Any& Any::operator=(ArrayPtr x) {
+    integer = reinterpret_cast<uint64_t>(x.ptr);
+    return *this;
+}
+
 Any &Any::operator=(Dict *x) {
     integer = reinterpret_cast<uint64_t>(x);
     return *this;

@@ -285,3 +285,42 @@ Array *Array::set_len(int64_t new_len) {
     data->resize(new_len);
     return this;
 }
+
+ArrayPtr operator+(ArrayPtr lhs, ArrayPtr rhs) {
+    Array *result = new Array {};
+    for (int64_t i = 0; i < lhs.ptr->len(); ++i) {
+        result->append((*lhs.ptr)[i]);
+    }
+
+    // Append elements from rhs
+    for (int64_t i = 0; i < rhs.ptr->len(); ++i) {
+        result->append((*rhs.ptr)[i]);
+    }
+
+    return ArrayPtr(result);
+}
+
+bool operator==(ArrayPtr lhs, ArrayPtr rhs) {
+    if (lhs.ptr == rhs.ptr) return true; // Same pointer
+    if (!lhs.ptr || !rhs.ptr) return false;
+    if (lhs.ptr->len() != rhs.ptr->len()) return false;
+
+    for (int64_t i = 0; i < lhs.ptr->len(); ++i) {
+        if (!((*lhs.ptr)[i] == (*rhs.ptr)[i])) {
+            return false;
+        }
+    }
+    return true;
+}
+
+std::ostream& operator<<(std::ostream& os, ArrayPtr x) {
+    if (!x.ptr) return os << "[]";
+
+    os << "[";
+    for (int64_t i = 0; i < x.ptr->len(); ++i) {
+        if (i != 0) os << ", ";
+        os << (*x.ptr)[i];  // This will use the Any output operator
+    }
+    os << "]";
+    return os;
+}

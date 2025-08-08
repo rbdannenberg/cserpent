@@ -91,6 +91,7 @@ public:
     Any& operator=(StringPtr x);
     Any& operator=(Symbol *x);
     Any& operator=(Array *x);
+    Any& operator=(ArrayPtr x);
     Any& operator=(Dict *x);
     Any& operator=(Obj *x);
     Any& operator=(const char *x);

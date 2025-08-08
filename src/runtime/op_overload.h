@@ -38,6 +38,7 @@ bool operator< (double lhs, Any rhs);
 bool operator< (Any lhs, Any rhs);
 bool operator< (Any lhs, int64_t rhs);
 bool operator< (Any lhs, double rhs);
+bool operator< (Any lhs, int rhs);
 
 bool operator> (Any lhs, Any rhs);
 
@@ -81,6 +82,7 @@ bool operator==(Any lhs, int rhs);
 bool operator==(Any lhs, Any rhs);
 bool operator==(Any lhs, String rhs);
 bool operator==(Any lhs, StringPtr rhs);
+bool operator==(Any lhs, ArrayPtr rhs);
 bool operator==(Any lhs, Symbol rhs);
 bool operator!=(Any lhs, Any rhs);
 
@@ -94,7 +96,8 @@ constexpr bool is_comparable = std::disjunction<
         std::is_same<T, double>,
         std::is_same<T, Symbol>,
         std::is_same<T, String>,
-        std::is_same<T, StringPtr>
+        std::is_same<T, StringPtr>,
+        std::is_same<T, ArrayPtr>
 >::value;
 
 // Use the variable template in static_assert

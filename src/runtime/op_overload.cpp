@@ -67,6 +67,16 @@ Any operator+ (Any lhs, const char *rhs) {
     }
 }
 
+Any operator+ (Any lhs, ArrayPtr rhs) {
+    if (is_heap_obj(lhs)) {
+        Heap_obj *heap_obj = to_heap_obj(lhs);
+        if (heap_obj->get_tag() == tag_array) {
+            return ArrayPtr(to_array(lhs)) + rhs;
+        }
+    }
+    return type_error(lhs);
+}
+
 Any operator+ (Any lhs, Any rhs) {
     if (is_string(rhs)) {
         return lhs + get_c_str(&rhs);
@@ -74,6 +84,12 @@ Any operator+ (Any lhs, Any rhs) {
         return lhs + to_int(rhs);
     } else if (is_real(rhs)) {
         return lhs + to_real(rhs);
+    } else if (is_heap_obj(rhs)) {
+        Heap_obj* heap_obj = to_heap_obj(rhs);
+        if (heap_obj->get_tag() == tag_array) {
+            return lhs + ArrayPtr(to_array(rhs));
+        }
+        return lhs + to_heap_obj(rhs);
     } else type_error(rhs);
 }
 
@@ -222,6 +238,14 @@ bool operator< (Any lhs, double rhs) {
     return force_real(lhs) < rhs;
 }
 
+bool operator< (Any lhs, int rhs) {
+    if (is_int(lhs)) {
+        return to_int(lhs) < static_cast<int64_t>(rhs);
+    } else if (is_real(lhs)) {
+        return to_real(lhs) < static_cast<double>(rhs);
+    } else type_error(lhs);
+}
+
 bool operator> (Any lhs, Any rhs) {
     return !(lhs < rhs || lhs == rhs);
 }
@@ -273,7 +297,6 @@ int64_t operator&= (Any& lhs, Any rhs) {
 }
 
 // & operators
-
 int64_t operator& (int64_t lhs, Any rhs) {
     if (is_int(rhs)) {
         return lhs & to_int(rhs);
@@ -292,6 +315,7 @@ int64_t operator& (Any lhs, Any rhs) {
     } else type_error(lhs);
 }
 
+// << operators
 int64_t operator<< (int64_t lhs, Any rhs) {
     if (is_int(rhs)) {
         return lhs << to_int(rhs);
@@ -376,6 +400,13 @@ std::ostream& operator<<(std::ostream& os, Any a) {
     //return os << get_c_str(&s);
     if (is_string(a)) {
         os << get_c_str(&a);
+    } else if (is_heap_obj(a)) {
+        Heap_obj *heap_obj = to_heap_obj(a);
+        if (heap_obj->get_tag() == tag_array) {
+            os << to_array(a);
+        } else {
+            os << "<unknown Heap_obj>";
+        }
     } else if (is_int(a)) {
         os << to_int(a);
     } else if (is_real(a)) {
@@ -410,7 +441,14 @@ bool operator==(Any lhs, int rhs) {
 }
 
 bool operator==(Any lhs, Any rhs) {
-    if (is_str(rhs)) {
+    if (is_heap_obj(rhs)) {
+        Heap_obj* rhs_heap = to_heap_obj(rhs);
+        if (rhs_heap->get_tag() == tag_array) {
+            return lhs == ArrayPtr{to_array(rhs)};
+        }
+        // Add other heap object comparisons here as needed
+        return false; // Different heap object types
+    } else if (is_str(rhs)) {
         assert(false);  // needs work
         // return lhs == to_string(rhs);
     } else if (is_symbol(rhs)) {
@@ -433,6 +471,15 @@ bool operator==(Any lhs, StringPtr rhs) {
         return *lhs_str->get_string() == *(rhs.ptr->get_string());
     }
     else type_error(lhs, __func__);
+}
+
+bool operator==(Any lhs, ArrayPtr rhs) {
+    if (!is_heap_obj(lhs)) return false;
+    
+    Heap_obj* heap_obj = to_heap_obj(lhs);
+    if (heap_obj->get_tag() != tag_array) return false;
+    
+    return ArrayPtr(to_array(heap_obj)) == rhs;
 }
 
 bool operator==(Any lhs, Symbol rhs) {

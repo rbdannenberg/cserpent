@@ -61,3 +61,9 @@ struct ArrayPtr {
     ArrayPtr(Array* p) : ptr(p) {}
     operator Array*() const { return ptr; }
 };
+
+ArrayPtr operator+(ArrayPtr lhs, ArrayPtr rhs);
+
+bool operator==(ArrayPtr lhs, ArrayPtr rhs);
+
+std::ostream& operator<<(std::ostream& os, ArrayPtr x);
