@@ -210,11 +210,6 @@ Any& Any::operator=(const char *s) {
     return *this;
 }
 
-Any& Any::operator=(ArrayPtr x) {
-    integer = reinterpret_cast<uint64_t>(x.ptr);
-    return *this;
-}
-
 
 bool is_int(Any x) {
     return (x.integer & INT_TAG) == INT_TAG;

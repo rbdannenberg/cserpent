@@ -42,3 +42,5 @@ StringPtr operator+(StringPtr lhs, StringPtr rhs);
 bool operator==(StringPtr lhs, StringPtr rhs);
 
 std::ostream& operator<<(std::ostream& os, StringPtr x);
+
+StringPtr subseq(StringPtr s, int64_t start, int64_t end = std::numeric_limits<int64_t>::max());

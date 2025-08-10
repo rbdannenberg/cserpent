@@ -279,6 +279,28 @@ StringPtr operator+(StringPtr lhs, StringPtr rhs) {
     return StringPtr(nullptr);
 }
 
+StringPtr subseq(StringPtr s, int64_t start, int64_t end) {
+    if (!s.ptr) {
+        throw std::invalid_argument("subseq: null StringPtr");
+    }
+    int64_t s_len = s.ptr->len();
+    if (end == std::numeric_limits<int64_t>::max()) {
+        end = s_len;
+    }
+    if (end < 0) {
+        end = s_len + end;
+    }
+    if (start < 0) {
+        start = s_len + start;
+    }
+    // do bounds checking: 0 <= start <= end <= s_len
+    if (start < 0 || start > end || end > s_len) {
+        throw std::out_of_range("subseq: out of range");
+    }
+    std::string* str = s.ptr->get_string();
+    return StringPtr(new String(str->substr(start, end - start)));
+}
+
 /*
 
 int64_t ord(const String& s) {

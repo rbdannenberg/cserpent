@@ -96,7 +96,6 @@ public:
     Any& operator=(Obj *x);
     Any& operator=(const char *x);
     Any& operator=(bool x);
-    Any& operator=(ArrayPtr x);
 
     /* Implicit conversion: type-cast operator - see note in Any.cpp
     operator int64_t();

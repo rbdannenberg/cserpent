@@ -399,11 +399,11 @@ std::ostream& operator<<(std::ostream& os, Any a) {
     //Any s(force_str(x));
     //return os << get_c_str(&s);
     if (is_string(a)) {
-        os << get_c_str(&a);
+        os << StringPtr(to_string(a));
     } else if (is_heap_obj(a)) {
         Heap_obj *heap_obj = to_heap_obj(a);
         if (heap_obj->get_tag() == tag_array) {
-            os << to_array(a);
+            os << ArrayPtr(to_array(a));
         } else {
             os << "<unknown Heap_obj>";
         }
@@ -411,19 +411,6 @@ std::ostream& operator<<(std::ostream& os, Any a) {
         os << to_int(a);
     } else if (is_real(a)) {
         os << to_real(a);
-    } else if (is_heap_obj(a)) {
-        Heap_obj* base_obj = to_heap_obj(a);
-        Array* arr = dynamic_cast<Array*>(base_obj);
-        os << "[";
-        for (size_t i = 0; i < arr->len(); ++i) {
-            // Recursively call this print function for each element
-            os << (*arr)[i];
-            // Add a space, but not for the last element
-            if (i < arr->len() - 1) {
-                os << " ";
-            }
-        }
-        os << "]";
     } else {
         os << "<unknown Any>";
     }
@@ -448,9 +435,8 @@ bool operator==(Any lhs, Any rhs) {
         }
         // Add other heap object comparisons here as needed
         return false; // Different heap object types
-    } else if (is_str(rhs)) {
-        assert(false);  // needs work
-        // return lhs == to_string(rhs);
+    } else if (is_string(rhs)) {
+        return lhs == StringPtr(to_string(rhs));
     } else if (is_symbol(rhs)) {
         assert(false);  // needs work
         // return lhs == to_symbol(rhs);
@@ -467,8 +453,7 @@ bool operator==(Any lhs, String rhs) {
 
 bool operator==(Any lhs, StringPtr rhs) {
     if (is_string(lhs)) {
-        String* lhs_str = to_string(lhs);
-        return *lhs_str->get_string() == *(rhs.ptr->get_string());
+        return StringPtr(to_string(lhs)) == rhs;
     }
     else type_error(lhs, __func__);
 }

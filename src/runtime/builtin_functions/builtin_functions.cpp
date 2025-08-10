@@ -85,19 +85,20 @@ int64_t find(Any s, Any pattern, int64_t start, int64_t end) {
         type_error(s);
     }
 }
-
+*/
 Any subseq(Any s, int64_t start, int64_t end) {
-    if (is_str(s)) {
-        return subseq(to_str(s), start, end);
+    if (is_string(s)) {
+        // Convert Any to StringPtr, call string subseq, return as Any
+        return subseq(StringPtr(to_string(s)), start, end);
     }
-    else if (is_ptr(s)) {
+    else if (is_heap_obj(s)) {
         if (to_heap_obj(s)->get_tag() == tag_array) {
             return subseq(to_array(s), start, end);
         }
         type_error(s);
     }
 }
-
+/*
 String toupper(Any s) {
     if (is_str(s)) return toupper(to_str(s));
     else type_error(s);
