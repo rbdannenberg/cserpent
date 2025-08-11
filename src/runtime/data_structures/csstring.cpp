@@ -5,6 +5,7 @@
 #include <stdexcept>
 #include <cassert>
 #include <utility>
+#include <cctype>
 #include "any.h"
 #include "gc.h"
 #include "heap_obj.h"
@@ -299,6 +300,57 @@ StringPtr subseq(StringPtr s, int64_t start, int64_t end) {
     }
     std::string* str = s.ptr->get_string();
     return StringPtr(new String(str->substr(start, end - start)));
+}
+
+int64_t find(StringPtr s, StringPtr pattern, int64_t start, int64_t end) {
+    if (!s.ptr) {
+        throw std::invalid_argument("find: null StringPtr");
+    }
+    if (!pattern.ptr) {
+        throw std::invalid_argument("find: null pattern StringPtr");
+    }
+    int64_t s_len = s.ptr->len();
+    if (end == std::numeric_limits<int64_t>::max()) {
+        end = s_len;
+    }
+    if (end < 0) {
+        end = s_len + end;
+    }
+    if (start < 0) {
+        start = s_len + start;
+    }
+    // do bounds checking: 0 <= start <= end <= s_len
+    if (start < 0 || start > end || end > s_len) {
+        throw std::out_of_range("subseq: out of range");
+    }
+    // value semantics let us exploit move semantics
+    std::string sub = s.ptr->get_string()->substr(start, end - start);
+    int64_t find_result = sub.find(*(pattern.ptr->get_string()));
+    return find_result == -1 ? -1 : find_result + start;
+}
+
+StringPtr toupper(StringPtr s) {
+    if (!s.ptr) {
+        throw std::invalid_argument("toupper: null StringPtr");
+    }
+    std::string* str = s.ptr->get_string();
+    std::string upper;
+    for (char c : *str) {
+        upper.push_back(std::toupper(c));
+    }
+    return StringPtr(new String(upper));
+}
+
+StringPtr tolower(StringPtr s) {
+    if (!s.ptr) {
+        throw std::invalid_argument("tolower: null StringPtr");
+    }
+    std::string* str = s.ptr->get_string();
+    std::string lower;
+    for (char c : *str) {
+        lower.push_back(std::tolower(c));
+    }
+    return StringPtr(new String(lower));
 }
 
 /*

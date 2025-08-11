@@ -59,51 +59,51 @@ int64_t idiv(Any lhs, int rhs) {
     else type_error(lhs);
 }
 
-/*
-int64_t find(String *s, String *pattern, int64_t start, int64_t end) {
+
+int64_t find(Any s, StringPtr pattern, int64_t start, int64_t end) {
     if (is_string(s)) {
-        return find(to_string(s), pattern, start, end);
+        return find(StringPtr(to_string(s)), pattern, start, end);
     }
     else {
         type_error(s);
     }
 }
 
-int64_t find(String *s, Any pattern, int64_t start, int64_t end) {
-    if (is_str(pattern)) {
-        return find(s, to_string(pattern), start, end);
+int64_t find(StringPtr s, Any pattern, int64_t start, int64_t end) {
+    if (is_string(pattern)) {
+        return find(s, StringPtr(to_string(pattern)), start, end);
     }
     else {
         type_error(s);
     }
 }
-int64_t find(Any s, Any pattern, int64_t start, int64_t end) {
+int64_t find(Any s, Any pattern, Any start, int64_t end) {
     if (is_string(s)) {
-        return find(to_string(s), pattern, start, end);
+        return find(StringPtr(to_string(s)), pattern, to_int(start), end);
     }
     else {
         type_error(s);
     }
 }
-*/
-Any subseq(Any s, int64_t start, int64_t end) {
+
+Any subseq(Any s, Any start, Any end) {
     if (is_string(s)) {
         // Convert Any to StringPtr, call string subseq, return as Any
-        return subseq(StringPtr(to_string(s)), start, end);
+        return subseq(StringPtr(to_string(s)), to_int(start), to_int(end));
     }
     else if (is_heap_obj(s)) {
         if (to_heap_obj(s)->get_tag() == tag_array) {
-            return subseq(to_array(s), start, end);
+            return subseq(to_array(s), to_int(start), to_int(end));
         }
         type_error(s);
     }
 }
-/*
-String toupper(Any s) {
-    if (is_str(s)) return toupper(to_str(s));
+
+StringPtr toupper(Any s) {
+    if (is_string(s)) return toupper(StringPtr(to_string(s)));
     else type_error(s);
 }
-
+/*
 Any is_equal(Any lhs, Any rhs) {
     bool res;
     if (is_ptr(lhs)) {

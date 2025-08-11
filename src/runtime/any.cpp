@@ -251,6 +251,13 @@ double to_real(Any x) {
     return x.real;
 }
 
+bool to_bool(Any x) {
+    if (x.integer == 0) return false;  // nil
+    if (is_int(x)) return to_int(x) != 0;
+    if (is_real(x)) return to_real(x) != 0.0;
+    return true;  // all other types (strings, arrays, etc.) are truthy
+}
+
 Heap_obj* to_heap_obj(Any x) {
     // precondition: is_heap_obj()
     return reinterpret_cast<Heap_obj*>(x.integer);

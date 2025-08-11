@@ -43,4 +43,9 @@ bool operator==(StringPtr lhs, StringPtr rhs);
 
 std::ostream& operator<<(std::ostream& os, StringPtr x);
 
+int64_t find(StringPtr s, StringPtr pattern, int64_t start=0, int64_t end=std::numeric_limits<int64_t>::max());
+
 StringPtr subseq(StringPtr s, int64_t start, int64_t end = std::numeric_limits<int64_t>::max());
+
+StringPtr toupper(StringPtr s);
+StringPtr tolower(StringPtr s);

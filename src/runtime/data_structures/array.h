@@ -69,3 +69,5 @@ ArrayPtr operator+(ArrayPtr lhs, ArrayPtr rhs);
 bool operator==(ArrayPtr lhs, ArrayPtr rhs);
 
 std::ostream& operator<<(std::ostream& os, ArrayPtr x);
+
+ArrayPtr subseq(ArrayPtr x, int64_t start, int64_t end = std::numeric_limits<int64_t>::max());

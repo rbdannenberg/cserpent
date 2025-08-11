@@ -149,6 +149,7 @@ Any_type get_type(Any x);
 // for that, use as_* functions
 int64_t to_int(Any x);
 double to_real(Any x);
+bool to_bool(Any x);
 Heap_obj *to_heap_obj(Any x);
 String *to_string(Any x);
 Symbol *to_symbol(Any x);
