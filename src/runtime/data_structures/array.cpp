@@ -324,3 +324,7 @@ std::ostream& operator<<(std::ostream& os, ArrayPtr x) {
     os << "]";
     return os;
 }
+
+ArrayPtr array(int64_t size) {
+    return ArrayPtr{new Array(size, nil)};
+}

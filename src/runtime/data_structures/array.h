@@ -62,6 +62,8 @@ struct ArrayPtr {
     operator Array*() const { return ptr; }
 };
 
+ArrayPtr array(int64_t size);
+
 ArrayPtr operator+(ArrayPtr lhs, ArrayPtr rhs);
 
 bool operator==(ArrayPtr lhs, ArrayPtr rhs);

@@ -398,7 +398,9 @@ int64_t operator>> (Any lhs, int rhs) {
 std::ostream& operator<<(std::ostream& os, Any a) {
     //Any s(force_str(x));
     //return os << get_c_str(&s);
-    if (is_string(a)) {
+    if (a.integer == 0) {  // NIL case
+        os << "nil";
+    } else if (is_string(a)) {
         os << StringPtr(to_string(a));
     } else if (is_heap_obj(a)) {
         Heap_obj *heap_obj = to_heap_obj(a);

@@ -245,9 +245,9 @@ class CodegenVisitor(ASTVisitor):
 
     def visitIndex(index):
         index.object.accept(this)
-        curr_code_line = curr_code_line + "["
+        curr_code_line = curr_code_line + "[to_int("
         index.index.accept(this)
-        curr_code_line = curr_code_line + "]"
+        curr_code_line = curr_code_line + ")]"
 
     def visitAssignment(assignment):
         if isinstance(assignment.identifier, GetAttribute):
@@ -256,6 +256,16 @@ class CodegenVisitor(ASTVisitor):
             curr_code_line = curr_code_line + ".call(\"set_" + get_attribute.attribute + "\", Array {"
             assignment.expression.accept(this)
             add_line(curr_code_line + "}, empty_dict);")
+            curr_code_line = ""
+            return
+        if isinstance(assignment.identifier, Index):
+            index_obj = assignment.identifier
+            index_obj.object.accept(this)
+            curr_code_line = curr_code_line + ".set(to_int("
+            index_obj.index.accept(this)
+            curr_code_line = curr_code_line + "), "
+            assignment.expression.accept(this)
+            add_line(curr_code_line + ");")
             curr_code_line = ""
             return
         # same goes for index
