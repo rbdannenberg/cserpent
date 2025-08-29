@@ -16,6 +16,8 @@ int64_t cs_current_bytes_allocated = 0;
 int64_t cs_current_object_count = 0;
 int64_t cs_allocations = 0;
 
+extern bool gc_enabled;
+
 
 //----------- heap consists of a list of large memory areas ----------
 // A Chunk is allocated using malloc, but never freed (malloc() is
@@ -187,9 +189,10 @@ got_it:  // set header and return object
     cs_allocations++;
     gc_trace(obj, "allocated");
 
-    // for now, we run gc_poll() on every allocation, but this is
-    // almost certainly overkill and makes calls too often
-    gc_poll();
+    // run gc_poll() only if garbage collector has been enabled
+    if (gc_enabled) {
+        gc_poll();
+    }
     return result;
 }
 

@@ -3,6 +3,7 @@
 //
 #pragma once
 #include <cstdint>
+#define SLOT(i) (*(slots + (i)))
 
 union Any;
 

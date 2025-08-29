@@ -76,7 +76,7 @@ int64_t Heap_obj::get_slot_count()
 
 int64_t Heap_obj::get_size()
 {
-    return offsetof(Heap_obj, slots) + get_slot_count() * sizeof(Any);
+    return (sizeof(Heap_obj) - sizeof(Any)) + (get_slot_count() * sizeof(Any));;
 }
 
 

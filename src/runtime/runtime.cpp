@@ -32,6 +32,8 @@ Any symbol_get_member_table;
 Any symbol_Class;
 Any symbol_Obj;
 
+bool gc_enabled = false;
+
 
 void runtime_init()
 {
@@ -62,6 +64,7 @@ void runtime_init()
     symbol_Obj = new Symbol("Obj", nil, nil);
 
     gc_stack_top = NULL;
+    gc_enabled = true;
 }
 
 

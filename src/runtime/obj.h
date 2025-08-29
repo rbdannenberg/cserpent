@@ -70,29 +70,29 @@ class Cs_class : public Obj {
              MemberTable *table, Cs_class *parent=nullptr) :
             Obj {cs_class_class} {
         set_slot(1, name);
-        slots[2].integer = slot_count;
-        slots[3].integer = any_slots;
+        SLOT(2).integer = slot_count;
+        SLOT(3).integer = any_slots;
         if (parent != nullptr) {
             MemberTable parent_table_copy = *(parent->get_member_table());
             // since merge alters the argument, we use a temporary copy
             table->merge(std::move(parent_table_copy));
         }
-        slots[4].integer = reinterpret_cast<int64_t>(table);
-        slots[5].integer = reinterpret_cast<int64_t>(parent);
+        SLOT(4).integer = reinterpret_cast<int64_t>(table);
+        SLOT(5).integer = reinterpret_cast<int64_t>(parent);
         // A: we could potentially copy the table wholesale, but that mucks
         // around with memory a bit too much for my liking. Get it right
         // first then attempt to refactor.
     }
-    [[nodiscard]] Symbol *get_name() { return to_symbol(slots[1]); }
+    [[nodiscard]] Symbol *get_name() { return to_symbol(SLOT(1)); }
     [[nodiscard]] int64_t get_inst_slot_count() const {
-        return slots[2].integer; }
+        return SLOT(2).integer; }
     [[nodiscard]] int64_t get_inst_any_slots() const {
-        return slots[3].integer; }
+        return SLOT(3).integer; }
     [[nodiscard]] MemberTable* get_member_table() const {
         // reference so we can refactor later:
-        return reinterpret_cast<MemberTable *>(slots[4].integer); }
+        return reinterpret_cast<MemberTable *>(SLOT(4).integer); }
     [[nodiscard]] Cs_class* get_parent() const {
-        return reinterpret_cast<Cs_class *>(slots[5].integer); }
+        return reinterpret_cast<Cs_class *>(SLOT(5).integer); }
     [[nodiscard]] MemberFn find_function(Symbol *function_name) {
         MemberTable *table = get_member_table();
         auto it = table->find(function_name);
