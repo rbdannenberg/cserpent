@@ -174,7 +174,7 @@ got_it:  // set header and return object
     // different slot counts, e.g. it could be 2 or 3 and be on the
     // same free list:
     Heap_obj *obj = (Heap_obj *) result;
-    if (slots >= 4096) {
+    if (slots >= (1 << 12)) {
         obj->slots[0].integer = slots;
         slots = 0;
     }
