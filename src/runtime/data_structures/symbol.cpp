@@ -21,13 +21,17 @@ Dict *cs_symbol_table;
 
 Any symbol_t;
 
-Symbol::Symbol(Any name, Any value, Any func)
+Symbol::Symbol(Any name, Any value, Any func,
+               Any_type stype, Cs_class *cs_class)
 {
     // precondition: name is not in symbol table
+    set_tag(tag_symbol);
     set_slot(0, name);
     set_slot(1, value);
     set_slot(2, func);
-    Any symbol(this);
+    *symbol_type() = stype;  // not a heap pointer
+    set_slot(4, cs_class);
+    Any symbol(this);  // nan-box this into an Any to place in cs_symbol_table
     cs_symbol_table->insert(name, symbol);
 }
 

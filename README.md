@@ -15,7 +15,7 @@ To (re)compile the generated C++ code in test_temp:
 ```
 ### Example:
 ```
-se compiler.srp tests/serpent/simple/oneplustwo.srp -o test_temp -c -d
+serpent64 compiler.srp tests/serpent/simple/oneplustwo.srp -o test_temp -c -d
 ```
 compiles and runs oneplustwo.srp, printing the output "3".
 

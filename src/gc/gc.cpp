@@ -138,11 +138,13 @@ void gc_poll()
                     // a Heap_obj, and we can call heap_obj_make_gray directly
                     heap_obj_make_gray((Heap_obj *)
                                         (obj->slots[0].integer));  // name
-                    heap_obj_make_gray((Heap_obj *)
-                                        (obj->slots[1].integer));  // value
+                    if_node_make_gray((Any *)
+				      (obj->slots[1].integer));  // value
                     heap_obj_make_gray((Heap_obj *)
                                         (obj->slots[2].integer));  // function
-                    work_done += 4 * MARK_NODE_COST;
+                    heap_obj_make_gray((Heap_obj *)
+                                        (obj->slots[4].integer));  // Cs_class
+                    work_done += 5 * MARK_NODE_COST;
                     break;
                 case tag_string:
                     work_done += MARK_NODE_COST;

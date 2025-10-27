@@ -77,3 +77,5 @@ benchmarks/mypyc-benchmarks
 /test_temp/
 
 /tmp/
+
+/src/runtime/test/
