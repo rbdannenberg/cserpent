@@ -36,7 +36,8 @@ Symbol::Symbol(Any name, Any value, Any func,
 }
 
 
-Symbol::Symbol(const char *name_string, Any value, Any func)
+Symbol::Symbol(const char *name_string, Any value, Any func,
+               Any_type stype, Cs_class *cs_class)
 {
     // precondition: name is not in symbol table
     // This is tricky: since this constructor puts a Heap_obj on the heap,
