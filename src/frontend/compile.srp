@@ -82,7 +82,7 @@ class CompilationSession:
                 nil,
                 "compilation session already loaded " + this.entry_point
             )
-        this.load_path = path_parent(file_path)
+        this.load_path = file_path_parent(file_path)
 
         return this.load_and_parse_file(file_path, [])
 

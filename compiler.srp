@@ -36,7 +36,7 @@ if len(command_line_arguments) != 2:
     print command_line_arguments
     exit()
 original_target_file = command_line_arguments[1] # relative path, has .srp suffix
-output_folder = change_file_suffix(output_folder, nil)
+output_folder = file_change_suffix(output_folder, nil)
 mkdir(output_folder)
 
 session = CompilationSession()
@@ -53,7 +53,7 @@ for target_file in session.get_topological_ordering():
         print_ast(ast)
 
     var is_main = original_target_file == target_file
-    var target_filename = change_file_suffix(file_from_path(target_file), nil)
+    var target_filename = file_change_suffix(file_name_from_path(target_file), nil)
     if target_filename == "main":
         target_filename = "main__" # main is a reserved word in C++
     visitor.generate_code(target_filename, ast, session.deps[target_file], main=is_main)

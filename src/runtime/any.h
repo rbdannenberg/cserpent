@@ -122,6 +122,12 @@ public:
 
 inline const Any nil;
 
+// Any_type is used for two purposes: It indicates the type
+// of an Any value at runtime, and it is also used as a
+// type annotation for Symbols to restrict the type of value
+// that can be stored there when the user declares a type
+// for a global variable. In this case, nil means "no type
+// restriction".
 enum class Any_type {
     INT,
     REAL,

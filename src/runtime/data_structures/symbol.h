@@ -14,16 +14,16 @@ public:
     // (if stype == OBJ, then cs_class points to the class descriptor object
     int64_t more_slots[4];
 
-    Symbol(Any name, Any value = NULL, Any func = NULL,
-           Any_type stype = ANY, Cs_class *cs_class = NULL);
-    Symbol(const char *name, Any value = NULL, Any func = NULL,
-           Any_type stype = ANY, Cs_class *cs_class = NULL);
+    Symbol(Any name, Any value = (void *) nullptr, Any func = (void *) nullptr,
+           Any_type stype = Any_type::NIL, Cs_class *cs_class = nullptr);
+    Symbol(const char *name, Any value = (void *) nullptr, Any func = (void *) nullptr,
+           Any_type stype = Any_type::NIL, Cs_class *cs_class = nullptr);
 
     Any *name() { return slots; }
     Any *value() { return slots + 1; }
     Any *func() { return slots + 2; }
     Any_type *symbol_type() { return (Any_type *) (slots + 3); }
-    Cs_class **symbol_class() { return (Cs_class *) (slots + 4); }
+    Cs_class **symbol_class() { return (Cs_class **) (slots + 4); }
 };
 
 extern Dict *cs_symbol_table;
