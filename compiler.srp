@@ -37,6 +37,7 @@ if len(command_line_arguments) != 2:
     exit()
 original_target_file = command_line_arguments[1] # relative path, has .srp suffix
 output_folder = file_change_suffix(output_folder, nil)
+system("rm -r " + output_folder)
 mkdir(output_folder)
 
 session = CompilationSession()

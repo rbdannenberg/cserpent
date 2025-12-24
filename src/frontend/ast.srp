@@ -38,6 +38,10 @@ class Identifier(Expression):
     def accept(visitor):
         visitor.visitIdentifier(this)
 
+    def to_string():
+        "<Identifier " + str(value) + ">"
+
+
 class BinOp(Expression):
     var left # : Expression
     var op  # : string (one of +, -, *, /, %, &, |, ^, <<, >>, **)
@@ -190,9 +194,20 @@ class Declaration(Statement):
         super.init()
         declared_type = _declared_type
         identifier = _identifier
+        if isstring(identifier):
+            print "WARNING: Expected Declaration.identifier " +
+                  "to be Identifier, not string"
+            stacktrace()
 
     def accept(visitor):
         visitor.visitDeclaration(this)
+
+    def to_string():
+        var id = identifier
+        if id and isinstance(id, "Identifier"):
+            id = identifier.value
+        "<Declaration id=" + str(id) + " type=" + str(declared_type) + ">"
+
 
 class DeclarationNAssignment(Statement):
     var declared_type # : string

@@ -100,6 +100,7 @@ class CodegenVisitor(ASTVisitor):
         else:
             curr_code_line = curr_code_line + identifier.value
         if identifier.value != "True" and identifier.value != "False":
+            display "visitIdentifier found", identifier
             global_variables[identifier.value] = "variable"
 
 
@@ -308,7 +309,8 @@ class CodegenVisitor(ASTVisitor):
         curr_code_line = ""
 
     def visitDeclaration(declaration):
-        print "declaration"
+        display "declaration", declaration
+        print "in visitDeclaration"
         add_line(declaration.declared_type + " " + declaration.identifier.value + ";")
         global_variables[declaration.identifier.value] = "variable" 
 
