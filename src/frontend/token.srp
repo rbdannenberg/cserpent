@@ -7,18 +7,15 @@ TAB_SIZE = 4
 
 INLINE_WHITESPACE = [" ", "\t", "\v", "\r", "\f"]
 
-
-# hack: use `<>` brackets to ensure no token's content can match a token type
-# so that during parsing, we can do `expect(["if", TK_IDENTIFIER])` to mix the
-# usage of token type and token content.
-TK_KEYWORD = "<KEYWORD>"
-TK_IDENTIFIER = "<IDENTIFIER>"
-TK_SYMBOL = "<SYMBOL>"
-TK_LITERAL = "<LITERAL>"
-TK_WHITESPACE = "<WHITESPACE>"
-TK_INDENT = "<INDENT>"
-TK_DEDENT = "<DEDENT>"
-TK_BREAK = "<LINEBREAK>"
+# e.g. `expect(["if", TK_IDENTIFIER])`
+TK_KEYWORD = 'KEYWORD'
+TK_IDENTIFIER = 'IDENTIFIER'
+TK_SYMBOL = 'SYMBOL'
+TK_LITERAL = 'LITERAL'
+TK_WHITESPACE = 'WHITESPACE'
+TK_INDENT = 'INDENT'
+TK_DEDENT = 'DEDENT'
+TK_BREAK = 'LINEBREAK'
 
 
 KW_STR = [
@@ -63,10 +60,11 @@ class Token:
     var content
     var range
 
-    def init(tk_type, content, range):
-        this.tk_type = tk_type
-        this.content = content
-        this.range = range
+    def init(tk_type_, content_, range_):
+        tk_type = tk_type_
+        content = content_
+        range = range_
+        display "Token constructor", tk_type, content, range
 
     def render():
         return "(" + tk_type + ": \"" + content + "\")"
@@ -285,8 +283,7 @@ def tokenize(source_file):
     var indent_level = 0
     var newline = true # true if a linebreak was just encountered
 
-    # List<Token>
-    var tokens = []
+    var tokens = []  // an array of Token
     var stream = source_file.source
 
     var range

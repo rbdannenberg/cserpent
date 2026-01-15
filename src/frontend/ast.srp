@@ -4,7 +4,7 @@
 //     var loaded_files
 
 //     def init():
-//         this.loaded_files = {}
+//         loaded_files = {}
 
 require "debug"
 
@@ -190,14 +190,13 @@ class StandaloneExpression(Statement):
 class Declaration(Statement):
     var declared_type # : string
     var identifier # : Identifier
+
     def init(_identifier, optional _declared_type = "Any"):
         super.init()
+        assert(isstring(_identifier))
         declared_type = _declared_type
-        identifier = _identifier
-        if isstring(identifier):
-            print "WARNING: Expected Declaration.identifier " +
-                  "to be Identifier, not string"
-            stacktrace()
+        identifier = Identifier(_identifier)
+        // global_table.add_entry(identifier)
 
     def accept(visitor):
         visitor.visitDeclaration(this)
@@ -320,7 +319,7 @@ class Class:
     var parent # : string
     var member_variables # : List[string] # but how to handle types?
     var member_functions # : List[Function]
-    var parents # : List[string]
+    var parents // a list of strings
     def init(_name, _parent, _member_variables, _member_functions):
         name = _name
         parent = _parent
@@ -333,9 +332,9 @@ class Class:
 class File:
     var deps # all depending files, List[string]
     var elements # list of class/function/block elements, List[Class | Function | BlockElement] if you will
-    def init(deps, _elements):
-        this.deps = deps
-        this.elements = _elements
+    def init(deps_, elements_):
+        deps = deps_
+        elements = elements_
 
     def accept(visitor):
         visitor.visitFile(this)

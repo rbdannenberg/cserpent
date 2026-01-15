@@ -266,9 +266,9 @@ def parse_statement(ctx):
 
     # val decl with `var`
     if ctx.skip("var", false):
-        ctx.skip_store(TK_IDENTIFIER)
+        ctx.skip_store(TK_IDENTIFIER)  // get the identifier
         iden = ctx.pop_partial().content
-        if ctx.skip("=", false):
+        if ctx.skip("=", false):  // look for initial value
             if not parse_expression(ctx):
                 return false
             ctx.set_result(DeclarationNAssignment("Any", iden, ctx.pop_result()))
@@ -568,6 +568,7 @@ def parse_load_req(ctx):
 
 
 def parse_global_decls(ctx):
+    display "parse_global_decls", ctx.input
     var decls = []
     while not ctx.at_eof():
         skip_linebreaks(ctx)

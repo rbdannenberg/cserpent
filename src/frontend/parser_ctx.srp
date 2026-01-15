@@ -2,27 +2,22 @@ require "utils"
 
 
 def match(token, predicate):
-
-    if type(predicate) == type([]):
+# test if token (Token class) matches specification in predicate
+    if isarray(predicate):
         return token.tk_type in predicate or token.content in predicate
+    # else token is a string (for exact match) or symbol (for tk_type match)
+    return (isstring(predicate) and token.content == predicate) or
+           (issymbol(predicate) and token.tk_type == predicate)
 
-    # string input
-    return token.tk_type == predicate or token.content == predicate
 
-
-// Mutable context object passed along when `Parser` is ran on an input.
+// Mutable context object passed along when `Parser` is run on an input.
 class ParseContext:
 
-    // Input code to be parsed.
-    var input
-    // 1-D position of the context, i.e., the current character pointer.
-    var pos
-    // Error message.
-    var error
-    // An AST holder used for return type.
-    var res
-    // Partial result store (for tokens).
-    var partial
+    var input    // Input code to be parsed.
+    var pos      // 1-D position of the context, i.e., current character pointer
+    var error    // Error message.
+    var res      // An AST holder used for return type.
+    var partial  // Partial result store (for tokens).
     var should_ignore_whitespace
 
     ### CONTEXT & STUFF ###
@@ -31,83 +26,85 @@ class ParseContext:
 
     ### SETUPS ###
 
-    def init(input):
-        this.pos = 0
-        this.input = input
-        this.error = nil
-        this.res = nil
-        this.partial = []
-        this.should_ignore_whitespace = false
+    def init(input_):
+        pos = 0
+        input = input_
+        error = nil
+        res = nil
+        partial = []
+        should_ignore_whitespace = false
 
-        this.types = []
-        this.deps = []
+        types = []
+        deps = []
 
     def at_eof():
-        return this.pos >= len(this.input)
+    # have we reached the end of the file
+        return pos >= len(input)
 
 
     ### SHORTHANDS FOR PARSING ###
 
     def peek():
-        return this.input[pos]
+        return input[pos]
 
     def get(predicate, optional should_err = true):
-        if this.should_ignore_whitespace:
-            before_whitespace = this.skip_whitespace()
+        if should_ignore_whitespace:
+            before_whitespace = skip_whitespace()
 
-        if this.at_eof():
+        if at_eof():
             if should_err:
-                this.error_eof_with(predicate)
-            if this.should_ignore_whitespace:
-                this.pos = before_whitespace
+                error_eof_with(predicate)
+            if should_ignore_whitespace:
+                pos = before_whitespace
             return nil
         
-        var tok = this.peek()
+        var tok = peek()
         if not match(tok, predicate):
             if should_err:
-                this.err_expect(tok, predicate)
-            if this.should_ignore_whitespace:
-                this.pos = before_whitespace
+                err_expect(tok, predicate)
+            if should_ignore_whitespace:
+                pos = before_whitespace
             return nil
 
         return tok
 
     def skip(predicate, optional should_err = true):
-        if this.get(predicate, should_err) == nil:
+        if get(predicate, should_err) == nil:
             return false
 
-        this.pos = this.pos + 1
+        pos = pos + 1
         return true
 
     def skip_store(predicate, optional should_err = true):
-        if len(this.partial) != 0:
+    # get a token and append it to partial
+        if len(partial) != 0:
             runtime_exception("DUP", frame_get())
 
-        tok = this.get(predicate, should_err)
+        tok = get(predicate, should_err)
         if tok == nil:
             return false
 
-        this.partial.append(tok)
-        this.pos = this.pos + 1
+        partial.append(tok)
+        pos = pos + 1
         return true
 
     def indent():
-        return this.skip(TK_INDENT)
+        return skip(TK_INDENT)
 
     def dedent():
-        return this.skip(TK_DEDENT)
+        return skip(TK_DEDENT)
 
     def br():
-        return this.skip(TK_BREAK)
+        return skip(TK_BREAK)
 
 
     ### ERROR EMISSION AND HANDLING ###
 
     def ok():
-        return this.error == nil
+        return error == nil
 
     def err(range, msg):
-        this.error = Error(range, msg)
+        error = Error(range, msg)
 
     def err_eof():
         err(nil, "unexpected end of file")
@@ -119,78 +116,78 @@ class ParseContext:
         err(tok.range, "expected " + str(predicate) + ", got " + tok.render())
 
     def err_fset_miss(predicate):
-        if this.at_eof():
-            this.err_eof_with(predicate)
+        if at_eof():
+            err_eof_with(predicate)
 
-        this.err_expect(this.peek(), predicate)
+        err_expect(peek(), predicate)
 
     
     ### INDENTATION CONTEXT ###
 
     def skip_whitespace():
-        var curr_pos = this.pos
-        for i = this.pos to len(this.input):
-            if not match(this.input[i], [TK_INDENT, TK_DEDENT, TK_BREAK]):
-                this.pos = i
+        var curr_pos = pos
+        for i = pos to len(input):
+            if not match(input[i], [TK_INDENT, TK_DEDENT, TK_BREAK]):
+                pos = i
                 return curr_pos
         
         return curr_pos
 
 
     def skip_eol():
-        if this.pos == len(this.input):
+        if pos == len(input):
             return true
         
-        return this.skip([TK_BREAK, ";"])
+        return skip([TK_BREAK, ";"])
 
     
     ### MISC CONTEXT ###
 
     def is_type(iden):
-        return iden in this.types
+        return iden in types
 
     
     def add_type(iden):
-        this.types.append(iden)
+        types.append(iden)
 
 
     # When on, all encountered indentations and linebreaks will be skipped.
     def ignore_whitespace(state):
-        prev = this.should_ignore_whitespace
-        this.should_ignore_whitespace = state
+        prev = should_ignore_whitespace
+        should_ignore_whitespace = state
         return prev
 
 
     ### RESULT MANIPULATION ###
     
     def set_result(ast):
-        this.res = ast
+        res = ast
 
     def pop_result():
-        out = this.res
+        out = res
         if out == nil:
             print "DEBUG ERROR: POPPING FROM EMPTY RESULT"
-        this.res = nil
+        res = nil
         return out
 
     def get_partial(idx):
-        return this.partial[idx]
+        return partial[idx]
 
     def pop_partial():
-        if len(this.partial) != 1:
-            print this.partial
+        if len(partial) != 1:
+            print partial
             print "DEBUG ERROR: POPPING FROM EMPTY PARTIAL"
             runtime_exception("STOP", frame_get())
-        part = this.partial[0]
-        this.partial.clear()
+        part = partial[0]
+        partial.clear()
         return part
 
     def clear_partial(idx):
-        this.partial.clear()
+        partial.clear()
 
 
     ### Deps ###
 
     def add_dep(path):
-        if path not in this.deps:
-            this.deps.append(path)
+        if path not in deps:
+            deps.append(path)

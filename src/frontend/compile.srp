@@ -12,8 +12,11 @@ def parse_ast(path):
     if file == nil:
         return err_res("file " + path + " cannot be opened", nil)
     
+    display "parse_ast", path, file, "<<<" + file.source + ">>>"
     tokens = tokenize(file)
-    // pretty_print_tokenize_result(tokens)
+
+    print "TOKENS:"
+    pretty_print_tokenize_result(tokens)
 
     if not tokens.ok:
         print "lex error:", file.get_formatted_pos(tokens.error.range.start)
@@ -68,23 +71,23 @@ class CompilationSession:
     var load_path // directory of the main_file
 
     def init():
-        this.entry_point = nil
-        this.files = {}
-        this.deps = {}
-        this.top_order = []
-        this.load_path = ""
+        entry_point = nil
+        files = {}
+        deps = {}
+        top_order = []
+        load_path = ""
 
     # call this to load the entry point of a project
     # returns `nil` on success, or error if otherwise
     def load_main_file(file_path):
-        if this.entry_point != nil:
+        if entry_point != nil:
             return Error(
                 nil,
-                "compilation session already loaded " + this.entry_point
+                "compilation session already loaded " + entry_point
             )
-        this.load_path = file_path_parent(file_path)
+        load_path = file_path_parent(file_path)
 
-        return this.load_and_parse_file(file_path, [])
+        return load_and_parse_file(file_path, [])
 
     # used internally
     # returns `nil` on success, or error if otherwise
@@ -101,24 +104,24 @@ class CompilationSession:
         if not result.ok:
             return result.error
 
-        this.files[file_path] = result.result
+        files[file_path] = result.result
         loaded_stack.append(file_path)
 
-        this.deps[file_path] = []
+        deps[file_path] = []
         for dep in result.result.deps:
             var dep_res = load_and_parse_file(find_file(dep, load_path), loaded_stack)
             var dep_trimmed = change_file_suffix(file_from_path(dep), nil)
-            if dep_trimmed not in this.deps[file_path]:
-                this.deps[file_path].append(dep_trimmed)
+            if dep_trimmed not in deps[file_path]:
+                deps[file_path].append(dep_trimmed)
             if dep_res != nil:
                 return dep_res
 
 
         loaded_stack.unappend()
-        if file_path not in this.top_order:
-            this.top_order.append(file_path)
+        if file_path not in top_order:
+            top_order.append(file_path)
             
         return nil
 
     def get_topological_ordering():
-        return this.top_order
+        return top_order

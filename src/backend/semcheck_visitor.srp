@@ -22,7 +22,7 @@ class SymbolEntry:
     var value # the value of the symbol # Lowkey is this even necessary
     var type # for type inference
 
-    def init(_category, _value = nil, _type = nil):
+    def init(_category, optional _value = nil, _type = nil):
         category = _category
         value = _value
         type = _type
@@ -37,11 +37,11 @@ class ScopedTables:
 
     def enter_scope():
         scopes.append({})
-        current_scope += 1
+        current_scope = current_scope + 1
 
     def exit_scope():
         scopes.pop()
-        current_scope -= 1
+        current_scope = current_scope - 1
 
     def add_symbol(symbol, entry):
         scopes[-1][symbol] = entry
@@ -56,10 +56,11 @@ class ScopedTables:
         return current_scope
 
 class GlobalTable:
+# global symbol table
     var table # : Dictionary[string, SymbolEntry]
 
     def init():
-        table = {}
+        table = {}  // mapping from var name to SymbolEntry
 
     def add_symbol(symbol, entry):
         table[symbol] = entry
@@ -228,5 +229,6 @@ class SemCheckVisitor(ASTVisitor):
 # TODO: Symbol table
 # TODO: GlobalAssignment node
 
-
+# The single global symbol table
+global_table = GlobalTable()
 

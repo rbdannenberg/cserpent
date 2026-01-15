@@ -7,14 +7,14 @@ class Range:
     var start
     var end
 
-    def init(file, start, end):
-        this.file = file
-        this.start = start
-        this.end = end
+    def init(file_, start_, end_):
+        file = file_
+        start = start_
+        end = end_
 
     def join(other):
-        new_start = min(this.start, other.start)
-        new_end = max(this.end, other.end)
+        new_start = min(start, other.start)
+        new_end = max(end, other.end)
         return Span(file, new_start, new_end)
 
     # returns [[start_line, start_col], [end_line, end_col]]
@@ -22,13 +22,13 @@ class Range:
     def to_readable_pos(source_map):
         # linear search is slow but this is only done once per execution soooo
         line = 0
-        while line < len(source_map) and source_map[line] < this.start:
+        while line < len(source_map) and source_map[line] < start:
             line = line + 1
         
         start_line = line
         start_col = this.start - source_map[line - 1] + 1
 
-        while line < len(source_map) and source_map[line] < this.end:
+        while line < len(source_map) and source_map[line] < end:
             line = line + 1
 
         end_line = line
@@ -43,9 +43,9 @@ class Error:
     var range
     var msg
 
-    def init(range, msg):
-        this.range = range
-        this.msg = msg
+    def init(range_, msg_):
+        range = range_
+        msg = msg_
 
 
 class Result:
@@ -54,15 +54,15 @@ class Result:
     var result
     var error
 
-    def init(ok, inner):
-        this.ok = ok
+    def init(ok_, inner_):
+        ok = ok_
         if ok:
-            this.result = inner
+            result = inner_
         else:
-            this.error = inner
+            error = inner_
 
     def replace(value):
-        if this.ok:
+        if ok:
             return Result(true, value)
         
         return Result(false, error)

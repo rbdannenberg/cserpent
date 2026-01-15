@@ -6,42 +6,43 @@ class ParsedFile:
     var source_file
     var ast
 
-    def init(source_file, ast):
-        this.source_file = source_file
-        this.ast = ast
+    def init(source_file_, ast_):
+        source_file = source_file
+        ast = ast
 
 
 class SourceFile:
 
     var file_path
     var source
-    // <list of starting position of each line>
-    var source_map
+    var source_map  // list of starting position of each line
 
-    def init(file_path, source):
-        this.file_path = file_path
-        this.source = source
-        this.source_map = [0]
+    def init(file_path_, source_):
+        file_path = file_path_
+        source = source_
+        source_map = [0]
 
         for pos = 0 to len(source):
             if source[pos] == "\n":
-                this.source_map.append(pos + 1)
+                source_map.append(pos + 1)
 
-        this.source_map.append(len(source) + 1)
+        source_map.append(len(source) + 1)
 
     def get_range(start, end):
-        return Range(this.file_path, start, end)
+        return Range(file_path, start, end)
 
     def get_formatted_pos(pos):
         for line = 0 to len(source):
-            if this.source_map[line] > pos:
-                col = pos - this.source_map[line - 1]
+            if source_map[line] > pos:
+                col = pos - source_map[line - 1]
                 return "(" + str(line) + ":" + str(col) + ")"
 
         return -1
 
         
 def load_from_path(path):
+# reads a source file, constructs a SourceFile object with the source
+# current file size limit is 65536 (TODO)
     f = open(path, "r")
     if f == nil:
         return nil

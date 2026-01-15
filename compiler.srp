@@ -3,6 +3,8 @@
 
 require "src/frontend/compile"
 require "src/backend/codegen_visitor"
+require "src/backend/semcheck_visitor"
+
 require "utils"
 load "debug"
 
