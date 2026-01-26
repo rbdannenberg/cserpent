@@ -1,14 +1,15 @@
 #include "cserpent.h"
-
+#include "symbol.h"
 #include "easyglobal.h"
 #include "global_vars.h"
+
 Any global_b;
 Any global_c;
 Any global_a;
 int cs_global_init() {
     // Initialize global variables here
-    define_global("a", &global_a, CS_ANY);
-    define_global("b", &global_b, CS_ANY);
-    define_global("c", &global_c, CS_ANY);
+    global_a = new Symbol("a");
+    global_b = new Symbol("b");
+    global_c = new Symbol("c");
     return 0;
 }

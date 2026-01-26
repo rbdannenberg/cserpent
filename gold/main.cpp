@@ -2,13 +2,15 @@
 
 #include "easyglobal.h"
 #include "global_vars.h"
+#include "data_structures/symbol.h"
+
 int main() {
     runtime_init();  // Initialize runtime (needed for symbol_t and boolean support)
 
     cs_global_init();
 
-    global_a = 1;
-    global_b = 2;
+    set_any_global(&global_a, 1);
+    set_any_global(&global_b, 2);
     std::cout << (global_a + global_b) << std::endl;
     return 0;
 }
