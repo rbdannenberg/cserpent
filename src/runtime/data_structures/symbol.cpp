@@ -65,3 +65,9 @@ std::ostream& operator<<(std::ostream& os, Symbol *x) {
     return os;
 }
 
+
+Any *set_any_global(Any *global_addr, Any value) {
+    *global_addr = value;
+    return global_addr;
+}
+

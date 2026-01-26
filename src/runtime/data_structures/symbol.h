@@ -26,6 +26,8 @@ public:
     Cs_class **symbol_class() { return (Cs_class **) (slots + 4); }
 };
 
+Any *set_any_global(Any *global_addr, Any value);
+
 extern Dict *cs_symbol_table;
 extern Any symbol_t;
 
