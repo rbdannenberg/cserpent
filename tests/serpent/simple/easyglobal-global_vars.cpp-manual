@@ -3,13 +3,13 @@
 #include "easyglobal.h"
 #include "global_vars.h"
 
-Any global_b;
-Any global_c;
-Any global_a;
+Any csg_b;
+Any csg_c;
+Any csg_a;
 int cs_global_init() {
     // Initialize global variables here
-    global_a = new Symbol("a");
-    global_b = new Symbol("b");
-    global_c = new Symbol("c");
+    csg_a = new Symbol("a");
+    csg_b = new Symbol("b");
+    csg_c = new Symbol("c");
     return 0;
 }

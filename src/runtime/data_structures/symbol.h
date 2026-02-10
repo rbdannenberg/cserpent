@@ -16,8 +16,9 @@ public:
 
     Symbol(Any name, Any value = (void *) nullptr, Any func = (void *) nullptr,
            Any_type stype = Any_type::NIL, Cs_class *cs_class = nullptr);
-    Symbol(const char *name, Any value = (void *) nullptr, Any func = (void *) nullptr,
-           Any_type stype = Any_type::NIL, Cs_class *cs_class = nullptr);
+    Symbol(const char *name, Any value = (void *) nullptr,
+           Any func = (void *) nullptr, Any_type stype = Any_type::NIL,
+           Cs_class *cs_class = nullptr);
 
     Any *name() { return slots; }
     Any *value() { return slots + 1; }
@@ -29,7 +30,7 @@ public:
 Any *set_any_global(Any *global_addr, Any value);
 
 extern Dict *cs_symbol_table;
-extern Any symbol_t;
+extern Symbol *css_t;
 
 std::ostream& operator<<(std::ostream& os, const Symbol *x);
 

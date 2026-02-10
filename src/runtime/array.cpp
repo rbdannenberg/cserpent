@@ -127,32 +127,32 @@ Any Array::operator[](int64_t i) const {
 
 // Refactor to constexpr function, after validating correctness.
 Any Array::call(Any method, Array *args, Dict *kwargs) {
-    if (method.is(symbol_append)) { // potential symbol optimization here
-        check_dispatch(to_symbol(symbol_append), args, kwargs, 1, 0);
+    if (method.is(css_append)) { // potential symbol optimization here
+        check_dispatch(to_symbol(css_append), args, kwargs, 1, 0);
         return append((*args)[0]);
-    } else if (method.is(symbol_last)) {
-        check_dispatch(to_symbol(symbol_last), args, kwargs, 0, 0);
+    } else if (method.is(css_last)) {
+        check_dispatch(to_symbol(css_last), args, kwargs, 0, 0);
         return last();
-    } else if (method.is(symbol_insert)) {
-        check_dispatch(to_symbol(symbol_insert), args, kwargs, 2, 0);
+    } else if (method.is(css_insert)) {
+        check_dispatch(to_symbol(css_insert), args, kwargs, 2, 0);
         return insert(to_int((*args)[0]), (*args)[1]);
-    } else if (method.is(symbol_unappend)) {
-        check_dispatch(to_symbol(symbol_unappend), args, kwargs, 0, 0);
+    } else if (method.is(css_unappend)) {
+        check_dispatch(to_symbol(css_unappend), args, kwargs, 0, 0);
         return unappend();
-    } else if (method.is(symbol_uninsert)) {
-        check_dispatch(to_symbol(symbol_uninsert), args, kwargs, 2, 0);
+    } else if (method.is(css_uninsert)) {
+        check_dispatch(to_symbol(css_uninsert), args, kwargs, 2, 0);
         if (args->len() == 1) {
             return uninsert(to_int((*args)[0]));
         }
         return uninsert(to_int((*args)[0]), to_int((*args)[1]));
-    } else if (method.is(symbol_reverse)) {
-        check_dispatch(to_symbol(symbol_reverse), args, kwargs, 0, 0);
+    } else if (method.is(css_reverse)) {
+        check_dispatch(to_symbol(css_reverse), args, kwargs, 0, 0);
         return reverse();
-    } else if (method.is(symbol_copy)) {
-        check_dispatch(to_symbol(symbol_copy), args, kwargs, 0, 0);
+    } else if (method.is(css_copy)) {
+        check_dispatch(to_symbol(css_copy), args, kwargs, 0, 0);
         return copy();
-    } else if (method.is(symbol_set_len)) {
-        check_dispatch(to_symbol(symbol_set_len), args, kwargs, 1, 0);
+    } else if (method.is(css_set_len)) {
+        check_dispatch(to_symbol(css_set_len), args, kwargs, 1, 0);
         return set_len(to_int((*args)[0]));
     }
     throw std::runtime_error("Array: no such method");

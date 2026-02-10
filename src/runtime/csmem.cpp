@@ -114,9 +114,11 @@ void *csmalloc(size_t size)
     // actual slot count stored in the first slot location, so we have no
     // way to encode 0 slots.
     assert(size >= 16);
+    int64_t slots = (size - 1) >> 3;  // 8 bytes per slot, not counting
+    // header, so if there are 2 slots, the object size is 24, and 23 / 8 = 2.
+
+    // next, size might be rounded up to a preallocated block size in heap:
     Heap_obj **head = head_ptr_for_size(&size);
-    int64_t slots = (size - 1) >> 3;  // 8 bytes per slot, not counting header,
-    // so if there are 2 slots, the object size is 24, and 23 / 8 = 2.;
     // now size is the actual allocation size, not the object size
     cs_current_bytes_allocated += (slots + 1) << 3;  // allocated includes
             // unused bytes, if there is fragmentation (e.g.
@@ -184,7 +186,8 @@ got_it:  // set header and return object
         obj->set_next(gc_gray_list);
         gc_gray_list = obj;
     }
-    assert(obj->get_size() == size);
+    assert(obj->get_size() <= size);
+    assert(obj->get_size() == (slots + 1) * 8);
     cs_current_object_count++;
     cs_allocations++;
     gc_trace(obj, "allocated");

@@ -2,6 +2,34 @@
 
 Here, objects refers to user-defined CSerpent objects.
 
+## Methods
+
+We have a choice of using ordinary C++ method invocation to call
+methods or create our own mechanism. Any Serpent method can be
+overridden or inherited, so if we use the ordinary C++ mechanism,
+every object will have a vtable pointer and method invocation will
+use indirection through the vtable to find the right method.
+
+But we also have to have CSerpent class objects with more complete
+descriptions of the class, and every object has a pointer to the
+class object, so there is already some overhead for class information.
+Rather than writing my_obj.some_method(), which would require a
+vtable, we can use my_obj.get_class_ptr()->... to access a per-class
+data structure with methods for that class.
+
+In the implementation, we do both, where the normal C++ mechanism
+is used when we know the class of the object and we can construct
+a correct parameter list directly. If we do not know the class of
+the object, we must make a more generic call the way Serpent would
+do it, putting positional parameters into an array and keyword
+parameters into a dictionary. Then we do a hash table lookup to
+find the method, which is a function pointer taking parameters:
+(Obj* self, Array *args, const Dict& kwargs). This function will
+check parameter types and number and make a C++ style invocation
+of the method. Thus we need both the vtable for fast direct calls
+using type information and the Cs_class::MemberTable for invoking
+methods with dynamic typing.
+
 ## Object Instance Variables (aka Member Variables)
 
 Because of garbage collection reasons, C++ objects will not have
@@ -18,7 +46,7 @@ calls.
 When accessing members of an object whose class is unknown, there will
 be one further transformation - which is to transform every member
 function call into a .call() function call that takes in args and
-kwargs as an Array and Dictionary. (See funcalls.txt).
+keyword args as an Array and Dictionary. (See funcalls.txt).
 
 Note: it seems that variable access will also need a special call when
 the class is not known.

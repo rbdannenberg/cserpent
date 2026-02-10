@@ -29,17 +29,17 @@ public:
         gc_frame_ptr = (Gc_frame *) gc_stack_top; \
     return (result);
 
-extern Any symbol_append;
-extern Any symbol_last;
-extern Any symbol_insert;
-extern Any symbol_unappend;
-extern Any symbol_uninsert;
-extern Any symbol_reverse;
-extern Any symbol_copy;
-extern Any symbol_set_len;
-extern Any symbol_get_name;
-extern Any symbol_get_inst_slot_count;
-extern Any symbol_get_inst_any_slots;
-extern Any symbol_get_member_table;
-extern Any symbol_Class;
-extern Any symbol_Obj;
+extern Any css_append;
+extern Any css_last;
+extern Any css_insert;
+extern Any css_unappend;
+extern Any css_uninsert;
+extern Any css_reverse;
+extern Any css_copy;
+extern Any css_set_len;
+extern Any css_get_name;
+extern Any css_get_inst_slot_count;
+extern Any css_get_inst_any_slots;
+extern Any css_get_member_table;
+extern Any css_Class;
+extern Any css_Obj;

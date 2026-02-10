@@ -20,7 +20,12 @@ public:
     Obj();
     Obj(Cs_class *class_ptr);
 
-    uint64_t get_any_slots();
+    // the use of virtual here ensures that a vtable is created, making
+    // the object 8 bytes bigger than it would be otherwise. In most
+    // implementations, this also means that the constructor allocating
+    // memory at addr will return the object as being at address addr + 8
+    // and the vtable pointer will be at a negative offset (obj_address - 8).
+    virtual uint64_t get_any_slots();
     
     /* There used to be pure virtual functions here call and get, but
      * because of issues with memory management, we will move towards
@@ -49,6 +54,7 @@ using MemberFn = std::function<Any(Obj*, Array*, Dict*)>;
 using MemberTable = std::unordered_map<Symbol *, MemberFn>;
 
 extern MemberTable cs_class_table;
+extern MemberTable cs_obj_table;
 
 inline constexpr size_t member_table_slot_count =
         (sizeof(MemberTable) + sizeof(int64_t) - 1) / sizeof(int64_t) - 1;
@@ -59,6 +65,9 @@ inline constexpr size_t member_table_slot_count =
 //   slots[1] - the class name, a symbol (Symbol pointer)
 //   slots[2] - the number of slots in class instances (int)
 //   slots[3] - the bit map of slots that are of type Any
+//   slots[4] - pointer to the MemberTable
+//   slots[5] - pointer to the parent Cs_class
+
 class Cs_class : public Obj {
   public:
     // make sure object gets allocated with enough space for 5 slots:
@@ -67,22 +76,7 @@ class Cs_class : public Obj {
     // Notice Obj {Cs_class_class}. The class of all Cs_class objects is
     // Cs_class_class!
     Cs_class(Symbol *name, int64_t slot_count, int64_t any_slots,
-             MemberTable *table, Cs_class *parent=nullptr) :
-            Obj {cs_class_class} {
-        set_slot(1, name);
-        SLOT(2).integer = slot_count;
-        SLOT(3).integer = any_slots;
-        if (parent != nullptr) {
-            MemberTable parent_table_copy = *(parent->get_member_table());
-            // since merge alters the argument, we use a temporary copy
-            table->merge(std::move(parent_table_copy));
-        }
-        SLOT(4).integer = reinterpret_cast<int64_t>(table);
-        SLOT(5).integer = reinterpret_cast<int64_t>(parent);
-        // A: we could potentially copy the table wholesale, but that mucks
-        // around with memory a bit too much for my liking. Get it right
-        // first then attempt to refactor.
-    }
+             MemberTable *table, Cs_class *parent=nullptr);
     [[nodiscard]] Symbol *get_name() { return to_symbol(SLOT(1)); }
     [[nodiscard]] int64_t get_inst_slot_count() const {
         return SLOT(2).integer; }
@@ -91,8 +85,8 @@ class Cs_class : public Obj {
     [[nodiscard]] MemberTable* get_member_table() const {
         // reference so we can refactor later:
         return reinterpret_cast<MemberTable *>(SLOT(4).integer); }
-    [[nodiscard]] Cs_class* get_parent() const {
-        return reinterpret_cast<Cs_class *>(SLOT(5).integer); }
+    [[nodiscard]] Cs_class **get_parent() {
+        return reinterpret_cast<Cs_class **>(&SLOT(5).integer); }
     [[nodiscard]] MemberFn find_function(Symbol *function_name) {
         MemberTable *table = get_member_table();
         auto it = table->find(function_name);
@@ -104,13 +98,11 @@ class Cs_class : public Obj {
     }
 };
 
+extern Cs_class csg_cs_class;
+
 // global symbol table (this should be a dictionary when they are implemented):
 //extern Array *cs_symbols;
 // look for globals::cs_symbol_table in the globals directory
-
-// initialize this module
-void main_init();
-
 
 /**
 /// <adder.h>

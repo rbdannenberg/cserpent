@@ -528,13 +528,13 @@ class CodegenVisitor(ASTVisitor):
         main_lines.append(indentation + "return 0;")
         main_lines.append("}")
         main_lines.insert(1, "    cs_global_init();\n")
-        main_lines.insert(1, "    runtime_init();  // Initialize runtime (needed for symbol_t and boolean support)\n")
+        main_lines.insert(1, "    runtime_init();")
         var main_file = open(output_folder + "/main.cpp", "w")
         var global_vars_file = open(output_folder + "/global_vars.h", "w")
         var global_cpp_file = open(output_folder + "/global_vars.cpp", "w")
 
         global_vars_file.write("#pragma once\n")
-        main_includes.append("#include \"global_vars.h\"")
+
         for line in main_includes:
             main_file.write(line + "\n")
             global_cpp_file.write(line + "\n")
@@ -588,8 +588,9 @@ class CodegenVisitor(ASTVisitor):
         source_file.close()
         header_file.close()
         if main:
-            main_includes.append("#include \"cserpent.h\"\n")
+            main_includes.append("#include \"cserpent.h\"")
             main_includes.append("#include \"" + filename + ".h\"")
+            main_includes.append("#include \"global_vars.h\"\n")
             generate_main(filename, ast)
 
         reset()

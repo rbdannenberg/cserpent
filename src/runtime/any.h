@@ -128,6 +128,14 @@ inline const Any nil;
 // that can be stored there when the user declares a type
 // for a global variable. In this case, nil means "no type
 // restriction".
+// Symbols normally contain addresses for global variables
+// that contain the actual value denoted by the symbol, but
+// symbols that are created dynamically or maybe by the
+// compiler to name a function can also be written to using
+// set_symbol_value, in which case there is no declared global
+// variable to point to. In these cases, the Any_type is
+// DYNAMIC and the value is stored in the Symbol object itself
+// in place of a pointer.
 enum class Any_type {
     INT,
     REAL,
@@ -137,6 +145,7 @@ enum class Any_type {
     ARRAY,
     DICT,
     OBJ,
+    DYNAMIC,
     NIL
 };
 

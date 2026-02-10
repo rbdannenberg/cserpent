@@ -68,7 +68,10 @@ public:
     // is csmalloc, which sets the header and possibly puts large
     // sizes in slot[0]:
     Heap_obj() { }
-    virtual ~Heap_obj() = default;
+    
+    // Declaring a virtual member will allocate a vtable and point to it,
+    // adding 8 bytes to the size of every object for no reason.
+    // virtual ~Heap_obj() = default;
 
     Tag get_tag(); // replace after implementation
     void set_tag(Tag t);

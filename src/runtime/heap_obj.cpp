@@ -76,7 +76,11 @@ int64_t Heap_obj::get_slot_count()
 
 int64_t Heap_obj::get_size()
 {
-    return (sizeof(Heap_obj) - sizeof(Any)) + (get_slot_count() * sizeof(Any));;
+    int64_t hosz = (sizeof(Heap_obj) - sizeof(Any));
+    int64_t ssz = (get_slot_count() * sizeof(Any));
+    int64_t sz = (sizeof(Heap_obj) - sizeof(Any)) +
+                 (get_slot_count() * sizeof(Any));
+    return sz;
 }
 
 

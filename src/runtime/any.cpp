@@ -116,7 +116,7 @@ Any::Any(std::string &x) {
 }
 
 Any::Any(bool x) {
-    integer = x ? symbol_t.integer : 0;
+    integer = x ? reinterpret_cast<uint64_t>(css_t) : 0;
 }
 
 Any& Any::operator=(int64_t x) {
@@ -194,7 +194,7 @@ Any &Any::operator=(Obj *x) {
 }
 
 Any& Any::operator=(bool x) {
-    integer = x ? symbol_t.integer : 0;
+    integer = x ? reinterpret_cast<uint64_t>(css_t) : 0;
     return *this;
 }
 

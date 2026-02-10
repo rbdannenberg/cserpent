@@ -29,9 +29,8 @@ we cannot write a[i].foo(x) because a[i] is dynamically
 typed. We have two options:
 
 1. Introduce a required coercion to a known class that
-declares method foo. E.g., syntax might be
-a[i].My_class.foo(x) or maybe a[i]::My_class.foo(x) or
-a[i].as(My_clasS).foo(x)
+declares method foo. E.g., syntax would be
+a[i].as_My_class.foo(x).
 
 2. Allow calls to resolve at runtime. This is more
 consistent with Serpent and Python, so even if the

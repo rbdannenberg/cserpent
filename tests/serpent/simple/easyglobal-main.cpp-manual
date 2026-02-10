@@ -5,13 +5,13 @@
 #include "data_structures/symbol.h"
 
 int main() {
-    runtime_init();  // Initialize runtime (needed for symbol_t and boolean support)
+    runtime_init();  // Initialize runtime (needed for css_t and boolean support)
 
     cs_global_init();
 
-    set_any_global(&global_a, 1);
-    set_any_global(&global_b, 2);
-    std::cout << (global_a + global_b) << std::endl;
+    set_any_global(&csg_a, 1);
+    set_any_global(&csg_b, 2);
+    std::cout << (csg_a + csg_b) << std::endl;
     return 0;
 }
 // mark any global references to heap objects
