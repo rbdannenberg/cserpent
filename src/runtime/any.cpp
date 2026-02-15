@@ -258,10 +258,21 @@ bool to_bool(Any x) {
     return true;  // all other types (strings, arrays, etc.) are truthy
 }
 
+
+// note that Heap_obj has no vtable but Obj does, so there is an 8-byte
+// offset in their addresses.
 Heap_obj* to_heap_obj(Any x) {
     // precondition: is_heap_obj()
     return reinterpret_cast<Heap_obj*>(x.integer);
 }
+
+
+// note that Heap_obj has no vtable but Obj does, so there is an 8-byte
+// offset in their addresses.
+Obj *to_obj(Any x) {
+    return reinterpret_cast<Obj*>(x.integer);
+}
+
 
 String *to_string(Any x) {
     // precondition: is_string()
@@ -284,10 +295,6 @@ Array *to_array(Any x) {
 
 Dict *to_dict(Any x) {
     return reinterpret_cast<Dict *>(x.integer);
-}
-
-Obj *to_obj(Any x) {
-    return reinterpret_cast<Obj *>(x.integer);
 }
 
 
@@ -449,7 +456,7 @@ Any Any::call(Any method, Array *args, Dict *kwargs) {
         switch (heap_obj->get_tag()) {
             case tag_object: {
                 // TODO: define and use to_obj():
-                Obj *obj_ptr = reinterpret_cast<Obj*>(heap_obj);
+                Obj *obj_ptr = to_obj(*this);
                 return obj_ptr->call(as_symbol(method), args, kwargs);
             }
             case tag_array: {

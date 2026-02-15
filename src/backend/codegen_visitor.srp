@@ -9,7 +9,7 @@ function_corrections = {
 }
 
 class CodegenVisitor(ASTVisitor):
-    var output_folder
+    var output_folder  // path to output (C++) files
     var source_lines
     var header_lines
     var main_lines
@@ -33,7 +33,6 @@ class CodegenVisitor(ASTVisitor):
         output_folder = _output_folder
         source_lines = []
         header_lines = []
-        main_lines = ["int main() {"]
         main_includes = []
         curr_code_line = ""
         indent_levels = [0, 0, 1]
@@ -51,8 +50,10 @@ class CodegenVisitor(ASTVisitor):
         main = 2
         string_counter = 0
 
+
     def switch_context(ctx):
         context = ctx
+
 
     def reset():
         source_lines = []
@@ -60,6 +61,7 @@ class CodegenVisitor(ASTVisitor):
         curr_code_line = ""
         indent_levels = [0, 0, 1]
         switch_context(header)
+
 
     def add_line(line, optional ctx = nil):
         if ctx == nil:
@@ -73,6 +75,7 @@ class CodegenVisitor(ASTVisitor):
         else:
             main_lines.append(line)
 
+
     def visitLiteral(literal):
         # print literal.value, type(literal.value), isstring(literal.value)
         if literal.value[0] == "\"":
@@ -85,29 +88,26 @@ class CodegenVisitor(ASTVisitor):
                 global_variables[var_name] = "string" + text
             curr_code_line = curr_code_line + hoisted_strings[text]
         elif literal.value[0] == "'":
-            curr_code_line = curr_code_line + "Symbol {\"" + subseq(str(literal.value), 1, -1) + "\"}"
+            curr_code_line = curr_code_line + "Symbol {\"" +
+                             subseq(str(literal.value), 1, -1) + "\"}"
         else:
             curr_code_line = curr_code_line + str(literal.value)
 
+
     def visitIdentifier(identifier):
-        if current_class and identifier.value in current_class.member_variables: # needs to encapsulate all inherited member variables
+        # needs to encapsulate all inherited member variables:
+        if current_class and identifier.value in current_class.member_variables:
             curr_code_line = curr_code_line + "get_" + identifier.value + "()"
             return
-        if identifier.value == "True":
-            curr_code_line = curr_code_line + "Any(true)"
-        elif identifier.value == "False":
-            curr_code_line = curr_code_line + "Any(false)"
-        else:
-            curr_code_line = curr_code_line + identifier.value
-        if identifier.value != "True" and identifier.value != "False":
-            display "visitIdentifier found", identifier
-            global_variables[identifier.value] = "variable"
+        curr_code_line = curr_code_line + identifier.value_as_global()
+        global_variables[identifier.value_as_global()] = "variable"
 
 
     def visitBoolOp(bool_op):
         bool_op.left.accept(this)
         curr_code_line = curr_code_line + " " + bool_op.op + " "
         bool_op.right.accept(this)
+
 
     def visitBinOp(bin_op):
         var function_correction = nil
@@ -126,12 +126,14 @@ class CodegenVisitor(ASTVisitor):
         curr_code_line = curr_code_line + " " + bin_op.op + " "
         bin_op.right.accept(this)
 
+
     def visitUnaryOp(unary_op):
         if unary_op.op == "not":
             unary_op.op = "!"
         curr_code_line = curr_code_line + unary_op.op + "("
         unary_op.value.accept(this)
         curr_code_line = curr_code_line + ")"
+
 
     def visitArray(array_node):
         # array literal, adds a 
@@ -141,6 +143,7 @@ class CodegenVisitor(ASTVisitor):
             if i < len(array_node.elements) - 1:
                 curr_code_line = curr_code_line + ", "
         curr_code_line = curr_code_line + "}}"
+
 
     def visitDictionary(dictionary_node):
         curr_code_line = curr_code_line + "*(new Dictionary {"
@@ -154,6 +157,7 @@ class CodegenVisitor(ASTVisitor):
             if i < len(dictionary.pairs) - 1:
                 curr_code_line = curr_code_line + ", "
         curr_code_line = curr_code_line + "})"
+
 
     def visitArgumentList(argument_list):
         var kwargs = argument_list.kwargs
@@ -186,6 +190,7 @@ class CodegenVisitor(ASTVisitor):
                     if i < len(kwargs) - 1:
                         curr_code_line = curr_code_line + ", "
                 curr_code_line = curr_code_line + "}"
+
 
     def visitFunctionCall(function_call):
         if function_call.name in user_defined_classes:
@@ -234,10 +239,12 @@ class CodegenVisitor(ASTVisitor):
             function_call.parameters.accept(this)
             curr_code_line = curr_code_line + ")"
 
+
     def visitConstructor(constructor):
         curr_code_line = curr_code_line + "*(new " + constructor.name + " {"
         constructor.parameters.accept(this)
         curr_code_line = curr_code_line + "})"
+
 
     def visitMethodCall(method_call):
         method_call.object.accept(this)
@@ -251,14 +258,18 @@ class CodegenVisitor(ASTVisitor):
             curr_code_line = curr_code_line + ")"
         else:
             # General case using .call()
-            curr_code_line = curr_code_line + ".call(\"" + method_call.method_name + "\", "
+            curr_code_line = curr_code_line + ".call(\"" +
+                             method_call.method_name + "\", "
             method_call.parameters.dispatch = "dynamic"
             method_call.parameters.accept(this)
             curr_code_line = curr_code_line + ")"
 
+
     def visitGetAttribute(get_attribute):
         get_attribute.object.accept(this)
-        curr_code_line = curr_code_line + ".call(\"get_" + get_attribute.attribute + "\", empty_array, empty_dict)"
+        curr_code_line = curr_code_line + ".call(\"get_" +
+                get_attribute.attribute + "\", empty_array, empty_dict)"
+
 
     def visitIndex(index):
         index.object.accept(this)
@@ -266,15 +277,18 @@ class CodegenVisitor(ASTVisitor):
         index.index.accept(this)
         curr_code_line = curr_code_line + ")]"
 
+
     def visitAssignment(assignment):
         if isinstance(assignment.identifier, GetAttribute):
             get_attribute = assignment.identifier
             get_attribute.object.accept(this)
-            curr_code_line = curr_code_line + ".call(\"set_" + get_attribute.attribute + "\", Array {"
+            curr_code_line = curr_code_line + ".call(\"set_" +
+                get_attribute.attribute + "\", Array {"
             assignment.expression.accept(this)
             add_line(curr_code_line + "}, empty_dict);")
             curr_code_line = ""
             return
+
         if isinstance(assignment.identifier, Index):
             index_obj = assignment.identifier
             index_obj.object.accept(this)
@@ -285,8 +299,10 @@ class CodegenVisitor(ASTVisitor):
             add_line(curr_code_line + ");")
             curr_code_line = ""
             return
+
         # same goes for index
-        if current_class and isinstance(assignment.identifier, Identifier) and assignment.identifier.value in current_class.member_variables:
+        if current_class and isinstance(assignment.identifier, Identifier) and
+           assignment.identifier.value in current_class.member_variables:
             if curr_code_line != "":
                 print_ast(assignment)
                 print curr_code_line, "Should be empty, weird", current_class
@@ -295,38 +311,49 @@ class CodegenVisitor(ASTVisitor):
             add_line(curr_code_line + ");")
             curr_code_line = ""
             return
+
+        # assume it is a global (maybe we need to add code to distinguish
+        # local variables and parameters here)
+        curr_code_line = curr_code_line + "set_any_global(&"
         assignment.identifier.accept(this)
-        if isinstance(assignment.identifier, Identifier) and current_class == nil:
-            global_variables[assignment.identifier.value] = "variable"
-        curr_code_line = curr_code_line + " = "
+        if isinstance(assignment.identifier, Identifier) and
+           current_class == nil:
+            global_variables[assignment.identifier.value_as_global()] =
+                    "variable"
+        curr_code_line = curr_code_line + ", "
         assignment.expression.accept(this)
-        add_line(curr_code_line + ";")
+        add_line(curr_code_line + ");")
         curr_code_line = ""
+
 
     def visitStandaloneExpression(standalone_expression):
         standalone_expression.expression.accept(this)
         add_line(curr_code_line + ";")
         curr_code_line = ""
 
+
     def visitDeclaration(declaration):
-        display "declaration", declaration
-        print "in visitDeclaration"
-        add_line(declaration.declared_type + " " + declaration.identifier.value + ";")
-        global_variables[declaration.identifier.value] = "variable" 
+        // add_line(declaration.declared_type + " " +
+        //          declaration.identifier.value + ";")
+        global_variables[declaration.identifier.value_as_global()] = "variable" 
+
 
     def visitDeclarationNAssignment(declaration_n_assignment):
         # we don't use the declared type for now because we are using Any
         // declaration_n_assignment.identifier.accept(this)
-        curr_code_line = curr_code_line + + declaration_n_assignment.identifier + " = "
+        curr_code_line = curr_code_line + "set_any_global(&csg_" +
+                         declaration_n_assignment.identifier + ", "
         declaration_n_assignment.expression.accept(this)
-        add_line("Any " + curr_code_line + ";")
+        add_line(curr_code_line + ");")
         curr_code_line = ""
+
 
     def visitReturnStatement(return_statement):
         curr_code_line = "return "
         return_statement.expression.accept(this)
         add_line(curr_code_line + ";")
         curr_code_line = ""
+
 
     def visitBlock(block):
         add_line("{")
@@ -335,6 +362,7 @@ class CodegenVisitor(ASTVisitor):
             statement.accept(this)
         indent_levels[context] = indent_levels[context] - 1
         add_line("}")
+
 
     def visitIf(if_statement):
         curr_code_line = "if (to_bool("
@@ -347,6 +375,7 @@ class CodegenVisitor(ASTVisitor):
             add_line("else")
             if_statement.else_block.accept(this)
 
+
     def visitWhile(while_statement):
         curr_code_line = "while (to_bool("
         while_statement.condition.accept(this)
@@ -354,6 +383,7 @@ class CodegenVisitor(ASTVisitor):
         add_line(curr_code_line)
         curr_code_line = ""
         while_statement.block.accept(this)
+
 
     def visitForRange(for_statement):
         curr_code_line = "for (int64_t " + for_statement.identifier + " = "
@@ -366,6 +396,7 @@ class CodegenVisitor(ASTVisitor):
         add_line(curr_code_line)
         curr_code_line = ""
         for_statement.block.accept(this)
+
 
     def visitForEach(for_statement):
         curr_code_line = "for (auto " + for_statement.identifier.value + " : "
@@ -384,29 +415,32 @@ class CodegenVisitor(ASTVisitor):
         # collect arguments within the parentheses
         curr_code_line = function.name + "("
         for i = 0 to num_args:
-            curr_code_line = curr_code_line + "Any " + function.positional[i] # Change this once type inference exists
+            # Change this once type inference exists:
+            curr_code_line = curr_code_line + "Any " + function.positional[i]
             if i < num_args - 1:
                 curr_code_line = curr_code_line + ", "
         curr_code_line = curr_code_line + ")"
 
-        var global_line = "Any " + "global_" + function.name + "(const Array& args, const Dictionary& kwargs)"
+        var global_line = "Any " + "global_" + function.name +
+                          "(const Array& args, const Dictionary& kwargs)"
 
         add_line("Any " + curr_code_line + ";", header)
         if current_class:
-            add_line("Any " + current_class.name + "::" + curr_code_line, source)
+            add_line("Any " + current_class.name + "::" +
+                     curr_code_line, source)
         else:
             add_line("Any " + curr_code_line, source)
-
-
 
         curr_code_line = ""
         # make corrections to the block
         var last_statement = function.block.statements.last()
         if not isinstance(last_statement, ReturnStatement):
             if isinstance(last_statement, StandaloneExpression):
-                function.block.statements[len(function.block.statements) - 1] = ReturnStatement(last_statement.expression)
+                function.block.statements[len(function.block.statements) - 1] =
+                        ReturnStatement(last_statement.expression)
             else:
-                function.block.statements.append(ReturnStatement(Literal("nil", "Any")))
+                function.block.statements.append(
+                        ReturnStatement(Literal("nil", "Any")))
         switch_context(source)
         function.block.accept(this)
         switch_context(header)
@@ -415,7 +449,9 @@ class CodegenVisitor(ASTVisitor):
             # function is global
             add_line(global_line + ";", header)
             add_line(global_line + " {", source)
-            add_line(indentation + "check_dispatch(\"" + function.name + "\", args, kwargs, " + str(len(function.positional)) + ", " + str(len(function.optional)) + ");", source)
+            add_line(indentation + "check_dispatch(\"" + function.name + "\",
+                     args, kwargs, " + str(len(function.positional)) + ",
+                     " + str(len(function.optional)) + ");", source)
             var call = indentation + "return " + function.name + "("
             for i = 0 to num_args:
                 call = call + "args[" + str(i) + "]"
@@ -424,7 +460,10 @@ class CodegenVisitor(ASTVisitor):
             call = call + ");"
             add_line(call, source)
             add_line("}", source)
-            add_line("globals::cs_symbol_table.set_function(Symbol {\"" + function.name + "\"}, &global_" + function.name + ");", main)
+            add_line("globals::cs_symbol_table.set_function(Symbol {\"" +
+                     function.name + "\"}, &global_" + function.name + ");",
+                     main)
+
 
     def visitClass(class_):
         current_class = class_
@@ -445,7 +484,8 @@ class CodegenVisitor(ASTVisitor):
             var setter = "set_" + variable_str
             
             add_line("Any " + getter + "() {")
-            add_line(indentation + "return slots[" + str(index + 1) + "];") # since slot 0 is for class pointer
+            # since slot 0 is for class pointer:
+            add_line(indentation + "return slots[" + str(index + 1) + "];")
             add_line("}")
             add_line("Any " + setter + "(Any value) {")
             add_line(indentation + "set_slot(" + str(index + 1) + ", value);")
@@ -459,14 +499,17 @@ class CodegenVisitor(ASTVisitor):
         for function in class_.member_functions:
 
             function.accept(this)
-            function_list.append([function.name, len(function.positional), len(function.optional)])
+            function_list.append([function.name, len(function.positional),
+                                  len(function.optional)])
             if function.name == "init":
                 var num_args = len(function.positional)
                 var enclosed = ""
 
                 curr_code_line = class_.name + "("
                 for i = 0 to num_args:
-                    curr_code_line = curr_code_line + "Any " + function.positional[i] # Change this once type inference exists
+                    # Change this once type inference exists:
+                    curr_code_line = curr_code_line + "Any " +
+                                     function.positional[i]
                     enclosed = enclosed + function.positional[i]
                     if i < num_args - 1:
                         curr_code_line = curr_code_line + ", "
@@ -483,12 +526,15 @@ class CodegenVisitor(ASTVisitor):
         switch_context(source)
         for function in function_list:
             var function_name = function[0]
-            var signature = "Any " + class_.name + "_" + function_name + "(Obj* self, const Array& args, const Dictionary& kwargs)"
+            var signature = "Any " + class_.name + "_" + function_name +
+                    "(Obj* self, const Array& args, const Dictionary& kwargs)"
             add_line(signature + ";", header)
             add_line(signature + " {", source)
             indent_levels[context] = indent_levels[context] + 1
-            add_line("check_dispatch(\"" + function_name + "\", args, kwargs," + str(function[1]) + "," + str(function[2]) + ");")
-            var dispatch_line = "reinterpret_cast<" + class_.name + "*>(self)->" + function_name + "("
+            add_line("check_dispatch(\"" + function_name + "\", args, kwargs," +
+                     str(function[1]) + "," + str(function[2]) + ");")
+            var dispatch_line = "reinterpret_cast<" + class_.name +
+                                "*>(self)->" + function_name + "("
             for i = 0 to function[1]:
                 dispatch_line = dispatch_line + "args[" + str(i) + "]"
                 if i < function[1] - 1:
@@ -504,15 +550,20 @@ class CodegenVisitor(ASTVisitor):
         add_line(table_name + " {", source)
         indent_levels[context] = indent_levels[context] + 1
         for function in function_list:
-            add_line("{Symbol{\"" + function[0] + "\"}, " + class_.name + "_" + function[0] + "},")
+            add_line("{Symbol{\"" + function[0] + "\"}, " + class_.name + "_" +
+                     function[0] + "},")
         indent_levels[context] = indent_levels[context] - 1
         add_line("};")
 
-        # NOTE: 0b0 should be changed once type inference is implemented and we have pointer types
-        var cs_class_init = "{Symbol {\"" + class_.name + "\"}, " + str(len(class_.member_variables)) + ", 0b0, &" + class_.name + "_table};"
+        # NOTE: 0b0 should be changed once type inference is implemented and
+        #       we have pointer types
+        var cs_class_init = "{Symbol {\"" + class_.name + "\"}, " +
+                            str(len(class_.member_variables)) + ", 0b0, &" +
+                            class_.name + "_table};"
         add_line("Cs_class * " + class_ptr + " = new Cs_class " + cs_class_init)
         switch_context(header)
         current_class = nil
+
 
     def visitFile(file):
         add_line(include_list)
@@ -524,73 +575,107 @@ class CodegenVisitor(ASTVisitor):
             element.accept(this)
 
 
-    def generate_main(folder, ast):
+    def generate_main(filename, source_file, ast):
         main_lines.append(indentation + "return 0;")
         main_lines.append("}")
-        main_lines.insert(1, "    cs_global_init();\n")
-        main_lines.insert(1, "    runtime_init();")
-        var main_file = open(output_folder + "/main.cpp", "w")
+
+        var outf = open(output_folder + "/" + filename + ".cpp", "w")
+
+        for line in main_includes:
+            display "ignoring main_includes in generate_main", line
+            # outf.write(line + "\n")
+
+        var code = ""
+        for line in main_lines:
+            display "main_lines", line
+            code = code + line + "\n"
+            // outf.write(line + "\n")
+        print code
+        outf.write(code)
+        // outf.write("// other globals should be marked here:\n")
+        // TODO: mark the globals here
+        outf.close()
+        outf = nil
+        exit()
+
+
+    def write_cs_header(source_file, filename):
+    # write standard includes for CSerpent modules. Omit <filename>.h if 
+    # filename is nil
+        source_file.write("#include \"cserpent.h\"\n")
+        if filename:
+            source_file.write("#include \"" + filename + ".h\"\n")
+        source_file.write("#include \"global_vars.h\"\n\n")
+
+
+    def generate_code(filename, ast, deps):
+        reset()
+        main_lines = ["int " + filename + "_main() {"]
+        ast.accept(this)
+
+        main_lines.append(indentation + "return 0;")
+        main_lines.append("}")
+
+        var source_file = open(output_folder + "/" + filename + ".cpp", "w")
+        write_cs_header(source_file, filename)
+        for line in main_includes:
+            display "ignoring main_includes in generate_main", line
+            # source_file.write(line + "\n")
+        for line in main_lines:
+            source_file.write(line + "\n")
+        for line in source_lines:
+            source_file.write(line + "\n")
+        // source_file.write("// other globals should be marked here:\n")
+        // TODO: mark the globals here
+        source_file.close()
+
+        var header_file = open(output_folder + "/" + filename + ".h", "w")
+        for dep in deps:
+            header_file.write("#include \"" + dep + ".h\"\n")
+        for line in header_lines:
+            header_file.write(line + "\n")
+        header_file.close()
+        reset()
+
+
+    def generate_globals():
         var global_vars_file = open(output_folder + "/global_vars.h", "w")
         var global_cpp_file = open(output_folder + "/global_vars.cpp", "w")
 
         global_vars_file.write("#pragma once\n")
+        write_cs_header(global_cpp_file, nil)
+//        for line in main_includes:
+//            assert(false) // is main_file defined?  Fix this.
+//            main_file.write(line + "\n")
+//            global_cpp_file.write(line + "\n")
 
-        for line in main_includes:
-            main_file.write(line + "\n")
-            global_cpp_file.write(line + "\n")
         for global_variable in global_variables.keys():
             string = global_variables[global_variable]
             prefix = subseq(string, 0, 6)
             if prefix == "string":
-                global_vars_file.write("extern StringPtr " + global_variable + ";\n")
+                global_vars_file.write("extern StringPtr " + global_variable +
+                                       ";\n")
                 global_cpp_file.write("StringPtr " + global_variable + ";\n")
             else:
                 global_vars_file.write("extern Any " + global_variable + ";\n")
                 global_cpp_file.write("Any " + global_variable + ";\n")
-        global_cpp_file.write("int cs_global_init() {\n")
+        global_cpp_file.write("\nint cs_global_init()\n{\n")
         global_cpp_file.write("    // Initialize global variables here\n")
         for global_variable in global_variables.keys():
             string = global_variables[global_variable]
             prefix = subseq(string, 0, 6)
             text = subseq(string, 6, -1)
             if prefix == "string":
-                global_cpp_file.write("    " + global_variable + " = StringPtr{new String(" + text + "\")};\n")
-        for line in main_lines:
-            main_file.write(line + "\n")
-        main_file.write("// mark any global references to heap objects\n")
-        main_file.write("void gc_mark_roots()\n")
-        main_file.write("{\n")
-        main_file.write("runtime_mark_roots();\n")
-        main_file.write("}\n")
-        main_file.write("// other globals should be marked here:\n")
-        // TODO: mark the globals here
+                global_cpp_file.write("    " + global_variable +
+                                      " = StringPtr{new String(" +
+                                      text + "\")};\n")
+            else:
+                global_cpp_file.write("    " + global_variable +
+                                      " = new Symbol(\"" +
+                                      subseq(global_variable, 4) + "\");\n")
         global_vars_file.write("int cs_global_init();\n")
         global_cpp_file.write("    return 0;\n")
         global_cpp_file.write("}\n")
-        main_file.close()
         global_vars_file.close()
         global_cpp_file.close()
 
-    def generate_code(filename, ast, deps, keyword main):
-        reset()
-        ast.accept(this)
-        var source_file = open(output_folder + "/" + filename + ".cpp", "w")
-        source_file.write("#include \"cserpent.h\"\n")
-        source_file.write("#include \"" + filename + ".h\"\n\n")
-        source_file.write("#include \"global_vars.h\"\n\n")
-        for line in source_lines:
-            source_file.write(line + "\n")
-        var header_file = open(output_folder + "/" + filename + ".h", "w")
-        for dep in deps:
-            header_file.write("#include \"" + dep + ".h\"\n")
-        for line in header_lines:
-            header_file.write(line + "\n")
-        source_file.close()
-        header_file.close()
-        if main:
-            main_includes.append("#include \"cserpent.h\"")
-            main_includes.append("#include \"" + filename + ".h\"")
-            main_includes.append("#include \"global_vars.h\"\n")
-            generate_main(filename, ast)
-
-        reset()

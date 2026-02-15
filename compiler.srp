@@ -37,8 +37,11 @@ if len(command_line_arguments) != 2:
     print "Incorrect number of arguments"
     print command_line_arguments
     exit()
-original_target_file = command_line_arguments[1] # relative path, has .srp suffix
+
+# relative path, has .srp suffix:
+original_target_file = command_line_arguments[1] 
 output_folder = file_change_suffix(output_folder, nil)
+program_name = file_name_from_path(original_target_file)
 system("rm -r " + output_folder)
 mkdir(output_folder)
 
@@ -52,27 +55,47 @@ pass = 8 # so an error isn't thrown for empty base class
 cmake_files = []
 for target_file in session.get_topological_ordering():
     var ast = session.files[target_file]
+
     if debug:
+        print "----- AST from", target_file, "-----"
         print_ast(ast)
 
-    var is_main = original_target_file == target_file
     var target_filename = file_change_suffix(file_name_from_path(target_file), nil)
-    if target_filename == "main":
-        target_filename = "main__" # main is a reserved word in C++
-    visitor.generate_code(target_filename, ast, session.deps[target_file], main=is_main)
-    if is_main:
-        cmake_files.append("main.cpp")
+    visitor.generate_code(target_filename, ast, session.deps[target_file])
     cmake_files.append(target_filename + ".cpp")
     cmake_files.append(target_filename + ".h")
-cmake_files.append("global_vars.cpp")
+
+
+main_file = open(output_folder + "/main.cpp", "w")
+visitor.write_cs_header(main_file, nil)
+for source_file in session.get_topological_ordering():
+    main_file.write("int " + file_base(source_file) + "_main();\n")
+main_file.write("\n\nint main()\n{\n")
+main_file.write("    runtime_init();\n")
+main_file.write("    cs_global_init();\n\n")
+for source_file in session.get_topological_ordering():
+    main_file.write("    " + file_base(source_file) + "_main();\n")
+main_file.write("\n    return 0;\n}\n")
+//main_file.write("\n\n// mark any global references to heap objects\n")
+main_file.write("\nvoid gc_mark_roots()\n")
+main_file.write("{\n}\n")
+// main_file.write("void runtime_mark_roots();\n")
+// main_file.write("{\n}\n")
+main_file.close()
+
+
+visitor.generate_globals()
+
+
 if compile:
     # write CMakeLists.txt
     output_folder = output_folder + "/"
     cmake_lists = open(output_folder + "CMakeLists.txt", "w")
     cmake_lists.write("cmake_minimum_required(VERSION 3.29)\n")
-    cmake_lists.write("project(output)\n")
+    cmake_lists.write("project(" + program_name + ")\n")
     cmake_lists.write("set(CMAKE_CXX_STANDARD 17)\n")
-    cmake_lists.write("add_compile_options(-Wno-return-type -Wplacement-new=0)\n")
+    cmake_lists.write(
+            "add_compile_options(-Wno-return-type -Wplacement-new=0)\n")
     cmake_lists.write("set(CMAKE_INTERPROCEDURAL_OPTIMIZATION_RELEASE TRUE)\n")
     cmake_lists.write("\n")
     cmake_lists.write("# normal set of include paths:\n")
@@ -92,12 +115,14 @@ if compile:
     cmake_lists.write("# runtime library\n")
     cmake_lists.write("add_subdirectory(../src/runtime build)\n")
 
-    cmake_lists.write("add_executable(output\n")
+    cmake_lists.write("add_executable(" + program_name + "\n")
     for file in cmake_files:
         cmake_lists.write("        " + file + "\n")
-    cmake_lists.write(")\n")
+    cmake_lists.write("        global_vars.cpp\n        main.cpp)\n")
     // cmake_lists.write("target_link_libraries(output \"${RUNTIME_LIB_PATH}\")\n")
-    cmake_lists.write("target_link_libraries(output runtime)\n")
+    cmake_lists.write("target_link_libraries(" + program_name + " runtime)\n")
+    cmake_lists.write("target_include_directories(" + program_name +
+                      " PUBLIC " + "../src/runtime ../src/gc)\n")
     cmake_lists.close()
     if debug:
         print "--------------- wrote", output_folder + "CMakeLists.txt",
@@ -121,12 +146,12 @@ if compile:
     if debug:
         print "--------------- finished cmake build step -------------------"
         print "--------------- running compiled program --------------------"
-        print "-->", "./" + output_folder + "build/output"
-    system("./" + output_folder + "build/output")
+        print "-->", "./" + output_folder + "build/" + program_name
+    system("./" + output_folder + "build/" + program_name)
     if debug:
         print "--------------- compiled program finished -------------------"
         print "--- to run it again, use this command:"
-        print "---", "./" + output_folder + "build/output"
+        print "---", "./" + output_folder + "build/" + program_name
         print "-------------------------------------------------------------"
     
 

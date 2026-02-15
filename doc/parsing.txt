@@ -7,6 +7,12 @@ recompilation of dependents. The granularity of dependency
 tracking (by symbol, by file, etc.) should be flexible to
 allow experimentation and optimization of speed, space, etc.
 
+Target should be main.cpp containing function main() with
+calls to foo_main(), bar_main(), etc., where each corresponds
+to an included file, finishing with the main file, e.g., if
+we are compiling test.srp, main() will finish by calling
+test_main().
+
 Redeclaring classes or functions or symbols is not allowed.
 
 Conditional compilation using #ifdef and related directives
@@ -29,6 +35,7 @@ Expand this to an array of descriptors:
         skip flag: indicates the line should not be processed
             due to #if directive or it is blank or
             just a comment or a continuation line
+
 Step 1: Preprocessing Directives and Sole Comment Removal
     Read line-by-line, removing blank and comment lines
     Allow #if and #elif expressions to contain symbols that

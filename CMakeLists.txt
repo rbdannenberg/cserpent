@@ -6,7 +6,7 @@ add_compile_options(-Wno-return-type -Wplacement-new=0) # suppress warnings abou
 set(CMAKE_INTERPROCEDURAL_OPTIMIZATION_RELEASE TRUE)
 
 # normal set of include paths:
-set(CS_INCLUDES src/runtime src/runtime/data_structures src/runtime/builtin_functions src/gc src/runtime/globals)
+set(CS_INCLUDES src/runtime)
 
 # cserpent executable was here previously - was never used so removed it
 
@@ -18,26 +18,26 @@ add_library(runtime STATIC
         src/runtime/any_utils.h
         src/runtime/op_overload.cpp
         src/runtime/op_overload.h
-        src/runtime/builtin_functions/builtin_functions.cpp
-        src/runtime/builtin_functions/builtin_functions.h
-        src/runtime/data_structures/array.cpp
-        src/runtime/data_structures/array.h
+        src/runtime/builtin_functions.cpp
+        src/runtime/builtin_functions.h
+        src/runtime/array.cpp
+        src/runtime/array.h
         src/runtime/csmem.h
         src/runtime/csmem.cpp
         src/runtime/obj.h
         src/runtime/obj.cpp
-        src/runtime/data_structures/array.h
-        src/runtime/data_structures/array.cpp
-        src/runtime/data_structures/dict.cpp
-        src/runtime/data_structures/dict.h
-        src/runtime/data_structures/csstring.h
-        src/runtime/data_structures/csstring.cpp
+        src/runtime/array.h
+        src/runtime/array.cpp
+        src/runtime/dict.cpp
+        src/runtime/dict.h
+        src/runtime/csstring.h
+        src/runtime/csstring.cpp
         src/gc/gc.h
         src/gc/gc.cpp
         src/runtime/heap_obj.cpp
         src/runtime/heap_obj.h
-        src/runtime/data_structures/symbol.cpp
-        src/runtime/data_structures/symbol.h
+        src/runtime/symbol.cpp
+        src/runtime/symbol.h
         src/runtime/runtime.cpp
         src/runtime/runtime.h
 )
@@ -78,8 +78,8 @@ add_executable(reprtest
 )
 
 add_executable(stringtest
-    src/runtime/data_structures/csstring.h
-    src/runtime/data_structures/csstring.cpp
+    src/runtime/csstring.h
+    src/runtime/csstring.cpp
     tests/c++/runtime/test_string.cpp)
 target_include_directories(stringtest PUBLIC ${CS_INCLUDES})
 

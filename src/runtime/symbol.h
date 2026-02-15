@@ -2,7 +2,6 @@
 // Created by anthony on 7/7/24.
 //
 
-
 #pragma once
 #include <string>
 #include <cstdint>

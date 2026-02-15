@@ -45,7 +45,7 @@ void runtime_init()
 
     cs_symbol_table = new Dict();
     css_t = new Symbol("t", nil, nil);
-    *(css_t->value()) = &css_t;  // 't' evaluates to itself
+    *(css_t->value()) = css_t;  // 't' evaluates to itself
     
     // note: cs_obj_class is the top-most class, no superclass
     // cs_class_class inherits from cs_obj_class

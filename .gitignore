@@ -79,3 +79,17 @@ benchmarks/mypyc-benchmarks
 /tmp/
 
 /src/runtime/test/
+
+/benchmarks/srp/raytrace_srp.json
+
+/tests/serpent/simple/easyglobal/output.xcodeproj/project.pbxproj
+
+/tests/serpent/simple/easyglobal/output.xcodeproj/xcuserdata/rbd.xcuserdatad/xcschemes/xcschememanagement.plist
+
+/tests/serpent/simple/easyglobal/output.xcodeproj/project.xcworkspace/xcuserdata/rbd.xcuserdatad/WorkspaceSettings.xcsettings
+
+/tests/serpent/simple/easyglobal/output.xcodeproj/project.xcworkspace/xcuserdata/rbd.xcuserdatad/UserInterfaceState.xcuserstate
+
+/tests/serpent/simple/easyglobal/output.xcodeproj/project.xcworkspace/xcshareddata/IDEWorkspaceChecks.plist
+
+/tests/serpent/simple/easyglobal/output.xcodeproj/project.xcworkspace/xcshareddata/WorkspaceSettings.xcsettings

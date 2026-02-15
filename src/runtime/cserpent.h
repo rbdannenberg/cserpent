@@ -9,8 +9,10 @@
 #include "heap_obj.h"
 #include "obj.h"
 #include "runtime.h"
-#include "data_structures/array.h"
+#include "array.h"
 #include "op_overload.h"
-#include "builtin_functions/builtin_functions.h"
+#include "builtin_functions.h"
 #include <iostream>
 #include "csstring.h"
+#include "symbol.h"
+

@@ -10,7 +10,7 @@
 #include "builtin_functions.h"
 #include "op_overload.h"
 #include "any_utils.h"
-#include "data_structures/array.h"
+#include "array.h"
 #include "csstring.h"
 #include "symbol.h"
 #include "dict.h"

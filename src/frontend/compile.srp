@@ -27,10 +27,13 @@ def parse_ast(path):
         print "parse error:", file.get_formatted_pos(ctx.error.range.start)
         return Result(false, ctx.error)
 
-    return res(ctx.pop_result())
+    var ast = ctx.pop_result()
+    return res(ast)
 
-# Looks for file (which could be in a subfolder) in the given load path or paths in SERPENTPATH.
-# Returns the full absolute path of the found file, or nil if no file found
+
+# Looks for file (which could be in a subfolder) in the given load path or
+# paths in SERPENTPATH.
+# Returns the full absolute path of the found file, or nil if no file found.
 def find_file(file, load_path):
     var path = getenv("SERPENTPATH")
 
@@ -92,7 +95,8 @@ class CompilationSession:
     # used internally
     # returns `nil` on success, or error if otherwise
     def load_and_parse_file(file_path, loaded_stack):
-        # A: I think this has the potential of parsing the same file multiple times if it gets required by a lot of files
+        # A: I think this has the potential of parsing the same file multiple
+        #    times if it gets required by a lot of files
 
         if file_path in loaded_stack:
             return Error(
@@ -109,7 +113,8 @@ class CompilationSession:
 
         deps[file_path] = []
         for dep in result.result.deps:
-            var dep_res = load_and_parse_file(find_file(dep, load_path), loaded_stack)
+            var dep_res = load_and_parse_file(find_file(dep, load_path),
+                                              loaded_stack)
             var dep_trimmed = change_file_suffix(file_from_path(dep), nil)
             if dep_trimmed not in deps[file_path]:
                 deps[file_path].append(dep_trimmed)

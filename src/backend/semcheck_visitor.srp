@@ -27,6 +27,9 @@ class SymbolEntry:
         value = _value
         type = _type
 
+
+
+
 class ScopedTables:
     var scopes # : Array[Dictionary[string, SymbolEntry]]
     var current_scope # : int
@@ -55,6 +58,8 @@ class ScopedTables:
     def get_current_scope():
         return current_scope
 
+
+
 class GlobalTable:
 # global symbol table
     var table # : Dictionary[string, SymbolEntry]
@@ -80,6 +85,7 @@ class GlobalTable:
                 print "Error: Symbol " + key + " already defined, redefinition not allowed"
                 exit()
             table[key] = new_table[key]
+
 
 
 class SemCheckVisitor(ASTVisitor):
@@ -163,9 +169,11 @@ class SemCheckVisitor(ASTVisitor):
     def visitForEach(for_statement):
         pass
 
+
     def visitFunction(function):
         if tables.get_symbol(function.name):
-            print "Error: Function " + function.name + " already defined, redefinition not allowed"
+            print "Error: Function "; function.name;
+            print     " already defined, redefinition not allowed"
             exit()
         tables.add_symbol(function.name, SymbolEntry("function"))
         tables.enter_scope()
@@ -181,12 +189,14 @@ class SemCheckVisitor(ASTVisitor):
 
     def visitClass(class_):
         if class_.name in global_table.keys():
-            print "Error: Class " + class_.name + " already defined, redefinition not allowed"
+            print "Error: Class "; class_.name;
+            print     " already defined, redefinition not allowed"
             exit()
         global_table[class_.name] = SymbolEntry("class")
 
         if tables.get_symbol(class_.name):
-            print "Error: Class " + class_.name + " already defined, redefinition not allowed"
+            print "Error: Class "; class_.name;
+            print     " already defined, redefinition not allowed"
             exit()
         tables.add_symbol(class_.name, SymbolEntry("class"))
         tables.enter_scope()
@@ -199,6 +209,7 @@ class SemCheckVisitor(ASTVisitor):
 
     def visitFile(file):
         pass
+
 
     def generate_code(filename, ast, keyword main):
         reset()
