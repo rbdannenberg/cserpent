@@ -1,0 +1,4 @@
+int a = 1
+b = 2
+real c  // see what happens if no assignment
+print a + b

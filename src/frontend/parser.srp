@@ -4,6 +4,8 @@ require "src/frontend/ast"
 
 ### FIRST SETS ###
 
+FS_DECLARATION = ["var", "int", "real", "array", "dict", "bool", "symbol"]
+
 FS_EXPRESSION = [
     TK_LITERAL,
     TK_IDENTIFIER,
@@ -73,7 +75,7 @@ def parse_arg_list_entry(ctx):
 def parse_arg_list(ctx):
     var args = []
     var kwargs = {}
-    if ctx.get(FS_EXPRESSION, false) != nil:
+    if ctx.get(FS_EXPRESSION, false):
         if not parse_arg_list_entry(ctx):
             return false
 
@@ -111,7 +113,7 @@ def parse_inner(ctx):
     # array
     if ctx.skip("[", false):
         vals = []
-        if ctx.get(FS_EXPRESSION, false) != nil:
+        if ctx.get(FS_EXPRESSION, false):
             if not parse_expression(ctx):
                 return false
             vals.append(ctx.pop_result())
@@ -128,7 +130,7 @@ def parse_inner(ctx):
     # dict
     elif ctx.skip("{", false):
         vals = []
-        if ctx.get(FS_EXPRESSION, false) != nil:
+        if ctx.get(FS_EXPRESSION, false):
             if not parse_dict_entry(ctx):
                 return false
             vals.append(ctx.pop_result())
@@ -265,19 +267,20 @@ def parse_statement(ctx):
     var exps = nil
 
     # val decl with `var`
-    if ctx.skip("var", false):
+    if ctx.get(FS_DECLARATION, false):
+        type = ctx.next().content
         ctx.skip_store(TK_IDENTIFIER)  // get the identifier
         iden = ctx.pop_partial().content
         if ctx.skip("=", false):  // look for initial value
             if not parse_expression(ctx):
                 return false
-            ctx.set_result(DeclarationNAssignment("Any", iden, ctx.pop_result()))
+            ctx.set_result(DeclarationNAssignment(type, iden, ctx.pop_result()))
         else:
-            ctx.set_result(Declaration(iden))
+            ctx.set_result(Declaration(iden, type))
 
     # return
     elif ctx.skip("return", false):
-        if ctx.get(FS_EXPRESSION, false) != nil:
+        if ctx.get(FS_EXPRESSION, false):
             if not parse_expression(ctx):
                 return false
             ctx.set_result(ReturnStatement(ctx.pop_result()))
@@ -286,7 +289,7 @@ def parse_statement(ctx):
             ctx.set_result(ReturnStatement(Literal("nil", "Any")))
 
     # standalone expression
-    elif ctx.get(FS_EXPRESSION, false) != nil:
+    elif ctx.get(FS_EXPRESSION, false):
         if not parse_expression(ctx):
             return false
         
@@ -375,9 +378,9 @@ def parse_block(ctx):
 
     var content = []
     skip_linebreaks(ctx)
-    while ctx.get(TK_DEDENT, false) == nil:
+    while not ctx.get(TK_DEDENT, false):
         skip_linebreaks(ctx)
-        if ctx.get(FS_CONTROL, false) != nil:
+        if ctx.get(FS_CONTROL, false):
             if not parse_control(ctx):
                 return false
         else:
@@ -531,7 +534,7 @@ def parse_class(ctx):
 
     var vars = []
     var funcs = []
-    while ctx.get(TK_DEDENT, false) == nil:
+    while not ctx.get(TK_DEDENT, false):
 
         if ctx.skip("var", false):
             if not ctx.skip_store(TK_IDENTIFIER):
@@ -589,7 +592,7 @@ def parse_global_decls(ctx):
 
             decls.append(ctx.pop_result())
 
-        elif ctx.get(FS_CONTROL, false) != nil:
+        elif ctx.get(FS_CONTROL, false):
             if not parse_control(ctx):
                 return false
             

@@ -13,7 +13,7 @@ def match(token, predicate):
 // Mutable context object passed along when `Parser` is run on an input.
 class ParseContext:
 
-    var input    // Input code to be parsed.
+    var input    // array of Token to be parsed.
     var pos      // 1-D position of the context, i.e., current character pointer
     var error    // Error message.
     var res      // An AST holder used for return type.
@@ -74,6 +74,14 @@ class ParseContext:
 
         pos = pos + 1
         return true
+
+
+    def next():
+    # return the next token
+        var tok = peek()
+        pos = pos + 1
+        return tok
+
 
     def skip_store(predicate, optional should_err = true):
     # get a token and append it to partial

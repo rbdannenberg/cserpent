@@ -201,14 +201,19 @@ class StandaloneExpression(Statement):
     def accept(visitor):
         visitor.visitStandaloneExpression(this)
 
+
+SERPENT_TO_CPP_TYPES = {"var": "Any", "int": "int", "real": "double",
+                        "bool": "bool", "array": "Array", "dict": "Dictionary",
+                        "symbol": "Symbol"}
+
 class Declaration(Statement):
     var declared_type # : string
     var identifier # : Identifier
 
-    def init(_identifier, optional _declared_type = "Any"):
+    def init(_identifier, optional _declared_type = "var"):
         super.init()
         assert(isstring(_identifier))
-        declared_type = _declared_type
+        declared_type = SERPENT_TO_CPP_TYPES[_declared_type]
         identifier = Identifier(_identifier)
         // global_table.add_entry(identifier)
 
@@ -229,6 +234,7 @@ class DeclarationNAssignment(Statement):
     def init(_declared_type, _identifier, _expression):
         super.init()
         declared_type = _declared_type
+        declared_type = SERPENT_TO_CPP_TYPES[_declared_type]
         identifier = _identifier
         expression = _expression
 
