@@ -19,6 +19,8 @@ class ParseContext:
     var res      // An AST holder used for return type.
     var partial  // Partial result store (for tokens).
     var should_ignore_whitespace
+    var in_function  // boolean: true if we are parsing a function (where a
+                     //          variable declaration is local)
 
     ### CONTEXT & STUFF ###
     var types

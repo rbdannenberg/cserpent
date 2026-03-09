@@ -274,9 +274,10 @@ def parse_statement(ctx):
         if ctx.skip("=", false):  // look for initial value
             if not parse_expression(ctx):
                 return false
-            ctx.set_result(DeclarationNAssignment(type, iden, ctx.pop_result()))
+            ctx.set_result(DeclarationNAssignment(type, iden, ctx.pop_result(),
+                                                  ctx.in_function))
         else:
-            ctx.set_result(Declaration(iden, type))
+            ctx.set_result(Declaration(iden, type, ctx.in_function))
 
     # return
     elif ctx.skip("return", false):
@@ -306,7 +307,7 @@ def parse_statement(ctx):
                     "LHS of assignment must be identifier, attribute or index"
                 )
                 return false
-            ctx.set_result(Assignment(lhs, rhs))
+            ctx.set_result(Assignment(lhs, rhs, ctx.in_function))
         
         else:
             ctx.set_result(StandaloneExpression(lhs))
@@ -495,23 +496,28 @@ def parse_function(ctx):
         return false
 
     var name = ctx.pop_partial().content
+    ctx.in_function = true
     var params = []
     if ctx.skip_store(TK_IDENTIFIER, false):
         params.append(ctx.pop_partial().content)
         while ctx.skip(",", false):
             if not ctx.skip_store(TK_IDENTIFIER):
+                ctx.in_function = false
                 return false
             params.append(ctx.pop_partial().content)
 
     if not ctx.skip(")"):
+        ctx.in_function = false
         return false
     ctx.skip(":", false)
     if not parse_block(ctx):
+        ctx.in_function = false
         return false
 
     # TODO: optionals
 
     var stmts = ctx.pop_result()
+    ctx.in_function = false
     ctx.set_result(Function(name, params, [], stmts))
     return true
 
@@ -592,7 +598,7 @@ def parse_global_decls(ctx):
 
             decls.append(ctx.pop_result())
 
-        elif ctx.get(FS_CONTROL, false):
+        elif ctx.get(FS_CONTROL, false):  // "if", "while", etc.
             if not parse_control(ctx):
                 return false
             
