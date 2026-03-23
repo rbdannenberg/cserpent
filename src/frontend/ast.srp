@@ -242,7 +242,7 @@ class DeclarationNAssignment(Statement):
         super.init()
         declared_type = _declared_type
         declared_type = SERPENT_TO_CPP_TYPES[_declared_type]
-        identifier = _identifier
+        identifier = Identifier(_identifier)
         expression = _expression
         local_flag = _local_flag
 
