@@ -102,7 +102,7 @@ class CodegenVisitor(ASTVisitor):
         // not a declared local or instance variable, so must be a global
         curr_code_line = curr_code_line + identifier.value_as_global()
         // if global is implicitly declared, insert into global_variables
-        if global_variables.has_key(identifier.value_as_global()):
+        if not global_variables.has_key(identifier.value_as_global()):
             display "** visitIdentifier", identifier
             // if identifier.value_as_global() == "csg_b":
             //     print "=================================================="
@@ -352,17 +352,22 @@ class CodegenVisitor(ASTVisitor):
     def visitDeclarationNAssignment(d_and_a):
         # we don't use the declared type for now because we are using Any
         // d_and_a.identifier.accept(this)
-        curr_code_line = curr_code_line + "set_any_global(&csg_" +
-                         d_and_a.identifier.value + ", "
+        if d_and_a.declared_type in ["int", "real"]:
+            curr_code_line = curr_code_line + "csg_" +
+                             d_and_a.identifier.value + " = ("
+        else:
+            curr_code_line = curr_code_line + "set_any_global(&csg_" +
+                             d_and_a.identifier.value + ", "
         d_and_a.expression.accept(this)
         add_line(curr_code_line + ");")
         curr_code_line = ""
 
         # assume for now this is a global declaration
         display "** visitDeclarationNAssignment", d_and_a.declared_type,
-        display         d_and_a.identifier.value
+        display         d_and_a.identifier.value, type(d_and_a.declared_type)
         global_variables[d_and_a.identifier.value_as_global()] =
                 d_and_a.declared_type
+        display "   ", global_variables[d_and_a.identifier.value_as_global()], d_and_a.identifier.value_as_global()
 
 
     def visitReturnStatement(return_statement):
@@ -675,6 +680,8 @@ class CodegenVisitor(ASTVisitor):
                                        ";\n")
                 global_cpp_file.write("StringPtr " + global_variable + ";\n")
             else:
+                var type = global_variables[global_variable]
+                display repr(global_variable), repr(type)
                 global_vars_file.write("extern Any " + global_variable + ";\n")
                 global_cpp_file.write("Any " + global_variable + ";\n")
         global_cpp_file.write("\nint cs_global_init()\n{\n")
