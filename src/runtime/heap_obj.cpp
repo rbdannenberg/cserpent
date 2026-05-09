@@ -87,11 +87,7 @@ int64_t Heap_obj::get_size()
 void Heap_obj::set_slot(int i, Any x) {
     Heap_obj *xptr;
     assert(i >= 0 && i < get_slot_count());
-    if (gc_write_block && x.integer && is_heap_obj(x) &&
-        (xptr = to_heap_obj(x))->get_color() == GC_BLACK &&
-        get_color() != GC_BLACK) {
-        heap_obj_make_gray(xptr);
-    }
+    SLOT_WRITE_BLOCK(this, x);
     slots[i] = x;
 }
 

@@ -15,26 +15,36 @@
 #include <iostream>
 #include <sstream>
 
+// These are implementations of Serpents int(), real(), str() functions
 
 double force_real(Any x) {
-    if (is_real(x)) return to_real(x);
-    else if (is_int(x)) return static_cast<double>(to_int(x));
-    else type_error(x);
+    if (is_real(x)) {
+        return to_real(x);
+    } else if (is_int(x)) {
+        return static_cast<double>(to_int(x));
+    } else if (is_str(x)) {
+        std::cerr << "String to real conversion not implemented" << std::endl;
+    } else {
+        type_error(x);
+    }
 }
 
 int64_t force_int(Any x) {
-    if (is_int(x)) return to_int(x);
-    else if (is_real(x)) return static_cast<int64_t>(to_real(x));
-    else if (is_str(x)) {
+    if (is_int(x)) {
+        return to_int(x);
+    } else if (is_real(x)) {
+        return static_cast<int64_t>(to_real(x));
+    } else if (is_str(x)) {
         std::cerr << "String to integer conversion not implemented" << std::endl;
+    } else {
+        type_error(x);
     }
-    else type_error(x);
 }
 
 Any force_str(Any x) {
     switch (get_type(x)) {
         case Any_type::STRING: return x;
-        case Any_type::SYMBOL: return to_symbol(x)->name();
+        case Any_type::SYMBOL: return Any(to_symbol(x)->name());
         case Any_type::INT: {
             std::string ias(std::to_string(to_int(x)));
             return Any(ias);
@@ -68,7 +78,8 @@ Any type_error(Any x) {
 }
 
 Any type_error(Any x, const std::string& function) {
-    std::cerr << "Any has incorrect type in function " << function << ": " << get_type_str(x) << std::endl;
+    std::cerr << "Any has incorrect type in function " << function <<
+                 ": " << get_type_str(x) << std::endl;
     exit(1);
 }
 

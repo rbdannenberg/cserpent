@@ -68,7 +68,7 @@ Array *Dict::get_keys()
     // slots is now how many slots to scan for keys
     Array *result = new Array(used / 2, nil);
     assert(result);
-    L.set(sl_result, result);  // save as local to avoid GC
+    L.set(sl_result, Any(result));  // save as local to avoid GC
     int j = 0; // where to put key
     for (int i = 0; i < slots; i += 2) {
         Any key = (*array)[i];
@@ -121,7 +121,7 @@ Array *Dict::get_values()
     int64_t slots = array->size() & ~1;  // make it even, round down
     Array *result = new Array(used / 2, nil);
     assert(result);
-    L.set(sl_result, result);  // save as local to avoid GC
+    L.set(sl_result, Any(result));  // save as local to avoid GC
     int j = 0; // where to put the value
     for (int i = 0; i < slots; i += 2) {
         Any key = (*array)[i];

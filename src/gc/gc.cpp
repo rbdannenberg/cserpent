@@ -68,6 +68,9 @@ static const int MARK_NODE_COST = 1;
 static const int WORK_PER_POLL = 1000;
 
 
+// the container of x is reachable, so if x is a heap object, the object
+// is also reachable, so make sure the object is known to the GC using
+// heap_obj_is_reachable.
 void if_node_make_gray(Any x) {
     GCT {
         if (x.integer == GC_TRACE_ADDR) {
@@ -76,7 +79,7 @@ void if_node_make_gray(Any x) {
         }
     }
     if (is_heap_obj(x)) {
-        heap_obj_make_gray(to_heap_obj(x));
+        heap_obj_is_reachable(to_heap_obj(x));
     }
     // in the case of String and Symbol, each is either self-contained
     // as a short string or a pointer to a std::string, so there is
@@ -84,15 +87,9 @@ void if_node_make_gray(Any x) {
 }
 
 
-void heap_obj_make_gray(Heap_obj *obj) {
-    GCT gc_trace(obj, "heap_obj_make_gray");
-    if (obj && obj->get_color() == GC_BLACK) {
-        obj->set_color(GC_GRAY);
-        obj->set_next(gc_gray_list);
-        gc_gray_list = obj;
-    }
+void heap_obj_is_reachable(Heap_obj *obj) {
+    HEAP_OBJ_IS_REACHABLE(obj);
 }
-
 
 
 // do a unit of GC
@@ -135,15 +132,17 @@ void gc_poll()
                 case tag_symbol:
                     // since this is a Symbol, we know the 3 slots are pointers
                     // or nil, so we don't have to decode Any to see if it is
-                    // a Heap_obj, and we can call heap_obj_make_gray directly
-                    heap_obj_make_gray((Heap_obj *)
-                                        (obj->slots[0].integer));  // name
-                    if_node_make_gray((Any *)
-				      (obj->slots[1].integer));  // value
-                    heap_obj_make_gray((Heap_obj *)
-                                        (obj->slots[2].integer));  // function
-                    heap_obj_make_gray((Heap_obj *)
-                                        (obj->slots[4].integer));  // Cs_class
+                    // a Heap_obj, and we can call heap_obj_is_reachable
+                    // directly. Call the function form to avoid evaluating the
+                    // expression 3 times in the macro (but maybe compiler would
+                    // optimize that out?):
+                    heap_obj_is_reachable((Heap_obj *)
+                                       (obj->slots[0].integer));  // name
+                    if_node_make_gray(Any(obj->slots[1]));  // value
+                    heap_obj_is_reachable((Heap_obj *)
+                                          (obj->slots[2].integer));  // function
+                    heap_obj_is_reachable((Heap_obj *)
+                                          (obj->slots[4].integer));  // Cs_class
                     work_done += 5 * MARK_NODE_COST;
                     break;
                 case tag_string:
@@ -228,7 +227,7 @@ void gc_poll()
                         (gc_frame_ptr->header >> 57) & 0x03) != GC_WHITE) {
                     int n = (gc_frame_ptr->header >> 45) & 0xFFF;  // slot cnt
                     for (int i = 0; i < n; i++) {
-                        if_node_make_gray(to_heap_obj(gc_frame_ptr->anys[i]));
+                        if_node_make_gray(gc_frame_ptr->anys[i]);
                     }
                     work_done += n * MARK_NODE_COST;
                 }

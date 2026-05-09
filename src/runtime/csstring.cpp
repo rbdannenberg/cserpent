@@ -34,7 +34,7 @@ static uint64_t str_pointer_to_data(std::string * s) {
 std::string temp_str(const String& s) {
     if (is_short_string(s)) {
         // should stop upon nul terminator
-        std::string result {s.chars + STR_BASE};
+        std::string result {s.chars + SHORTSTR_BASE};
         assert(result.size() == len(s));
         return result;
     } else {
@@ -61,7 +61,7 @@ uint64_t literal_string_to_data(const char *literal) {
         return STR_TAG;
         char *chars = reinterpret_cast<char *>(data);
         for (int64_t i = 0; i < max_short_size; i++) {
-            chars[STR_BASE + i] = literal[i];
+            chars[SHORTSTR_BASE + i] = literal[i];
             chars[5] = '\0';
         }
     } else {
@@ -119,13 +119,13 @@ String& String::operator=(String other) {
 /*
 char String::operator[](int64_t i) const {
     if (is_short_string(*this)) {
-        return chars[STR_BASE + i];
+        return chars[SHORTSTR_BASE + i];
     } else {
         return (*get_str_ptr(data))[i];
     }
 }
 
-int64_t len(const String& s) {
+int64_t len(const String &s) {
     // len can be anything from 0 to 4
     if (is_short_string(s)) {
         for (int64_t i = 0; i <= max_short_size; i++) {
@@ -138,7 +138,7 @@ int64_t len(const String& s) {
     }
 }
 
-String subseq(const String& s, int64_t start, int64_t end) {
+String subseq(const String &s, int64_t start, int64_t end) {
     int64_t s_len = len(s);
     if (end == std::numeric_limits<int64_t>::max()) {
         end = s_len;
@@ -160,7 +160,7 @@ String subseq(const String& s, int64_t start, int64_t end) {
             assert(0 <= i - start && i - start < max_short_size);
             // check source index in bounds:
             assert(0 <= i && i < max_short_size);
-            result.chars[STR_BASE + i - start] = s.chars[STR_BASE + i];
+            result.chars[SHORTSTR_BASE + i - start] = s.chars[SHORTSTR_BASE + i];
         }
         return result;
     } else {
@@ -168,7 +168,8 @@ String subseq(const String& s, int64_t start, int64_t end) {
     }
 }
 
-int64_t find(const String& s, const String& pattern, int64_t start, int64_t end) {
+int64_t find(const String& s, const String& pattern, int64_t start, int64_t end)
+{
     int64_t s_len = len(s);
     if (end == std::numeric_limits<int64_t>::max()) {
         end = s_len;
@@ -189,11 +190,12 @@ int64_t find(const String& s, const String& pattern, int64_t start, int64_t end)
     return find_result == -1 ? -1 : find_result + start;
 }
 
+
 String toupper(const String& s) {
     if (is_short_string(s)) {
         String result {};
         for (int64_t i = 0; i < len(s); i++) {
-            result.chars[STR_BASE + i] = std::toupper(s.chars[STR_BASE + i]);
+            result.chars[SHORTSTR_BASE + i] = std::toupper(s.chars[SHORTSTR_BASE + i]);
         }
         return result;
     } else {
@@ -210,7 +212,7 @@ String tolower(const String& s) {
     if (is_short_string(s)) {
         String result {};
         for (int64_t i = 0; i < len(s); i++) {
-            result.chars[STR_BASE + i] = std::tolower(s.chars[STR_BASE + i]);
+            result.chars[SHORTSTR_BASE + i] = std::tolower(s.chars[SHORTSTR_BASE + i]);
         }
         return result;
     } else {
@@ -263,6 +265,11 @@ std::ostream& operator<<(std::ostream& os, StringPtr x) {
     }
     return os;
 }
+
+bool operator==(const String& lhs, const String& rhs) {
+    return *lhs.get_string() == *rhs.get_string();
+}
+
 
 bool operator==(StringPtr lhs, StringPtr rhs) {
     if (lhs.ptr && rhs.ptr) {

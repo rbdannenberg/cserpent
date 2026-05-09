@@ -83,7 +83,7 @@ extern int64_t gc_array_index;
 extern int64_t gc_cycles;
 
 void if_node_make_gray(Any x);
-void heap_obj_make_gray(Heap_obj *obj);
+void heap_obj_is_reachable(Heap_obj *obj);
 void gc_poll();
 
 // this function is defined by the runtime system to call heap_obj_make_gray
@@ -104,3 +104,42 @@ void gc_heap_check();
 // gc_heap_check is a no-op:
 #define gc_heap_check()
 #endif
+
+// this macro is used before assigning an Any to a global
+#define GLOBAL_WRITE_BLOCK(x) \
+    { Heap_obj *xptr; \
+      GCT { if (x.integer == GC_TRACE_ADDR) { \
+                printf("In IF_HEAP_MAKE_GRAY: %llx found in gc_state %d\n", \
+                       x.integer, gc_state); }} \
+      if (gc_write_block && x.integer && is_heap_obj(x) && \
+          (xptr = to_heap_obj(x))->get_color() == GC_BLACK) { \
+          MAKE_GRAY(xptr); }}
+
+
+// this macro is used when you discover heap object x is reachable
+#define HEAP_OBJ_IS_REACHABLE(x) \
+    if ((x) && (x)->get_color() == GC_BLACK) { MAKE_GRAY(x); }
+
+       
+
+// this macro is used to put a heap object on the gray list,
+// precondition: ptr is a non-null pointer to a heap object
+#define MAKE_GRAY(ptr) \
+    { GCT gc_trace(ptr, "MAKE_GRAY"); \
+      ptr->set_color(GC_GRAY); \
+      ptr->set_next(gc_gray_list); \
+      gc_gray_list = ptr; }
+
+
+// this macro is used before assigning an Any to a slot in a Heap_obj
+// or to an element of an Array
+#define SLOT_WRITE_BLOCK(obj, x) \
+    { Heap_obj *xptr; \
+      GCT { if (x.integer == GC_TRACE_ADDR) { \
+                printf("In SLOT_WRITE_BLOCK: %llx found in gc_state %d\n", \
+                       x.integer, gc_state); }} \
+      if (gc_write_block && x.integer && is_heap_obj(x) && \
+          (xptr = to_heap_obj(x))->get_color() == GC_BLACK && \
+          obj->get_color() != GC_BLACK) { \
+          MAKE_GRAY(xptr); }}
+

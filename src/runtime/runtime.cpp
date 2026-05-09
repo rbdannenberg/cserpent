@@ -79,6 +79,6 @@ void runtime_init()
 
 void runtime_mark_roots()
 {
-    heap_obj_make_gray(cs_obj_class);
-    heap_obj_make_gray(cs_symbol_table);
+    MAKE_GRAY(cs_obj_class);
+    MAKE_GRAY(cs_symbol_table);
 }

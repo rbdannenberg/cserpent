@@ -63,7 +63,7 @@ Cs_class *Obj::get_class_ptr() {
 }
 
 void Obj::set_class_ptr(Cs_class * c_ptr) {
-    set_slot(0, c_ptr);
+    set_slot(0, Any(c_ptr));
 }
 
 
@@ -78,25 +78,25 @@ Cs_class *cs_class_class = nullptr;
 inline Any cs_class_get_name(Obj* self, Array *args,
                             Dict *kwargs) {
     check_dispatch(to_symbol(css_get_name), args, kwargs, 0, 0);
-    return static_cast<Cs_class*>(self)->get_name();
+    return Any((static_cast<Cs_class*>(self))->get_name());
 }
 
 inline Any cs_class_get_inst_slot_count(Obj* self, Array *args,
                                         Dict *kwargs) {
     check_dispatch(to_symbol(css_get_inst_slot_count), args, kwargs, 0, 0);
-    return static_cast<Cs_class*>(self)->get_inst_slot_count();
+    return Any((static_cast<Cs_class*>(self))->get_inst_slot_count());
 }
 
 inline Any cs_class_get_inst_any_slots(Obj* self, Array *args,
                                        Dict *kwargs) {
-    check_dispatch(to_symbol(css_get_name), args, kwargs, 0, 0);
-    return static_cast<Cs_class*>(self)->get_inst_any_slots();
+    check_dispatch(to_symbol(css_get_inst_any_slots), args, kwargs, 0, 0);
+    return Any((static_cast<Cs_class*>(self))->get_inst_any_slots());
 }
 
 inline Any cs_class_get_member_table(Obj* self, Array *args,
                                      Dict *kwargs) {
-    check_dispatch(to_symbol(css_get_name), args, kwargs, 0, 0);
-    return static_cast<Cs_class*>(self)->get_member_table();
+    check_dispatch(to_symbol(css_get_member_table), args, kwargs, 0, 0);
+    return Any((static_cast<Cs_class*>(self))->get_member_table());
 }
 
 MemberTable cs_class_table {

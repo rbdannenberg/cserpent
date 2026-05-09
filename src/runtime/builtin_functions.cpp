@@ -15,6 +15,7 @@
 #include "symbol.h"
 #include "dict.h"
 #include <cstring>
+#include "any_utils.h"
 
 int64_t len(Any x) {
     if (is_heap_obj(x)) {
@@ -34,8 +35,7 @@ int64_t len(Any x) {
 Any max(Any lhs, Any rhs) {
     if (lhs > rhs) {
         return lhs;
-    }
-    else {
+    } else {
         return rhs;
     }
 }
@@ -52,52 +52,160 @@ int64_t pow(int base, Any exp) {
 int64_t idiv(Any lhs, int rhs) {
     if (is_int(lhs)) {
         return to_int(lhs) / rhs;
-    }
-    else if (is_real(lhs)) {
+    } else if (is_real(lhs)) {
         return to_real(lhs) / rhs;
-    }
-    else type_error(lhs);
+    } else type_error(lhs);
 }
 
 
-int64_t find(Any s, StringPtr pattern, int64_t start, int64_t end) {
-    if (is_string(s)) {
-        return find(StringPtr(to_string(s)), pattern, start, end);
-    }
-    else {
-        type_error(s);
-    }
+
+
+int64_t find(Any s, Any pattern,  Any start, Any end)
+{
+    return find(s, pattern, as_int(start), as_int(end));
 }
 
-int64_t find(StringPtr s, Any pattern, int64_t start, int64_t end) {
+
+int64_t find(Any s, Any pattern,  Any start, int64_t end)
+{
+    return find(s, pattern, as_int(start), end);
+}
+
+    
+int64_t find(Any s, Any pattern,  int64_t start, int64_t end)
+{
     if (is_string(pattern)) {
-        return find(s, StringPtr(to_string(pattern)), start, end);
-    }
-    else {
-        type_error(s);
-    }
-}
-int64_t find(Any s, Any pattern, Any start, int64_t end) {
-    if (is_string(s)) {
-        return find(StringPtr(to_string(s)), pattern, to_int(start), end);
-    }
-    else {
-        type_error(s);
-    }
+        return find(s, to_string(pattern), start, end);
+    } else if (is_short(pattern)) {
+        return find(s, to_c_str(pattern), start, end);
+    } else type_error(pattern);
 }
 
-Any subseq(Any s, Any start, Any end) {
+
+
+int64_t find(Any s, StringPtr pattern, Any start, Any end)
+{
+    return find(s, pattern, as_int(start), as_int(end));
+}
+
+
+int64_t find(Any s, StringPtr pattern, Any start, int64_t end)
+{
+    return find(s, pattern, as_int(start), end);
+}
+    
+
+int64_t find(Any s, StringPtr pattern, int64_t start, int64_t end)
+{
+    if (is_string(s)) {
+        return find(to_string(s), pattern, start, end);
+    } else if (is_short(s)) {
+        return find(to_c_str(s), pattern, start, end);
+    } else type_error(Any(pattern));
+}
+
+
+
+int64_t find(Any s, const char *pattern, Any start, Any end)
+{
+    return find(s, pattern, as_int(start), as_int(end));
+}
+
+
+int64_t find(Any s, const char *pattern, Any start, int64_t end)
+{
+    return find(s, pattern, as_int(start), end);
+}
+
+
+int64_t find(Any s, const char *pattern, int64_t start, int64_t end)
+{
+    if (is_string(s)) {
+        return find(to_string(s), pattern, start, end);
+    } else if (is_short(s)) {
+        return find(to_c_str(s), pattern, start, end);
+    } else type_error(Any(pattern));
+}
+
+
+int64_t find(StringPtr s, Any pattern, Any start, Any end)
+{
+    return find(s, pattern, as_int(start), as_int(end));
+}
+
+
+
+int64_t find(StringPtr s, Any pattern, Any start, int64_t end)
+{
+    return find(s, pattern, as_int(start), end);
+}
+
+
+int64_t find(StringPtr s, Any pattern, int64_t start, int64_t end)
+{
+    if (is_string(pattern)) {
+        return find(s, to_string(pattern), start, end);
+    } else if (is_short(pattern)) {
+        return find(s, to_c_str(pattern), start, end);
+    } else type_error(Any(pattern));
+}
+
+
+int64_t find(StringPtr s, const char *pattern, Any start, Any end)
+{
+    return find(s, pattern, as_int(start), as_int(end));
+}
+
+
+int64_t find(StringPtr s, const char *pattern, Any start, int64_t end)
+{
+    return find(s, pattern, as_int(start), end);
+}
+
+
+int64_t find(const char *s, const char *pattern, Any start, Any end)
+{
+    return find(s, pattern, as_int(start), as_int(end));
+}
+
+
+int64_t find(const char *s, const char *pattern, Any start, int64_t end)
+{
+    return find(s, pattern, as_int(start), end);
+}
+
+
+
+Any subseq(Any s, Any start, Any end)
+{
+    return subseq(s, as_int(start), as_int(end));
+}
+
+
+Any subseq(Any s, int64_t start, Any end)
+{
+    return subseq(s, start, as_int(end));
+}
+
+
+Any subseq(Any s, Any start, int64_t end)
+{
+    return subseq(s, as_int(start), end);
+}
+
+
+Any subseq(Any s, int64_t start,  int64_t end)
+{
     if (is_string(s)) {
         // Convert Any to StringPtr, call string subseq, return as Any
-        return subseq(StringPtr(to_string(s)), to_int(start), to_int(end));
+        return Any(subseq(StringPtr(to_string(s)), start, end));
+    } else if (is_array(s)) {
+        return Any(subseq(to_array(s), start, end));
     }
-    else if (is_heap_obj(s)) {
-        if (to_heap_obj(s)->get_tag() == tag_array) {
-            return subseq(to_array(s), to_int(start), to_int(end));
-        }
-        type_error(s);
-    }
+    // TODO: short strings
+    type_error(s);
 }
+
 
 StringPtr toupper(Any s) {
     if (is_string(s)) return toupper(StringPtr(to_string(s)));

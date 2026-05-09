@@ -52,6 +52,7 @@ Any::Any(double x) {
     assert(is_real(*this));
 }
 
+/*
 Any::Any(void* x) {
     // not integer = reinterpret_cast<uint64_t>(x);?
     integer = reinterpret_cast<uint64_t>(x);
@@ -62,6 +63,7 @@ Any::Any(void* x) {
     }
 #endif
 }
+*/
 
 Any::Any(String *x) {
     // make an Any to reference a String.
@@ -77,14 +79,17 @@ Any::Any(Symbol *x) {
     integer = reinterpret_cast<uint64_t>(x) | SYMBOL_TAG;
 }
 
+/*
 Any::Any(Array *x) {
     integer = reinterpret_cast<uint64_t>(x);
 }
+*/
 
 Any::Any(ArrayPtr x) {
     integer = reinterpret_cast<uint64_t>(x.ptr);
 }
 
+/* handled by Heap_obj
 Any::Any(Dict *x) {
     integer = reinterpret_cast<uint64_t>(x);
 }
@@ -92,6 +97,7 @@ Any::Any(Dict *x) {
 Any::Any(Obj *x) {
     integer = reinterpret_cast<uint64_t>(x);
 }
+*/
 
 Any::Any(const char *x) {
     size_t len = strlen(x);
@@ -173,16 +179,19 @@ Any& Any::operator=(Symbol *x) {
 //    return *this;
 //}
 
+/* handled by Heap_obj
 Any& Any::operator=(Array *x) {
     integer = reinterpret_cast<uint64_t>(x);
     return *this;
 }
+*/
 
 Any& Any::operator=(ArrayPtr x) {
     integer = reinterpret_cast<uint64_t>(x.ptr);
     return *this;
 }
 
+/* handled by Heap_obj
 Any &Any::operator=(Dict *x) {
     integer = reinterpret_cast<uint64_t>(x);
     return *this;
@@ -192,6 +201,13 @@ Any &Any::operator=(Obj *x) {
     integer = reinterpret_cast<uint64_t>(x);
     return *this;
 }
+*/
+
+Any &Any::operator=(Heap_obj *x) {
+    integer = reinterpret_cast<uint64_t>(x);
+    return *this;
+}
+
 
 Any& Any::operator=(bool x) {
     integer = x ? reinterpret_cast<uint64_t>(css_t) : 0;
@@ -221,6 +237,10 @@ bool is_real(Any x) {
 
 bool is_heap_obj(Any x) {
     return (x.integer & TAG_MASK) == PTR_TAG;
+}
+
+bool is_array(Any x) {
+    return is_heap_obj(x) && (to_heap_obj(x)->get_tag() == tag_array);
 }
 
 bool is_str(Any x) {
@@ -261,7 +281,7 @@ bool to_bool(Any x) {
 
 // note that Heap_obj has no vtable but Obj does, so there is an 8-byte
 // offset in their addresses.
-Heap_obj* to_heap_obj(Any x) {
+Heap_obj *to_heap_obj(Any x) {
     // precondition: is_heap_obj()
     return reinterpret_cast<Heap_obj*>(x.integer);
 }
@@ -276,8 +296,12 @@ Obj *to_obj(Any x) {
 
 String *to_string(Any x) {
     // precondition: is_string()
-    return reinterpret_cast<String *>(x.integer & ~TAG_MASK
-                                      );
+    return reinterpret_cast<String *>(x.integer & ~TAG_MASK);
+}
+
+const char *to_c_str(Any x) {
+    // precondition: is_short()
+    return reinterpret_cast<const char *>(x.integer) + SHORTSTR_BASE;
 }
 
 Symbol *to_symbol(Any x) {

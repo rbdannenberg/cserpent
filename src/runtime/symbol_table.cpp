@@ -1,6 +1,24 @@
 //
 // Created by anthony on 7/9/24.
 //
+#include "any.h"
+#include "gc.h"
+#include "heap_obj.h"
+#include "array.h"
+#include "dict.h"
+#include "obj.h"
+#include "symbol.h"
+#include "symbol_table.h"
+
+Symbol *get_symbol(char const *name_string)
+{
+    Any name(name_string);
+    Symbol *s = (Symbol *) &(cs_symbol_table->lookup(name));
+    if (!s) {
+        s = new Symbol(name_string);  // create a new symbol if not found, which will insert it into the symbol table
+    }
+    return s;
+}
 
 /*
 

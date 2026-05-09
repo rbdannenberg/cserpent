@@ -628,6 +628,7 @@ class CodegenVisitor(ASTVisitor):
         if filename:
             source_file.write("#include \"" + filename + ".h\"\n")
         source_file.write("#include \"global_vars.h\"\n\n")
+        source_file.write("#include \"symbol_table.h\"\n\n")
 
 
     def generate_code(filename, ast, deps):
@@ -672,6 +673,7 @@ class CodegenVisitor(ASTVisitor):
 //            global_cpp_file.write(line + "\n")
 
         display "** generate_globals", global_variables
+        var before_s = "Symbol *"
         for global_variable in global_variables.keys():
             string = global_variables[global_variable]
             prefix = subseq(string, 0, 6)
@@ -695,9 +697,16 @@ class CodegenVisitor(ASTVisitor):
                                       " = StringPtr{new String(" +
                                       text + "\")};\n")
             else:
-                global_cpp_file.write("    " + global_variable +
-                                      " = new Symbol(\"" +
+                 // output: Symbol *s = get_symbol("a");
+                global_cpp_file.write("    " + before_s + "s = get_symbol(\"" +
                                       subseq(global_variable, 4) + "\");\n")
+                before_s = ""  // only declare it the first time, then reuse s
+                // output: *(s->value()) = (Any *) &csg_a;
+                global_cpp_file.write("    *(s->value()) = (Any *) &" + 
+                                      global_variable + ";\n")
+                // output: s->symbol_type() = Any_type::INT
+                global_cpp_file.write("    *(s->symbol_type()) = " + 
+                                      "Any_type::INT;\n")
         global_vars_file.write("int cs_global_init();\n")
         global_cpp_file.write("    return 0;\n")
         global_cpp_file.write("}\n")

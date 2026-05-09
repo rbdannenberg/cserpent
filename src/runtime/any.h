@@ -53,34 +53,38 @@ union Any {
 public:
     Any();
 
+    /* Constructors are marked explicit to prevent implicit conversions
+       that the compiler might use to pass almost anything to a function that
+       takes an Any. This would make the code very hard to understand and might
+       make a large performance problem when conversion to Any loses type
+       information that we would otherwise have at compile time.
+     */
+       
     /**@brief OCCUPY: 0xFFFC - 0xFFFF
      * @pre x is in 50-bits complement (top 15 bits are all 0's or 1's)
      */
-    Any(int64_t x);
-    Any(int x);
+    explicit Any(int64_t x);
+    explicit Any(int x);
 
     /**@brief OCCUPY: 0x0001 - 0xFFF9
      * @pre x is a naturally occurring double
      */
-    Any(double x);
+    explicit Any(double x);
 
     /**@brief OCCUPY: 0x0000 */
-    Any(void* x);
+    explicit Any(Heap_obj *x);
 
     /**@brief OCCUPY: 0xFFFA
      * @pre x.length () <= 5
      */
-    Any(String *x); // take by value because we don't want aliasing
-    Any(StringPtr x);
-    Any(Symbol *x); // likewise no aliasing wanted
-    Any(Array *x);
-    Any(ArrayPtr x);
-    Any(Dict *x);
-    Any(Obj *x);
-    Any(const char *x);
-    Any(std::string &x);
-    Any(bool x);
-    Any(const std::ostream& x); ///< until print becomes not a function call
+    explicit Any(String *x);
+    explicit Any(Symbol *x);
+    explicit Any(StringPtr x);
+    explicit Any(ArrayPtr x);
+    explicit Any(const char *x);
+    explicit Any(std::string &x);
+    explicit Any(bool x);
+    explicit Any(const std::ostream& x); ///< until print becomes not a function call
 
     /// Implicit conversion: assignment
     /// Return type allows for chaining
@@ -90,14 +94,15 @@ public:
     Any& operator=(String *x);
     Any& operator=(StringPtr x);
     Any& operator=(Symbol *x);
-    Any& operator=(Array *x);
+    // Any& operator=(Array *x);
     Any& operator=(ArrayPtr x);
-    Any& operator=(Dict *x);
-    Any& operator=(Obj *x);
+    // Any& operator=(Dict *x);
+    Any& operator=(Heap_obj *x);
     Any& operator=(const char *x);
     Any& operator=(bool x);
 
     /* Implicit conversion: type-cast operator - see note in Any.cpp
+    Maybe even *worse* than implicit conversion through constructors!
     operator int64_t();
     operator double();
     operator String *();
@@ -158,6 +163,7 @@ bool is_str(Any x);     // tests for either short string or String
 bool is_string(Any x);  // tests for String
 bool is_short(Any x);   // tests for short string
 bool is_symbol(Any x);
+bool is_array(Any x);
 Any_type get_type(Any x);
 
  // these to_* functions do not check that the underlying type is correct
@@ -167,6 +173,7 @@ double to_real(Any x);
 bool to_bool(Any x);
 Heap_obj *to_heap_obj(Any x);
 String *to_string(Any x);
+const char *to_c_str(Any x);
 Symbol *to_symbol(Any x);
 Array *to_array(Any x);
 Dict *to_dict(Any x);
@@ -177,7 +184,9 @@ Obj *to_obj(Any x);
 // code that looks like expression.as_int
 int64_t as_int(Any x);
 double as_real(Any x);
-String as_str(Any x);
+// String as_str(Any x);  --intended for testing string or short, but
+//     not sure what the return type should be.
+String *as_string(Any x);
 Heap_obj *as_heap_obj(Any x);
 
 /// Obtains the underlying type of an Any, mainly for debugging.

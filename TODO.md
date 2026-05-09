@@ -1,6 +1,10 @@
 Overall goal currently:
 Get the full pipeline working for all tests in ``tests/serpent/full_pipeline``.
 
+Change symbol table to use a CSerpent dictionary for simpler GC of globals.
+
+
+
 ====================
 Frontend/Parsing
 ====================

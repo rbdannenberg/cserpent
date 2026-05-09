@@ -142,3 +142,7 @@ allocation, so f(x) should be protected:
 This is according to the rule that since f(x) is not immediately
 stored into a local or object field in "a.append(f(x))" we must change
 the code to store f(x) into tmp.
+
+GLOBALS
+
+See globals.md for info on globals and gc.

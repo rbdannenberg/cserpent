@@ -13,10 +13,11 @@ public:
     // (if stype == OBJ, then cs_class points to the class descriptor object
     int64_t more_slots[4];
 
-    Symbol(Any name, Any value = (void *) nullptr, Any func = (void *) nullptr,
+    Symbol(Any name, Any value = Any((Heap_obj *) nullptr),
+           Any func = Any((Heap_obj *) nullptr),
            Any_type stype = Any_type::NIL, Cs_class *cs_class = nullptr);
-    Symbol(const char *name, Any value = (void *) nullptr,
-           Any func = (void *) nullptr, Any_type stype = Any_type::NIL,
+    Symbol(const char *name, Any value = Any((Heap_obj *) nullptr),
+           Any func = Any((Heap_obj *) nullptr), Any_type stype = Any_type::NIL,
            Cs_class *cs_class = nullptr);
 
     Any *name() { return slots; }
@@ -27,6 +28,11 @@ public:
 };
 
 Any *set_any_global(Any *global_addr, Any value);
+Any *set_any_global(Any *global_addr, Heap_obj *value);
+Any *set_any_global(Any *global_addr, const char *value);
+Any *set_any_global(Any *global_addr, double value);
+Any *set_any_global(Any *global_addr, int64_t value);
+Any *set_any_global(Any *global_addr, int value);
 
 extern Dict *cs_symbol_table;
 extern Symbol *css_t;

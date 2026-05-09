@@ -14,20 +14,20 @@
 // Right now, we are ignoring the fact that strings and lists can be added to
 Any operator+ (Any lhs, int64_t rhs) {
     if (is_int(lhs)) {
-        return { to_int(lhs) + rhs };
+        return Any(to_int(lhs) + rhs);
     }
     else if (is_real(lhs)) {
-        return { to_real(lhs) + static_cast<double>(rhs) };
+        return Any(to_real(lhs) + static_cast<double>(rhs));
     }
     else type_error(lhs);
 }
 
 Any operator+ (Any lhs, int rhs) {
-    return lhs + static_cast<int64_t>(rhs);
+    return Any(to_int(lhs) + static_cast<int64_t>(rhs));
 }
 
 Any operator+ (Any lhs, double rhs) {
-    return { force_real(lhs) + rhs };
+    return Any(force_real(lhs) + rhs);
 }
 
 /* Any operator+ (Any lhs, const String *rhs) {
@@ -72,7 +72,7 @@ Any operator+ (Any lhs, ArrayPtr rhs) {
     if (is_heap_obj(lhs)) {
         Heap_obj *heap_obj = to_heap_obj(lhs);
         if (heap_obj->get_tag() == tag_array) {
-            return ArrayPtr(to_array(lhs)) + rhs;
+            return Any(ArrayPtr(to_array(lhs)) + rhs);
         }
     }
     return type_error(lhs);
@@ -80,103 +80,103 @@ Any operator+ (Any lhs, ArrayPtr rhs) {
 
 Any operator+ (Any lhs, Any rhs) {
     if (is_string(rhs)) {
-        return lhs + get_c_str(&rhs);
+        return Any(lhs + get_c_str(&rhs));
     } else if (is_int(rhs)) {
-        return lhs + to_int(rhs);
+        return Any(lhs + to_int(rhs));
     } else if (is_real(rhs)) {
-        return lhs + to_real(rhs);
+        return Any(lhs + to_real(rhs));
     } else if (is_heap_obj(rhs)) {
         Heap_obj* heap_obj = to_heap_obj(rhs);
         if (heap_obj->get_tag() == tag_array) {
-            return lhs + ArrayPtr(to_array(rhs));
+            return Any(lhs + ArrayPtr(to_array(rhs)));
         }
-        return lhs + to_heap_obj(rhs);
-    } else type_error(rhs);
+    }
+    type_error(rhs);
 }
 
 // * operators
 Any operator* (Any lhs, int64_t rhs) {
     if (is_int(lhs)) {
-        return { to_int(lhs) * rhs };
+        return Any(to_int(lhs) * rhs);
     }
     else if (is_real(lhs)) {
-        return { to_real(lhs) * static_cast<double>(rhs) };
+        return Any(to_real(lhs) * static_cast<double>(rhs));
     }
     else type_error(lhs);
 }
 
 Any operator* (Any lhs, int rhs) {
-    return lhs * static_cast<int64_t>(rhs);
+    return Any(lhs * static_cast<int64_t>(rhs));
 }
 
 Any operator* (Any lhs, double rhs) {
-    return { force_real(lhs) * rhs };
+    return Any(force_real(lhs) * rhs);
 }
 
 Any operator* (Any lhs, Any rhs) {
     if (is_int(rhs)) {
-        return lhs * to_int(rhs);
+        return Any(lhs * to_int(rhs));
     }
     else if (is_real(rhs)) {
-        return lhs * to_real(rhs);
+        return Any(lhs * to_real(rhs));
     }
     else type_error(rhs);
 }
 
 // Symmetrical * operators
 Any operator* (int64_t lhs, Any rhs) {
-    return rhs * lhs;
+    return Any(rhs * lhs);
 }
 
 Any operator* (int lhs, Any rhs) {
-    return rhs * lhs;
+    return Any(rhs * lhs);
 }
 
 Any operator* (double lhs, Any rhs) {
-    return rhs * lhs;
+    return Any(rhs * lhs);
 }
 
 // - operators
 Any operator- (Any lhs, int64_t rhs) {
     if (is_int(lhs)) {
-        return { to_int(lhs) - rhs };
+        return Any(to_int(lhs) - rhs);
     } else if (is_real(lhs)) {
-        return { to_real(lhs) - static_cast<double>(rhs) };
+        return Any(to_real(lhs) - static_cast<double>(rhs));
     } else type_error(lhs);
 }
 
 Any operator- (Any lhs, int rhs) {
-    return lhs - static_cast<int64_t>(rhs);
+    return Any(lhs - static_cast<int64_t>(rhs));
 }
 
 Any operator- (Any lhs, double rhs) {
-    return { force_real(lhs) - rhs };
+    return Any(force_real(lhs) - rhs);
 }
 
 Any operator- (Any lhs, Any rhs) {
     if (is_int(rhs)) {
-        return lhs - to_int(rhs);
+        return Any(lhs - to_int(rhs));
     }
     else if (is_real(rhs)) {
-        return lhs - to_real(rhs);
+        return Any(lhs - to_real(rhs));
     }
     else type_error(rhs);
 }
 
 Any operator- (int64_t lhs, Any rhs) {
     if (is_int(rhs)) {
-        return { lhs - to_int(rhs) };
+        return Any(lhs - to_int(rhs));
     } else if (is_real(rhs)) {
-        return { static_cast<double>(lhs) - to_real(rhs) };
+        return Any(static_cast<double>(lhs) - to_real(rhs));
     } else type_error(rhs);
 }
 
 Any operator- (int lhs, Any rhs) {
-    return static_cast<int64_t>(lhs) - rhs;
+    return Any(static_cast<int64_t>(lhs) - rhs);
 }
 
 Any operator- (double lhs, Any rhs) {
-    return lhs - force_real(rhs);
+    return Any(lhs - force_real(rhs));
 }
 
 // / operators
@@ -447,9 +447,11 @@ bool operator==(Any lhs, Any rhs) {
     return lhs.integer == rhs.integer;
 }
 
-bool operator==(Any lhs, String rhs) {
-    if (is_str(lhs)) {
-        return to_string(lhs) == rhs;
+bool operator==(Any lhs, String *rhs) {
+    if (is_string(lhs)) {
+        return as_string(lhs) == rhs;
+    } else if (is_short(lhs)) {
+        return strcmp(to_c_str(lhs), rhs->get_c_str()) == 0;
     }
     else type_error(lhs, __func__);
 }
@@ -462,19 +464,20 @@ bool operator==(Any lhs, StringPtr rhs) {
 }
 
 bool operator==(Any lhs, ArrayPtr rhs) {
-    if (!is_heap_obj(lhs)) return false;
+    if (!is_array(lhs)) return false;
     
-    Heap_obj* heap_obj = to_heap_obj(lhs);
-    if (heap_obj->get_tag() != tag_array) return false;
-    
-    return ArrayPtr(to_array(heap_obj)) == rhs;
+    return ArrayPtr(to_array(lhs)) == rhs;
 }
 
-bool operator==(Any lhs, Symbol rhs) {
+bool operator==(Any lhs, Symbol *rhs) {
     if (is_symbol(lhs)) {
-        return to_symbol(lhs) == rhs;
+        return *to_symbol(lhs) == *rhs;
     }
-    else type_error(lhs, __func__);
+    type_error(lhs, __func__);
+}
+
+bool operator==(Symbol &lhs, Symbol &rhs) {
+    return &lhs == &rhs;
 }
 
 bool operator!=(Any lhs, Any rhs) {

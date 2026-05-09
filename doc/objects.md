@@ -202,17 +202,7 @@ class, you need to check the type:
     assert(isinstance(value, class\_of\_global);
     PTR_WRITE_BLOCK(value);
     global\_x = value;
-// where PTR_WRITE_BLOCK is something like:
-    if (gc_write_block && value &&
-        value->get_color() == GC_BLACK) {
-        heap_obj_make_gray(value);
-    }
-// this says "if the GC is in its scan phase and value is
-// non-NULL and value points to a BLACK (unmarked) object,
-// then put value on a list of objects to be marked. (We
-// don't mark it immediately because it might reference
-// many other objects. The list of to-be-marked objects
-// allows us to mark incrementally.)
+// where PTR_WRITE_BLOCK is really IF_HEAP_MAKE_GRAY -- see definition
 ```
 To implement `set\_symbol\_value('x', value)`, we do a symbol lookup
 of 'x' which gives us a symbol. The symbol _could_ have the address of

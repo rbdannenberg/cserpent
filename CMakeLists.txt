@@ -12,34 +12,21 @@ set(CS_INCLUDES src/runtime)
 
 # cserpent runtime library
 add_library(runtime STATIC
-        src/runtime/any.cpp
-        src/runtime/any.h
-        src/runtime/any_utils.cpp
-        src/runtime/any_utils.h
-        src/runtime/op_overload.cpp
-        src/runtime/op_overload.h
-        src/runtime/builtin_functions.cpp
-        src/runtime/builtin_functions.h
-        src/runtime/array.cpp
-        src/runtime/array.h
-        src/runtime/csmem.h
-        src/runtime/csmem.cpp
-        src/runtime/obj.h
-        src/runtime/obj.cpp
-        src/runtime/array.h
-        src/runtime/array.cpp
-        src/runtime/dict.cpp
-        src/runtime/dict.h
-        src/runtime/csstring.h
-        src/runtime/csstring.cpp
-        src/gc/gc.h
-        src/gc/gc.cpp
-        src/runtime/heap_obj.cpp
-        src/runtime/heap_obj.h
-        src/runtime/symbol.cpp
-        src/runtime/symbol.h
-        src/runtime/runtime.cpp
-        src/runtime/runtime.h
+        src/runtime/any.cpp src/runtime/any.h
+        src/runtime/any_utils.cpp src/runtime/any_utils.h
+        src/runtime/op_overload.cpp src/runtime/op_overload.h
+        src/runtime/builtin_functions.cpp src/runtime/builtin_functions.h
+        src/runtime/array.cpp src/runtime/array.h
+        src/runtime/csmem.cpp src/runtime/csmem.h
+        src/runtime/obj.cpp src/runtime/obj.h
+        src/runtime/array.cpp src/runtime/array.h
+        src/runtime/dict.cpp src/runtime/dict.h
+        src/runtime/csstring.cpp src/runtime/csstring.h
+        src/gc/gc.cpp src/gc/gc.h
+        src/runtime/heap_obj.cpp src/runtime/heap_obj.h
+        src/runtime/symbol.cpp src/runtime/symbol.h
+        src/runtime/symbol_table.cpp src/runtime/symbol_table.h
+        src/runtime/runtime.cpp src/runtime/runtime.h
 )
 target_include_directories(runtime PUBLIC ${CS_INCLUDES}) 
 

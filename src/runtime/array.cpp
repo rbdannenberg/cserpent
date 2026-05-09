@@ -94,9 +94,7 @@ Array *Array::append(double x) {
 void Array::set(int64_t index, Any value) {
     std::vector<Any> *data = get_vector();
     Heap_obj *vptr;
-    if (gc_write_block && is_heap_obj(value) && get_color() != GC_BLACK) {
-        heap_obj_make_gray(to_heap_obj(value));
-    }
+    SLOT_WRITE_BLOCK(this, value);
     data->at(index) = value;
 }    
 
@@ -129,31 +127,31 @@ Any Array::operator[](int64_t i) const {
 Any Array::call(Any method, Array *args, Dict *kwargs) {
     if (method.is(css_append)) { // potential symbol optimization here
         check_dispatch(to_symbol(css_append), args, kwargs, 1, 0);
-        return append((*args)[0]);
+        return Any(append((*args)[0]));
     } else if (method.is(css_last)) {
         check_dispatch(to_symbol(css_last), args, kwargs, 0, 0);
         return last();
     } else if (method.is(css_insert)) {
         check_dispatch(to_symbol(css_insert), args, kwargs, 2, 0);
-        return insert(to_int((*args)[0]), (*args)[1]);
+        return Any(insert(to_int((*args)[0]), (*args)[1]));
     } else if (method.is(css_unappend)) {
         check_dispatch(to_symbol(css_unappend), args, kwargs, 0, 0);
         return unappend();
     } else if (method.is(css_uninsert)) {
         check_dispatch(to_symbol(css_uninsert), args, kwargs, 2, 0);
         if (args->len() == 1) {
-            return uninsert(to_int((*args)[0]));
+            return Any(uninsert(to_int((*args)[0])));
         }
-        return uninsert(to_int((*args)[0]), to_int((*args)[1]));
+        return Any(uninsert(to_int((*args)[0]), to_int((*args)[1])));
     } else if (method.is(css_reverse)) {
         check_dispatch(to_symbol(css_reverse), args, kwargs, 0, 0);
-        return reverse();
+        return Any(reverse());
     } else if (method.is(css_copy)) {
         check_dispatch(to_symbol(css_copy), args, kwargs, 0, 0);
-        return copy();
+        return Any(copy());
     } else if (method.is(css_set_len)) {
         check_dispatch(to_symbol(css_set_len), args, kwargs, 1, 0);
-        return set_len(to_int((*args)[0]));
+        return Any(set_len(to_int((*args)[0])));
     }
     throw std::runtime_error("Array: no such method");
 }
@@ -187,7 +185,7 @@ Array *subseq(Array *arr, int64_t start, int64_t end) {
         throw std::out_of_range("subseq: out of range");
     }
     Array *result = new Array {};
-    L.set(sl_result, result);
+    L.set(sl_result, Any(result));
     for (int64_t i = start; i < end; i++) {
         result->append((*arr)[i]);
     }

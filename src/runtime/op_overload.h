@@ -84,6 +84,7 @@ bool operator==(Any lhs, String rhs);
 bool operator==(Any lhs, StringPtr rhs);
 bool operator==(Any lhs, ArrayPtr rhs);
 bool operator==(Any lhs, Symbol rhs);
+bool operator==(Symbol &lhs, Symbol &rhs);
 bool operator!=(Any lhs, Any rhs);
 
 #include <type_traits>
