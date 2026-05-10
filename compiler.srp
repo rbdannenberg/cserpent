@@ -41,8 +41,8 @@ if len(command_line_arguments) != 2:
 # relative path, has .srp suffix:
 original_target_file = command_line_arguments[1] 
 output_folder = file_change_suffix(output_folder, nil)
-program_name = file_name_from_path(original_target_file)
-system("rm -r " + output_folder)
+program_name = file_base(file_name_from_path(original_target_file))
+// system("rm -r " + output_folder)
 mkdir(output_folder)
 
 session = CompilationSession()
@@ -129,7 +129,7 @@ if compile:
         print         "----------------"
     # compile code
     cmake_configure = "cmake -DCMAKE_BUILD_TYPE=Release -S " + output_folder +
-                      " -B " + output_folder + "build" +  " --fresh"
+                      " -B " + output_folder + "build" // +  " --fresh"
     cmake_build = "cmake --build " + output_folder + "build"
     if not debug:
         cmake_configure = cmake_configure + " > /dev/null"
