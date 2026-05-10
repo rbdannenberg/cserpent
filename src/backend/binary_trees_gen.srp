@@ -50,9 +50,13 @@ make_tree_func = Function(
             block 
         ),
         Assignment(depth_var_name, BinOp(depth_var_name, "-", one_literal)),
-        DeclarationNAssignment(tree_class_name, new_tree_var_name, Constructor(tree_class_name, ArgumentList([], {}))),
-        Assignment(GetAttribute(new_tree_var_name, left_var_name), FunctionCall(make_tree_func_name, ArgumentList([depth_var_name], {}))),
-        Assignment(GetAttribute(new_tree_var_name, right_var_name), FunctionCall(make_tree_func_name, ArgumentList([depth_var_name], {}))),
+        DeclarationNAssignment(tree_class_name, new_tree_var_name,
+                               Constructor(tree_class_name, ArgumentList([], {})),
+                               ParseContext(nil)),
+        Assignment(GetAttribute(new_tree_var_name, left_var_name),
+                   FunctionCall(make_tree_func_name, ArgumentList([depth_var_name], {}))),
+        Assignment(GetAttribute(new_tree_var_name, right_var_name),
+                   FunctionCall(make_tree_func_name, ArgumentList([depth_var_name], {}))),
         ReturnStatement(new_tree_var_name)
     ])
 )

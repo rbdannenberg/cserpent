@@ -4,9 +4,19 @@ require "src/frontend/ast.srp"
 function_corrections = {
     "main": "main__",
     "str": "force_str",
-    "int": "force_int"
+    "int": "force_int" }
 
-}
+
+CPP_TYPE_TO_TYPE_CODE = {
+    "int": "Any_type::INT",
+    "double": "Any_type::REAL",
+    "bool": "Any_type::BOOL",
+    "variable": "Any_type::NIL",  // means "Any"
+    "array": "Any_type::ARRAY",
+    "dict": "Any_type::DICT",
+    "symbol": "Any_type::SYMBOL"
+    }
+
 
 class CodegenVisitor(ASTVisitor):
     var output_folder  // path to output (C++) files
@@ -677,21 +687,30 @@ class CodegenVisitor(ASTVisitor):
         for global_variable in global_variables.keys():
             string = global_variables[global_variable]
             prefix = subseq(string, 0, 6)
+            var type = global_variables[global_variable]
             if prefix == "string":
                 global_vars_file.write("extern StringPtr " + global_variable +
                                        ";\n")
-                global_cpp_file.write("StringPtr " + global_variable + ";\n")
+                global_cpp_file.write("StringPtr " + global_variable +
+                                      " = \"\";\n")
             else:
-                var type = global_variables[global_variable]
                 display repr(global_variable), repr(type)
-                global_vars_file.write("extern Any " + global_variable + ";\n")
-                global_cpp_file.write("Any " + global_variable + ";\n")
+                if type == "variable":
+                    type = "Any"
+                global_vars_file.write("extern " + type + " " +
+                                       global_variable + ";\n")
+                var initial_value = " = 0"
+                if type == "Any":
+                    initial_value = ""
+                global_cpp_file.write(type + " " + global_variable +
+                                      initial_value + ";\n")
         global_cpp_file.write("\nint cs_global_init()\n{\n")
         global_cpp_file.write("    // Initialize global variables here\n")
         for global_variable in global_variables.keys():
             string = global_variables[global_variable]
             prefix = subseq(string, 0, 6)
             text = subseq(string, 6, -1)
+            type = global_variables[global_variable]
             if prefix == "string":
                 global_cpp_file.write("    " + global_variable +
                                       " = StringPtr{new String(" +
@@ -704,9 +723,9 @@ class CodegenVisitor(ASTVisitor):
                 // output: *(s->value()) = (Any *) &csg_a;
                 global_cpp_file.write("    *(s->value()) = (Any *) &" + 
                                       global_variable + ";\n")
-                // output: s->symbol_type() = Any_type::INT
-                global_cpp_file.write("    *(s->symbol_type()) = " + 
-                                      "Any_type::INT;\n")
+                // output: s->symbol_type() = Any_type::???
+                global_cpp_file.write("    *(s->symbol_type()) = " +
+                                      CPP_TYPE_TO_TYPE_CODE[type] + ";\n")
         global_vars_file.write("int cs_global_init();\n")
         global_cpp_file.write("    return 0;\n")
         global_cpp_file.write("}\n")

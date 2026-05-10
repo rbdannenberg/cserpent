@@ -275,7 +275,7 @@ def parse_statement(ctx):
             if not parse_expression(ctx):
                 return false
             ctx.set_result(DeclarationNAssignment(type, iden, ctx.pop_result(),
-                                                  ctx.in_function))
+                                                  ctx))
         else:
             ctx.set_result(Declaration(iden, type, ctx.in_function))
 
@@ -301,7 +301,8 @@ def parse_statement(ctx):
                 return false
             
             var rhs = ctx.pop_result()
-            if not (isinstance(lhs, Identifier) or isinstance(lhs, GetAttribute) or isinstance(lhs, Index)):
+            if not (isinstance(lhs, Identifier) or isinstance(lhs, GetAttribute) or 
+                    isinstance(lhs, Index)):
                 ctx.err(
                     eq.range,
                     "LHS of assignment must be identifier, attribute or index"

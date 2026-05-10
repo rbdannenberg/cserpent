@@ -238,13 +238,13 @@ class DeclarationNAssignment(Statement):
     var expression # : Expression
     var local_flag  # : boolean
 
-    def init(_declared_type, _identifier, _expression, _local_flag):
+    def init(_declared_type, _identifier, _expression, ctx):
         super.init()
         declared_type = _declared_type
         declared_type = SERPENT_TO_CPP_TYPES[_declared_type]
         identifier = Identifier(_identifier)
         expression = _expression
-        local_flag = _local_flag
+        local_flag = ctx.in_function
 
     def accept(visitor):
         visitor.visitDeclarationNAssignment(this)

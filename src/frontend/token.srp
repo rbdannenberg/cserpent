@@ -67,7 +67,7 @@ class Token:
         display "Token constructor", tk_type, content, range
 
     def render():
-        return "(" + tk_type + ": \"" + content + "\")"
+        return "(" + str(tk_type) + ": \"" + content + "\")"
 
 
 # Since `continue` doesn't exist in Serpent, we are using boxed value (single
