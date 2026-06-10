@@ -153,7 +153,6 @@ class SemCheckVisitor(ASTVisitor):
         for statement in block.statements:
             statement.accept(this)
         if function_block: # and not isinstance(block.statements[-1], ReturnStatement):
-            print "here"
             code_lines.append(indentation + "return nil;")
 
     def visitIf(if_statement):

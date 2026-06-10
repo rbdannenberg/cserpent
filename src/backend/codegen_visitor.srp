@@ -7,6 +7,11 @@ function_corrections = {
     "int": "force_int" }
 
 
+// destination parameter values for add_line
+FOR_CPP = 'cpp'
+FOR_H = 'h'
+FOR_MAIN = 'main'
+
 CPP_TYPE_TO_TYPE_CODE = {
     "int": "Any_type::INT",
     "double": "Any_type::REAL",
@@ -18,72 +23,147 @@ CPP_TYPE_TO_TYPE_CODE = {
     }
 
 
+TYPE_TO_CPP_TYPE = {
+    'any': "Any",
+    'array': "ArrayPtr",
+    'dict': "DictPtr" }
+
+// this is a bit of a hack, but "types" in global_variables get
+// various strings, e.g. some representing string constants, so
+// we check for both symbol and string versions of type names:
+NON_PTR_TYPES = ['int', 'real', 'bool', "int", "real", "bool"]
+
+def non_ptr_type(type):
+    display "non_ptr_type", type, type in NON_PTR_TYPES
+    type in NON_PTR_TYPES
+
+
 class CodegenVisitor(ASTVisitor):
     var output_folder  // path to output (C++) files
-    var source_lines
+    var cpp_lines
     var header_lines
     var main_lines
     var main_includes
+    // locals will contain dictionary from name->type. Code will be
+    // generated from this.  Note that locals can be int or real.
+    // Even though not special code is needed for these, we put them
+    // in the dictionary because they can take priority over globals
+    // or class instance variables with the same name.
+    var function_locals  // locals info for current function body
+        // also, function_locals is for *_main, when not defining a function
     var header_includes
-    var curr_code_line
-    var indent_levels
+    var current_class
+    var in_function  // true if in function (or method if current_class)
+    var indent_level
     var include_list
     var user_defined_classes
-    var global_variables
-    var current_class
+    var global_variables  // maps from global name to type, but a special
+                 // case is string constants value looks like string"foo"
     var hoisted_strings // maps literal to variable name
-    # enums
-    var source
-    var header
-    var main
     var string_counter
+    var temp_counters  // next available temp variable name of each type
+    var last_statement_is_return  // do we need a final return?
 
     def init(_output_folder):
         super.init()
         output_folder = _output_folder
-        source_lines = []
-        header_lines = []
-        main_includes = []
-        curr_code_line = ""
-        indent_levels = [0, 0, 1]
-        context = 1
-        include_list =
-            "#pragma once\n" +
-            "#include <runtime.h>\n"
+        cpp_lines = []  // strings to be flattened
+        header_lines = []  // strings to be flattened
+        main_includes = []  // strings to be flattened
+        # indent_levels = [0, 0, 1]
+        include_list = "#pragma once\n#include <runtime.h>\n"
         indentation = "    "
         user_defined_classes = []
         global_variables = {}
         hoisted_strings = {}
-        // these 4 act as enums
-        source = 0
-        header = 1
-        main = 2
         string_counter = 0
-
-
-    def switch_context(ctx):
-        context = ctx
+        temp_counters = {}
+        function_locals = {}  // for main
 
 
     def reset():
-        source_lines = []
+        cpp_lines = []
         header_lines = []
-        curr_code_line = ""
-        indent_levels = [0, 0, 1]
-        switch_context(header)
+        main_lines = []
+        indent_level = 0
+        # indent_levels = [0, 0, 1]
 
 
-    def add_line(line, optional ctx = nil):
-        if ctx == nil:
-            ctx = context
-        for i = 0 to indent_levels[ctx]:
-            line = indentation + line
-        if ctx == 0:
-            source_lines.append(line)
-        elif ctx == 1:
-            header_lines.append(line)
+    def add_to_cpp(line, optional indent):
+        add_line(FOR_CPP, line, indent)
+
+    def add_to_h(line, optional indent):
+        add_line(FOR_H, line, indent)
+
+    def add_line(dest, line, optional indent):
+    # adds a C++ cpp line or .h line.
+    # dest is FOR_CPP for .cpp and FOR_H for .h files.
+    # If not in_function, FOR_CPP means append to main_lines,
+    # otherwise, FOR_CPP means append to cpp_lines
+    # To force append to main_lines, use FOR_MAIN.
+    # "main" means global statements become statements in <file>_main().
+        var lines
+        indent = indent or indent_level
+        if dest == FOR_H:
+            lines = header_lines
+        elif dest == FOR_MAIN:  // overrides in_function
+            lines = main_lines
+        elif in_function:
+            lines = cpp_lines
         else:
-            main_lines.append(line)
+            lines = main_lines
+        for i = 0 to indent:
+            lines.append(indentation)
+        lines.append(line)
+        lines.append("\n")
+
+
+#    def add_line(line, optional ctx = nil):
+#        if ctx == nil:
+#            ctx = context
+#        for i = 0 to indent_levels[ctx]:
+#            line = indentation + line
+#        if ctx == CTX_SOURCE:
+#            cpp_lines.append(line)
+#        elif ctx == CTX_HEADER:
+#            header_lines.append(line)
+#        else:  // CTX_MAIN
+#            main_lines.append(line)
+
+
+    def begin_statement():
+    # returns info that should be passed to end_statement when the
+    # statement has finished compiling. This is used to "free"
+    # the temporary variables that were used to execute the statement
+        return temp_counters.copy()
+
+
+    def end_statement(state):
+    # restores state to where it was before the statement was compiled
+        // state is just a copy of temp_counters
+        temp_counters = state
+
+
+    def allocate_temp(type):
+        var count = temp_counters.get(type, 0)
+        var name = "temp_" + str(type) + "_" + str(count)
+        temp_counters[type] = count + 1
+        # need to create a new local variable for temporary?
+        if not function_locals.has_key(name):
+            function_locals[name] = type
+            if non_ptr_type(type):
+                add_to_cpp(type + " " + name + ";")
+        return name
+
+
+    def assign_to_global(name, value):
+        // if the global is declared as int, real, or bool, we can
+        // set it directly after coercing the value:
+        if non_ptr_type(global_variables[name]):
+            code_line = name + " = ("
+        else:  // otherwise, use set_any_global():
+            code_line = "set_any_global(&" + name + ", "
+        add_to_cpp(code_line + value + ");")
 
 
     def visitLiteral(literal):
@@ -94,23 +174,26 @@ class CodegenVisitor(ASTVisitor):
                 var var_name = "string_" + str(string_counter)
                 string_counter = string_counter + 1
                 hoisted_strings[text] = var_name
-                //add_line(var_name + " = new String(" + text + ");", main)
                 global_variables[var_name] = "string" + text
-            curr_code_line = curr_code_line + hoisted_strings[text]
+            return hoisted_strings[text]
         elif literal.value[0] == "'":
-            curr_code_line = curr_code_line + "Symbol {\"" +
-                             subseq(str(literal.value), 1, -1) + "\"}"
+            print "ERROR: need to implement literal symbols"
+            exit()
+            // return "Symbol {\"" + subseq(str(literal.value), 1, -1) + "\"}"
+            // in global_vars.{h,cpp}, make globals to hold pointer to symbols
+            // When global vars are initiated, if there is already a symbol
+            // stored in a global, you can avoid looking it up.
+            // return the global name here.
         else:
-            curr_code_line = curr_code_line + str(literal.value)
+            return str(literal.value)
 
 
     def visitIdentifier(identifier):
         # needs to encapsulate all inherited member variables:
         if current_class and identifier.value in current_class.member_variables:
-            curr_code_line = curr_code_line + "get_" + identifier.value + "()"
-            return
+            return "get_" + identifier.value + "()"
         // not a declared local or instance variable, so must be a global
-        curr_code_line = curr_code_line + identifier.value_as_global()
+        var code_str = identifier.value_as_global()
         // if global is implicitly declared, insert into global_variables
         if not global_variables.has_key(identifier.value_as_global()):
             display "** visitIdentifier", identifier
@@ -119,12 +202,12 @@ class CodegenVisitor(ASTVisitor):
             //     stacktrace()
             //     print "=================================================="
             global_variables[identifier.value_as_global()] = "variable"
+        return code_str
 
 
     def visitBoolOp(bool_op):
-        bool_op.left.accept(this)
-        curr_code_line = curr_code_line + " " + bool_op.op + " "
-        bool_op.right.accept(this)
+        return bool_op.left.accept(this) + " " + bool_op.op + " " +
+               bool_op.right.accept(this)
 
 
     def visitBinOp(bin_op):
@@ -134,220 +217,195 @@ class CodegenVisitor(ASTVisitor):
         if bin_op.op == "is":
             function_correction = "is_equal"
         if function_correction:
-            curr_code_line = curr_code_line + function_correction + "("
-            bin_op.left.accept(this)
-            curr_code_line = curr_code_line + ", "
-            bin_op.right.accept(this)
-            curr_code_line = curr_code_line + ")"
-            return
-        bin_op.left.accept(this)
-        curr_code_line = curr_code_line + " " + bin_op.op + " "
-        bin_op.right.accept(this)
+            return function_correction + "(" + bin_op.left.accept(this) +
+                   ", " + bin_op.right.accept(this) + ")"
+        return bin_op.left.accept(this) + " " + bin_op.op + " " +
+               bin_op.right.accept(this)
 
 
     def visitUnaryOp(unary_op):
         if unary_op.op == "not":
             unary_op.op = "!"
-        curr_code_line = curr_code_line + unary_op.op + "("
-        unary_op.value.accept(this)
-        curr_code_line = curr_code_line + ")"
+        return unary_op.op + "(" + unary_op.value.accept(this) + ")"
 
 
     def visitArray(array_node):
         # array literal, adds a 
-        curr_code_line = curr_code_line + "ArrayPtr {new Array {"
+        var temp = allocate_temp('array')
+        add_to_cpp("L.set(SL_" + temp + ", Any {new Array(" +
+                   str(len(array_node.elements)) + ", nil)});")
         for element at i in array_node.elements:
-            element.accept(this)
-            if i < len(array_node.elements) - 1:
-                curr_code_line = curr_code_line + ", "
-        curr_code_line = curr_code_line + "}}"
+            add_to_cpp("L." + temp + "->set(" + str(i) + ", " +
+                       element.accept(this) + ");")
+        return "L." + temp
 
 
     def visitDictionary(dictionary_node):
-        curr_code_line = curr_code_line + "*(new Dictionary {"
+        var code_str = "*(new Dictionary {"
         for pair at i in dictionary.pairs:
-            curr_code_line = curr_code_line + "{"
-            pair[0].accept(this)
-            curr_code_line = curr_code_line + ", "
-            pair[1].accept(this)
-            curr_code_line = curr_code_line + "}"
-
+            code_str = code_str + "{" + pair[0].accept(this) + ", " +
+                       pair[1].accept(this) + "}"
             if i < len(dictionary.pairs) - 1:
-                curr_code_line = curr_code_line + ", "
-        curr_code_line = curr_code_line + "})"
+                code_str = code_str + ", "
+        return code_str + "})"
 
 
-    def visitArgumentList(argument_list):
-        var kwargs = argument_list.kwargs
-        if len(argument_list.args) == 0 and argument_list.dispatch == "dynamic":
-            curr_code_line = curr_code_line + "empty_array"
+    def visitArgumentList(arg_list):
+        var kwargs = arg_list.kwargs
+        var code_str = ""
+        if len(arg_list.args) == 0 and arg_list.dispatch == "dynamic":
+            code_str = "empty_array"
         else:
-            if argument_list.dispatch == "dynamic":
-                curr_code_line = curr_code_line + "Array {"
+            if arg_list.dispatch == "dynamic":
+                code_str = code_str + "Array {"
 
-            for i = 0 to len(argument_list.args):
-                argument_list.args[i].accept(this)
-                if i < len(argument_list.args) - 1
-                    curr_code_line = curr_code_line + ", "
+            for i = 0 to len(arg_list.args):
+                code_str = code_str + arg_list.args[i].accept(this)
+                if i < len(arg_list.args) - 1
+                    code_str = code_str + ", "
 
-            if argument_list.dispatch == "dynamic":
-                curr_code_line = curr_code_line + "}"
+            if arg_list.dispatch == "dynamic":
+                code_str = code_str + "}"
 
-        if argument_list.dispatch == "dynamic" or len(kwargs.keys()) > 0:
+        if arg_list.dispatch == "dynamic" or len(kwargs.keys()) > 0:
             if len(kwargs.keys()) == 0:
-                curr_code_line = curr_code_line + ", empty_dict"
+                code_str = code_str + ", empty_dict"
             else:
-                curr_code_line = curr_code_line + ", Dictionary {"
+                code_str = code_str + ", Dictionary {"
                 for i = 0 to len(kwargs.keys()):
-                    curr_code_line = curr_code_line + "{"
                     key = kwargs.keys()[i]
-                    key.accept(this)
-                    curr_code_line = curr_code_line + ", "
-                    kwargs[key].accept(this)
-                    curr_code_line = curr_code_line + "}"
+                    code_str = code_str + "{" + key.accept(this) + ", " +
+                               kwargs[key].accept(this) + "}"
                     if i < len(kwargs) - 1:
-                        curr_code_line = curr_code_line + ", "
-                curr_code_line = curr_code_line + "}"
+                        code_str = code_str + ", "
+                code_str = code_str + "}"
+        return code_str
 
 
-    def visitFunctionCall(function_call):
-        if function_call.name in user_defined_classes:
-            visitConstructor(function_call)
+    def visitFunctionCall(fcall):
+        if fcall.name in user_defined_classes:
+            visitConstructor(fcall)
             return
-        if function_call.name in function_corrections.keys():
-            function_call.name = function_corrections[function_call.name]
-        var args = function_call.parameters.args
-        if function_call.name == "print" or function_call.name == "display":
-            curr_code_line = curr_code_line + "std::cout << "
-            if len(function_call.parameters.kwargs) != 0:
+        if fcall.name in function_corrections.keys():
+            fcall.name = function_corrections[fcall.name]
+        var code_str
+        var args = fcall.parameters.args
+        if fcall.name == "print" or fcall.name == "display":
+            code_str = "std::cout << "
+            if len(fcall.parameters.kwargs) != 0:
                 print "Error: print function does not take keyword arguments"
                 exit()
             for i = 0 to len(args):
-                curr_code_line = curr_code_line + "("
-                args[i].accept(this)
-                curr_code_line = curr_code_line + ")"
+                code_str = code_str + "(" + args[i].accept(this) + ")"
                 if i < len(args) - 1:
-                    curr_code_line = curr_code_line + " << "
-            curr_code_line = curr_code_line + " << std::endl"
-        elif function_call.name == "exit":
-            curr_code_line = curr_code_line + "exit(0)"
-        elif function_call.name == "funcall":
-            curr_code_line = curr_code_line + "apply("
-            function_call.parameters.args[0].accept(this)
-            curr_code_line = curr_code_line + ", *(new Array {"
+                    code_str = code_str + " << "
+            code_str = code_str + " << std::endl"
+        elif fcall.name == "exit":
+            code_str = "exit(0)"
+        elif fcall.name == "funcall":
+            code_str = "apply(" + fcall.parameters.args[0].accept(this)
+            code_str = code_str + ", *(new Array {"
             for i = 1 to len(args):
-                args[i].accept(this)
+                code_str = code_str + args[i].accept(this)
                 if i < len(args) - 1
-                    curr_code_line = curr_code_line + ", "
-            curr_code_line = curr_code_line + "}))"
-        elif function_call.name == "send":
-            curr_code_line = curr_code_line + "sendapply("
-            function_call.parameters.args[0].accept(this)
-            curr_code_line = curr_code_line + ", "
-            function_call.parameters.args[1].accept(this)
-            curr_code_line = curr_code_line + ", *(new Array {"
+                    code_str = code_str + ", "
+            code_str = code_str + "}))"
+        elif fcall.name == "send":
+            code_str = "sendapply(" + fcall.parameters.args[0].accept(this) +
+                ", " + fcall.parameters.args[1].accept(this) + ", *(new Array {"
             for i = 2 to len(args):
-                args[i].accept(this)
+                code_str = code_str + args[i].accept(this)
                 if i < len(args) - 1
-                    curr_code_line = curr_code_line + ", "
-            curr_code_line = curr_code_line + "}))"
-
+                    code_str = code_str + ", "
+            code_str = code_str + "}))"
         else:
-            curr_code_line = curr_code_line + function_call.name + "("
-            function_call.parameters.accept(this)
-            curr_code_line = curr_code_line + ")"
+            code_str = fcall.name + "(" + fcall.parameters.accept(this)
+            code_str = code_str + ")"
+        return code_str
 
 
-    def visitConstructor(constructor):
-        curr_code_line = curr_code_line + "*(new " + constructor.name + " {"
-        constructor.parameters.accept(this)
-        curr_code_line = curr_code_line + "})"
+    def visitConstructor(constr):
+        return "*(new " + constr.name +
+               " {" + constr.parameters.accept(this) + "})"
 
 
-    def visitMethodCall(method_call):
-        method_call.object.accept(this)
-        
+    def visitMethodCall(mcall):
+        var code_str = mcall.object.accept(this)
         # Special case for append method - call it directly
-        if method_call.method_name == "append":
-            curr_code_line = curr_code_line + ".append("
+        if mcall.method_name == "append":
+            code_str = code_str + ".append("
             # Append should have exactly one argument
-            if len(method_call.parameters.args) == 1:
-                method_call.parameters.args[0].accept(this)
-            curr_code_line = curr_code_line + ")"
+            if len(mcall.parameters.args) == 1:
+                code_str = code_str + mcall.parameters.args[0].accept(this)
+            code_str = code_str + ")"
         else:
             # General case using .call()
-            curr_code_line = curr_code_line + ".call(\"" +
-                             method_call.method_name + "\", "
-            method_call.parameters.dispatch = "dynamic"
-            method_call.parameters.accept(this)
-            curr_code_line = curr_code_line + ")"
+            code_str = code_str + ".call(\"" + mcall.method_name + "\", "
+            mcall.parameters.dispatch = "dynamic"
+            code_str = code_str + mcall.parameters.accept(this) + ")"
+        return code_str
 
 
     def visitGetAttribute(get_attribute):
-        get_attribute.object.accept(this)
-        curr_code_line = curr_code_line + ".call(\"get_" +
-                get_attribute.attribute + "\", empty_array, empty_dict)"
+        return get_attribute.object.accept(this) + ".call(\"get_" +
+               get_attribute.attribute + "\", empty_array, empty_dict)"
 
 
     def visitIndex(index):
-        index.object.accept(this)
-        curr_code_line = curr_code_line + "[to_int("
-        index.index.accept(this)
-        curr_code_line = curr_code_line + ")]"
+        return index.object.accept(this) + "[to_int(" + 
+               index.index.accept(this) + ")]"
 
 
-    def visitAssignment(assignment):
-        if isinstance(assignment.identifier, GetAttribute):
-            get_attribute = assignment.identifier
-            get_attribute.object.accept(this)
-            curr_code_line = curr_code_line + ".call(\"set_" +
-                get_attribute.attribute + "\", Array {"
-            assignment.expression.accept(this)
-            add_line(curr_code_line + "}, empty_dict);")
-            curr_code_line = ""
+    def visitAssignment(assign):
+        var ident = assign.identifier
+        var value
+        if isinstance(ident, GetAttribute):
+            # does this handle a.b.c[x].h = ?
+            code_line = ident.accept(this)
+            # this all seems wrong - at least not fast when types are known
+#             code_line = code_line + ".call(\"set_" +
+#                 ident.attribute + "\", Array {"
+#             assign.expression.accept(this)
+#            add_line(curr_code_line + "}, empty_dict);")
+#            curr_code_line = ""
             return
 
-        if isinstance(assignment.identifier, Index):
-            index_obj = assignment.identifier
-            index_obj.object.accept(this)
-            curr_code_line = curr_code_line + ".set(to_int("
-            index_obj.index.accept(this)
-            curr_code_line = curr_code_line + "), "
-            assignment.expression.accept(this)
-            add_line(curr_code_line + ");")
-            curr_code_line = ""
+        if isinstance(ident, Index):
+            # does this handle a[2].b.c[x].h = ?
+# this all seems wrong - at least not fast when types are known
+#            index_obj = ident
+#            index_obj.object.accept(this)
+#            curr_code_line = curr_code_line + ".set(to_int("
+#            index_obj.index.accept(this)
+#            curr_code_line = curr_code_line + "), "
+#            assign.expression.accept(this)
+#            add_line(curr_code_line + ");")
+#            curr_code_line = ""
             return
 
-        # same goes for index
-        if current_class and isinstance(assignment.identifier, Identifier) and
-           assignment.identifier.value in current_class.member_variables:
-            if curr_code_line != "":
-                print_ast(assignment)
-                print curr_code_line, "Should be empty, weird", current_class
-            curr_code_line = "set_" + assignment.identifier.value + "("
-            assignment.expression.accept(this)
-            add_line(curr_code_line + ");")
-            curr_code_line = ""
+        var name = ident.value
+        if current_class and isinstance(ident, Identifier) and
+           name in current_class.member_variables:
+            code_line = "set_" + name + "(" + 
+                        assign.expression.accept(this) + ");"
+            add_to_cpp(code_line)
             return
 
-        # assume it is a global (maybe we need to add code to distinguish
-        # local variables and parameters here)
-        curr_code_line = curr_code_line + "set_any_global(&"
-        assignment.identifier.accept(this)
-        if isinstance(assignment.identifier, Identifier) and
-           current_class == nil:
-            global_variables[assignment.identifier.value_as_global()] =
-                    "variable"
-        curr_code_line = curr_code_line + ", "
-        assignment.expression.accept(this)
-        add_line(curr_code_line + ");")
-        curr_code_line = ""
+        # not member, so must be global or local
+
+        value = assign.expression.accept(this)
+        // see if it is local
+        if in_function and function_locals.has_key(name):  // it's local
+            add_to_cpp("L.set(SL_" + name + ", " + value + ");")
+        else: // it's global
+            if isinstance(ident, Identifier) and current_class == nil:
+               global_variables[ident.value_as_global()] = "variable"
+            assign_to_global(ident.value_as_global(), value)
 
 
     def visitStandaloneExpression(standalone_expression):
-        standalone_expression.expression.accept(this)
-        add_line(curr_code_line + ";")
-        curr_code_line = ""
+        var code_line = standalone_expression.expression.accept(this)
+        add_to_cpp(code_line + ";")
 
 
     def visitDeclaration(declaration):
@@ -360,110 +418,117 @@ class CodegenVisitor(ASTVisitor):
 
 
     def visitDeclarationNAssignment(d_and_a):
-        # we don't use the declared type for now because we are using Any
-        // d_and_a.identifier.accept(this)
-        if d_and_a.declared_type in ["int", "real"]:
-            curr_code_line = curr_code_line + "csg_" +
-                             d_and_a.identifier.value + " = ("
-        else:
-            curr_code_line = curr_code_line + "set_any_global(&csg_" +
-                             d_and_a.identifier.value + ", "
-        d_and_a.expression.accept(this)
-        add_line(curr_code_line + ");")
-        curr_code_line = ""
+        display "visitDeclAssign", d_and_a.identifier.value
+        var name = d_and_a.identifier.value
+        var code_line
+        if in_function:
+            if function_locals.has_key(name)
+                print "ERROR: local", d_and_a.identifier.value,
+                print     "already declared."
+                exit();
+            function_locals[name] = d_and_a.declared_type
+            if d_and_a.declared_type in ["int", "real", "bool"]:
+                code_line = d_and_a.declared_type + " " + name + " = ("
+            else:
+                code_line = "L.set(SL_" + name + ", "
+            add_to_cpp(code_line + ");")            
+        else:  // this is a global declaration
+            var ident = d_and_a.identifier
+            display "** visitDeclarationNAssignment", d_and_a.declared_type,
+            display         ident.value, type(d_and_a.declared_type)
+            global_variables[ident.value_as_global()] = d_and_a.declared_type
+            display "   ", global_variables[ident.value_as_global()],
+            display     ident.value_as_global()
 
-        # assume for now this is a global declaration
-        display "** visitDeclarationNAssignment", d_and_a.declared_type,
-        display         d_and_a.identifier.value, type(d_and_a.declared_type)
-        global_variables[d_and_a.identifier.value_as_global()] =
-                d_and_a.declared_type
-        display "   ", global_variables[d_and_a.identifier.value_as_global()], d_and_a.identifier.value_as_global()
+            assign_to_global(ident.value_as_global(),
+                             d_and_a.expression.accept(this))
 
 
     def visitReturnStatement(return_statement):
-        curr_code_line = "return "
-        return_statement.expression.accept(this)
-        add_line(curr_code_line + ";")
-        curr_code_line = ""
+        add_line(source_line, "CS_FUNCTION_EXIT(L, " +
+                              return_statement.expression.accept(this) + ");")
+        if indent_level == 1:
+            last_statement_is_return = true
+        // otherwise, we're returning from inside a block and we cannot assume
+        // a return statement will be reached
 
 
     def visitBlock(block):
-        add_line("{")
-        indent_levels[context] = indent_levels[context] + 1
+        add_to_cpp("{")
+        indent_level = indent_level + 1
         for statement in block.statements:
+            var state = begin_statement()
+            last_statement_is_return = false;
             statement.accept(this)
-        indent_levels[context] = indent_levels[context] - 1
-        add_line("}")
+            end_statement(state)
+        indent_level = indent_level - 1
+        add_to_cpp("}")
 
 
     def visitIf(if_statement):
-        curr_code_line = "if (to_bool("
-        if_statement.condition.accept(this)
-        curr_code_line = curr_code_line + "))"
-        add_line(curr_code_line)
-        curr_code_line = ""
+        var code_line = "if (to_bool(" + if_statement.condition.accept(this)
+        add_to_cpp(code_line + "))")
         if_statement.block.accept(this)
         if if_statement.else_block is not nil:
             add_line("else")
             if_statement.else_block.accept(this)
 
 
-    def visitWhile(while_statement):
-        curr_code_line = "while (to_bool("
-        while_statement.condition.accept(this)
-        curr_code_line = curr_code_line + "))"
-        add_line(curr_code_line)
-        curr_code_line = ""
-        while_statement.block.accept(this)
+    def visitWhile(while_stmt):
+        var code_line = "while (to_bool(" + while_stmt.condition.accept(this)
+        add_to_cpp(code_line + "))")
+        while_stmt.block.accept(this)
 
 
-    def visitForRange(for_statement):
-        curr_code_line = "for (int64_t " + for_statement.identifier + " = "
-        for_statement.start.accept(this)
-        curr_code_line = curr_code_line + "; " + for_statement.identifier + " < "
-        for_statement.end.accept(this)
-        curr_code_line = curr_code_line + "; " + for_statement.identifier + " += ";
-        for_statement.by_amount.accept(this)
-        curr_code_line = curr_code_line + ")"
-        add_line(curr_code_line)
-        curr_code_line = ""
-        for_statement.block.accept(this)
+    def visitForRange(stmt):
+        var code_line = "for (int64_t " + stmt.identifier + " = " +
+                        stmt.start.accept(this) + "; " + stmt.identifier +
+                        " < " + stmt.end.accept(this) + "; " +
+                        stmt.identifier + " += " + stmt.by_amount.accept(this)
+        add_to_cpp(code_line + ")")
+        stmt.block.accept(this)
 
 
-    def visitForEach(for_statement):
-        curr_code_line = "for (auto " + for_statement.identifier.value + " : "
-        for_statement.iterable.accept(this)
-        curr_code_line = curr_code_line + ")"
-        add_line(curr_code_line)
-        curr_code_line = ""
-        for_statement.block.accept(this)
+    def visitForEach(stmt):
+        var code_line = "for (auto " + stmt.identifier.value + " : " + 
+                        stmt.iterable.accept(this) + ")"
+        add_to_cpp(code_line)
+        stmt.block.accept(this)
 
 
     def visitFunction(function):
+        assert(not in_function)
+        in_function = true
+
+        var main_function_locals = function_locals
+        function_locals = {}  // new name space inside function
+
+        var main_temp_counters = temp_counters
+        temp_counters = {}  // new name space inside function
+
         num_args = len(function.positional)
         if function.name == "main":
             function.name = "main__"
 
         # collect arguments within the parentheses
-        curr_code_line = function.name + "("
+        var code_line = function.name + "("
         for i = 0 to num_args:
             # Change this once type inference exists:
-            curr_code_line = curr_code_line + "Any " + function.positional[i]
+            code_line = code_line + "Any " + function.positional[i]
             if i < num_args - 1:
-                curr_code_line = curr_code_line + ", "
-        curr_code_line = curr_code_line + ")"
+                code_line = code_line + ", "
+        code_line = code_line + ")"
 
         var global_line = "Any " + "global_" + function.name +
                           "(const Array& args, const Dictionary& kwargs)"
 
-        add_line("Any " + curr_code_line + ";", header)
+        add_to_h("Any " + code_line + ";")
         if current_class:
-            add_line("Any " + current_class.name + "::" +
-                     curr_code_line, source)
+            add_to_cpp("Any " + current_class.name + "::" +
+                                   code_line)
         else:
-            add_line("Any " + curr_code_line, source)
+            add_to_cpp("Any " + code_line)
 
-        curr_code_line = ""
         # make corrections to the block
         var last_statement = function.block.statements.last()
         if not isinstance(last_statement, ReturnStatement):
@@ -473,63 +538,64 @@ class CodegenVisitor(ASTVisitor):
             else:
                 function.block.statements.append(
                         ReturnStatement(Literal("nil", "Any")))
-        switch_context(source)
         function.block.accept(this)
-        switch_context(header)
 
         if not current_class:
             # function is global
-            add_line(global_line + ";", header)
-            add_line(global_line + " {", source)
-            add_line(indentation + "check_dispatch(\"" + function.name + "\",
+            add_to_h(global_line + ";")
+            add_to_cpp(global_line + " {")
+            add_to_cpp("check_dispatch(\"" + function.name + "\",
                      args, kwargs, " + str(len(function.positional)) + ",
-                     " + str(len(function.optional)) + ");", source)
-            var call = indentation + "return " + function.name + "("
+                     " + str(len(function.optional)) + ");", 1)
+            var call = "return " + function.name + "("
             for i = 0 to num_args:
                 call = call + "args[" + str(i) + "]"
                 if i < num_args - 1:
                     call = call + ", "
             call = call + ");"
-            add_line(call, source)
-            add_line("}", source)
-            add_line("globals::cs_symbol_table.set_function(Symbol {\"" +
-                     function.name + "\"}, &global_" + function.name + ");",
-                     main)
+            add_to_cpp(call)
+            add_to_cpp("}")
+            add_line(FOR_MAIN, "globals::cs_symbol_table.set_function(" + 
+                               "Symbol {\"" + function.name + "\"}, " +
+                               "&global_" + function.name + ");")
+        in_function = false
+        function_locals = main_function_locals  // restore
+        temp_counters = main_temp_counters  // restore
 
 
     def visitClass(class_):
         current_class = class_
         user_defined_classes.append(class_.name)
-        switch_context(header)
         var class_ptr = class_.name + "_class"
         var function_list = []
-        add_line("extern Cs_class * " + class_ptr + ";")
-        add_line("class " + class_.name + " : public Obj {")
-        add_line("public:")
-        indent_levels[context] = indent_levels[context] + 1
-        add_line("Any more_slots[" + str(len(class_.member_variables)) + "];")
-        add_line(class_.name + "() : Obj {" + class_ptr + "} {}")
+        add_to_h("extern Cs_class * " + class_ptr + ";")
+        add_to_h("class " + class_.name + " : public Obj {")
+        add_to_h("public:")
+        indent_level = 1
+        add_to_h("Any more_slots[" + 
+                               str(len(class_.member_variables)) + "];")
+        add_to_h(class_.name + "() : Obj {" + class_ptr + "} {}")
 
         for variable at index in class_.member_variables:
             var variable_str = variable
             var getter = "get_" + variable_str
             var setter = "set_" + variable_str
             
-            add_line("Any " + getter + "() {")
+            add_to_h("Any " + getter + "() {")
             # since slot 0 is for class pointer:
-            add_line(indentation + "return slots[" + str(index + 1) + "];")
-            add_line("}")
-            add_line("Any " + setter + "(Any value) {")
-            add_line(indentation + "set_slot(" + str(index + 1) + ", value);")
-            add_line(indentation + "return nil;")
-            add_line("}")
+            add_to_h("return slots[" + str(index + 1) + "];", 2)
+            add_to_h("}")
+            add_to_h("Any " + setter + "(Any value) {")
+            add_to_h("set_slot(" + str(index + 1) + ", value);",
+                     2)
+            add_to_h("return nil;", 2)
+            add_to_h("}")
 
             function_list.append([getter, 0, 0])
             function_list.append([setter, 1, 0])
 
 
         for function in class_.member_functions:
-
             function.accept(this)
             function_list.append([function.name, len(function.positional),
                                   len(function.optional)])
@@ -537,34 +603,33 @@ class CodegenVisitor(ASTVisitor):
                 var num_args = len(function.positional)
                 var enclosed = ""
 
-                curr_code_line = class_.name + "("
+                var code_line = class_.name + "("
                 for i = 0 to num_args:
                     # Change this once type inference exists:
-                    curr_code_line = curr_code_line + "Any " +
-                                     function.positional[i]
+                    code_line = code_line + "Any " + function.positional[i]
                     enclosed = enclosed + function.positional[i]
                     if i < num_args - 1:
-                        curr_code_line = curr_code_line + ", "
+                        code_line = code_line + ", "
                         enclosed = enclosed + ", "
-                curr_code_line = curr_code_line + ") : Obj {" + class_ptr + "} {"
-                add_line(curr_code_line)
-                add_line(indentation + "init(" + enclosed + ");")
-                add_line("}")
+                code_line = code_line + ") : Obj {" + class_ptr + "} {"
+                add_to_h(code_line)
+                add_to_h("init(" + enclosed + ");", 2)
+                add_to_h("}")
 
-        indent_levels[context] = indent_levels[context] - 1
-        add_line("};")
+        indent_level = 0
+        add_to_h("};")
 
         # Define global functions for each class member function
-        switch_context(source)
         for function in function_list:
             var function_name = function[0]
             var signature = "Any " + class_.name + "_" + function_name +
                     "(Obj* self, const Array& args, const Dictionary& kwargs)"
-            add_line(signature + ";", header)
-            add_line(signature + " {", source)
-            indent_levels[context] = indent_levels[context] + 1
-            add_line("check_dispatch(\"" + function_name + "\", args, kwargs," +
-                     str(function[1]) + "," + str(function[2]) + ");")
+            add_to_h(signature + ";")
+            add_to_cpp(signature + " {")
+            indent_level = 1
+            add_to_cpp("check_dispatch(\"" + function_name +
+                                   "\", args, kwargs," + str(function[1]) +
+                                   "," + str(function[2]) + ");")
             var dispatch_line = "reinterpret_cast<" + class_.name +
                                 "*>(self)->" + function_name + "("
             for i = 0 to function[1]:
@@ -572,95 +637,132 @@ class CodegenVisitor(ASTVisitor):
                 if i < function[1] - 1:
                     dispatch_line = dispatch_line + ", "
             dispatch_line = dispatch_line + ");"
-            add_line("return " + dispatch_line)
-            indent_levels[context] = indent_levels[context] - 1
-            add_line("}")
+            add_to_cpp("return " + dispatch_line)
+            indent_level = 0
+            add_to_cpp("}")
 
         # Create the MemberTable that maps symbols to function pointers
         var table_name = "MemberTable " + class_.name + "_table"
-        add_line("extern " + table_name + ";", header)
-        add_line(table_name + " {", source)
-        indent_levels[context] = indent_levels[context] + 1
+        add_to_h("extern " + table_name + ";")
+        add_to_cpp(table_name + " {")
+        indent_level = indent_level + 1
         for function in function_list:
-            add_line("{Symbol{\"" + function[0] + "\"}, " + class_.name + "_" +
-                     function[0] + "},")
-        indent_levels[context] = indent_levels[context] - 1
-        add_line("};")
+            add_to_cpp("{Symbol{\"" + function[0] + "\"}, " +
+                                   class_.name + "_" + function[0] + "},")
+        indent_level = 0
+        add_to_cpp("};")
 
         # NOTE: 0b0 should be changed once type inference is implemented and
         #       we have pointer types
         var cs_class_init = "{Symbol {\"" + class_.name + "\"}, " +
                             str(len(class_.member_variables)) + ", 0b0, &" +
                             class_.name + "_table};"
-        add_line("Cs_class * " + class_ptr + " = new Cs_class " + cs_class_init)
-        switch_context(header)
+        add_to_cpp("Cs_class * " + class_ptr +
+                               " = new Cs_class " + cs_class_init)
         current_class = nil
 
 
     def visitFile(file):
-        add_line(include_list)
+        add_to_h(include_list)
         for element in file.elements:
-            if isinstance(element, Class) or isinstance(element, Function):
-                context = 1
-            else:
-                context = 2
             element.accept(this)
 
 
-    def generate_main(filename, source_file, ast):
-        main_lines.append(indentation + "return 0;")
-        main_lines.append("}")
+#    def generate_main(filename, source_file, ast):
+#        main_lines.append(indentation + "return 0;")
+#        main_lines.append("}")
+#
+#        var outf = open(output_folder + "/" + filename + ".cpp", "w")
+#
+#        for line in main_includes:
+#            display "ignoring main_includes in generate_main", line
+#            # outf.write(line + "\n")
+#
+#        var code = ""
+#        for line in main_lines:
+#            display "main_lines", line
+#            code = code + line + "\n"
+#            // outf.write(line + "\n")
+#        print code
+#        outf.write(code)
+#        // outf.write("// other globals should be marked here:\n")
+#        // TODO: mark the globals here
+#        outf.close()
+#        outf = nil
+#        exit()
 
-        var outf = open(output_folder + "/" + filename + ".cpp", "w")
 
-        for line in main_includes:
-            display "ignoring main_includes in generate_main", line
-            # outf.write(line + "\n")
-
-        var code = ""
-        for line in main_lines:
-            display "main_lines", line
-            code = code + line + "\n"
-            // outf.write(line + "\n")
-        print code
-        outf.write(code)
-        // outf.write("// other globals should be marked here:\n")
-        // TODO: mark the globals here
-        outf.close()
-        outf = nil
-        exit()
-
-
-    def write_cs_header(source_file, filename):
+    def write_cs_header(cpp_file, filename):
     # write standard includes for CSerpent modules. Omit <filename>.h if 
     # filename is nil
-        source_file.write("#include \"cserpent.h\"\n")
+        cpp_file.write("#include \"cserpent.h\"\n")
         if filename:
-            source_file.write("#include \"" + filename + ".h\"\n")
-        source_file.write("#include \"global_vars.h\"\n\n")
-        source_file.write("#include \"symbol_table.h\"\n\n")
+            cpp_file.write("#include \"" + filename + ".h\"\n")
+        cpp_file.write("#include \"global_vars.h\"\n\n")
+        cpp_file.write("#include \"symbol_table.h\"\n\n")
 
 
     def generate_code(filename, ast, deps):
         reset()
-        main_lines = ["int " + filename + "_main() {"]
+        add_line(FOR_MAIN, "int " + filename + "_main()\n{")
+        var mld = []  // "Main Locals Declaration" (mld) is a place-holder
+                      // for local declarations. This will be written after
+                      // we generate code with all locals.
+        main_lines.append(mld)
+        indent_level = 1
         ast.accept(this)
+        if not last_statement_is_return:  // need a final return statement
+            add_line(FOR_MAIN, "CS_FUNCTION_EXIT(L, 0);")
+        indent_level = 0
+        add_line(FOR_MAIN, "}")
 
-        main_lines.append(indentation + "return 0;")
-        main_lines.append("}")
+        // declarations for local variables in main (function_locals)
+        mld.append("    struct Frame : public Cs_frame {\n")
+        for name in function_locals.keys():
+            var type = function_locals[name]
+            if non_ptr_type(type):
+                mld.append("        " + TYPE_TO_CPP_TYPE[type] +
+                           " " + name + ";\n")
+        mld.append("    } L;\n")
 
-        var source_file = open(output_folder + "/" + filename + ".cpp", "w")
-        write_cs_header(source_file, filename)
+        var last_i = -1
+        for name at i in function_locals.keys():
+            mld.append("    constexpr int SL_" + name + " = " + str(i) + ";\n")
+            last_i = i
+        mld.append("    memset(&L, 0, sizeof(L));\n")
+        mld.append("    CS_FUNCTION_ENTRY(L, " + str(last_i + 1) + ");\n")
+        for name in function_locals.keys():
+            var type = function_locals[name]
+            if non_ptr_type(type):
+                mld.append("    " + type + " " + name + ";\n")
+
+        var cpp_file_name = output_folder + "/" + filename + ".cpp"
+        var cpp_file = open(cpp_file_name, "w")
+        write_cs_header(cpp_file, filename)
         for line in main_includes:
             display "ignoring main_includes in generate_main", line
-            # source_file.write(line + "\n")
-        for line in main_lines:
-            source_file.write(line + "\n")
-        for line in source_lines:
-            source_file.write(line + "\n")
-        // source_file.write("// other globals should be marked here:\n")
+            # cpp_file.write(line + "\n")
+        // we *could* just write flatten(main_lines) etc., but rather than
+        // constructing another giant string, we write each top-level element
+        // separately since they are mostly strings. But there could be
+        // nested arrays containing code, so flatten any nested arrays. (We
+        // could also make a recursive write that writes each leaf (string)
+        // in nested arrays, but that's not necessarily faster or particularly
+        // memory-saving.)
+        for s in main_lines:
+            cpp_file.write(flatten(s))
+        for s in cpp_lines:
+            cpp_file.write(flatten(s))
+        // cpp_file.write("// other globals should be marked here:\n")
         // TODO: mark the globals here
-        source_file.close()
+        cpp_file.close()
+
+        if debug:
+            cpp_file = open(cpp_file_name, "r")
+            var cpp_content = cpp_file.readlines()
+            print "--------------", cpp_file_name, "----------------"
+            print flatten(cpp_content);
+            print "-------------- end of ", cpp_file_name, "----------------"
 
         var header_file = open(output_folder + "/" + filename + ".h", "w")
         for dep in deps:
@@ -691,8 +793,7 @@ class CodegenVisitor(ASTVisitor):
             if prefix == "string":
                 global_vars_file.write("extern StringPtr " + global_variable +
                                        ";\n")
-                global_cpp_file.write("StringPtr " + global_variable +
-                                      " = \"\";\n")
+                global_cpp_file.write("StringPtr " + global_variable + ";\n")
             else:
                 display repr(global_variable), repr(type)
                 if type == "variable":
@@ -727,7 +828,7 @@ class CodegenVisitor(ASTVisitor):
                 global_cpp_file.write("    *(s->symbol_type()) = " +
                                       CPP_TYPE_TO_TYPE_CODE[type] + ";\n")
         global_vars_file.write("int cs_global_init();\n")
-        global_cpp_file.write("    return 0;\n")
+//        global_cpp_file.write("    CS_FUNCTION_EXIT(L, 0);\n")
         global_cpp_file.write("}\n")
         global_vars_file.close()
         global_cpp_file.close()

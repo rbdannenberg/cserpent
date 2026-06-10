@@ -49,7 +49,7 @@ Symbol::Symbol(const char *name_string, Any value, Any func,
     } L;
     constexpr int sl_result = 0;
     memset(&L, 0, sizeof(L));
-    STD_FUNCTION_ENTRY(L, 1);
+    CS_FUNCTION_ENTRY(L, 1);
     L.set(sl_result, Any(this));
     set_slot(1, value);  // store Any parameters first to protect them from GC
     set_slot(2, func);
@@ -57,6 +57,7 @@ Symbol::Symbol(const char *name_string, Any value, Any func,
     // invoke GC, including conversion of string to Any:
     set_slot(0, Any(name_string));
     cs_symbol_table->insert(*name(), L.result);
+    CS_FUNCTION_EXIT(L, 0);
 }
 
 

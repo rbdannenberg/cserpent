@@ -12,7 +12,7 @@ public:
     int64_t more_slots[((sizeof(std::vector<Any>) + sizeof(int64_t) - 1) /
                         sizeof(int64_t)) - 1];
     Array();
-    Array(std::initializer_list<Any> l);
+    // Array(std::initializer_list<Any> l);
     Array(int64_t size, Any value);
     Array(Array *x);
     // int64_t available_len();
@@ -33,6 +33,7 @@ public:
     void set(int64_t index, Any value);
     void set(int64_t index, double value);
     void set(int64_t index, int64_t value);
+    void set(int64_t index, int value);
 
     // important: use brackets only for read
     // Any& operator[](int64_t i);
@@ -60,6 +61,7 @@ struct ArrayPtr {
     ArrayPtr() : ptr(nullptr) {}
     ArrayPtr(Array* p) : ptr(p) {}
     operator Array*() const { return ptr; }
+    Array *operator ->() const { return ptr; }
 };
 
 ArrayPtr array(int64_t size);

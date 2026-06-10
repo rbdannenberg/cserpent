@@ -25,10 +25,10 @@ Array::Array() {
     new(slots) (std::vector<Any>);
 }
 
-Array::Array(std::initializer_list<Any> l) {
-    set_tag(tag_array);
-    new (slots) std::vector<Any> {l};
-}
+// Array::Array(std::initializer_list<Any> l) {
+//     set_tag(tag_array);
+//     new (slots) std::vector<Any> {l};
+// }
 
 Array::Array(int64_t size, Any value) {
     set_tag(tag_array);
@@ -110,6 +110,11 @@ void Array::set(int64_t index, int64_t value) {
     data->at(index) = value;
 }
 
+void Array::set(int64_t index, int value) {
+    std::vector<Any> *data = get_vector();
+    data->at(index) = (int64_t) value;
+}
+
 /*
 Any& Array::operator[](int64_t i) {
     std::vector<Any> *data = get_vector();
@@ -169,7 +174,7 @@ Array *subseq(Array *arr, int64_t start, int64_t end) {
     } L;
     constexpr int sl_result = 0;
     memset(&L, 0, sizeof(L));
-    STD_FUNCTION_ENTRY(L, 1);
+    CS_FUNCTION_ENTRY(L, 1);
     int64_t arr_len = arr->len();
     if (end == std::numeric_limits<int64_t>::max()) {
         end = arr_len;
@@ -189,7 +194,7 @@ Array *subseq(Array *arr, int64_t start, int64_t end) {
     for (int64_t i = start; i < end; i++) {
         result->append((*arr)[i]);
     }
-    STD_FUNCTION_EXIT(L, result);
+    CS_FUNCTION_EXIT(L, result);
 }
 
 bool is_equal(Array *lhs, Array *rhs) {

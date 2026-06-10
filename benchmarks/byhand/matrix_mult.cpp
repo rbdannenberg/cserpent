@@ -56,7 +56,7 @@ Any matmul(Any a_, Any b_) {
     constexpr int SL_aik = 7;
     constexpr int SL_bk = 8;
     memset(&L, 0, sizeof(L));
-    STD_FUNCTION_ENTRY(L, 9);
+    CS_FUNCTION_ENTRY(L, 9);
     L.set(SL_a, a_);
     L.set(SL_b, b_);
     L.set(SL_n, len(L.a));
@@ -76,7 +76,7 @@ Any matmul(Any a_, Any b_) {
         }
         L.c.append(L.ci);
     }
-    STD_FUNCTION_EXIT(L, L.c);
+    CS_FUNCTION_EXIT(L, L.c);
 }
 
 
@@ -98,7 +98,7 @@ std::string test_matmul(Any n_) {
     constexpr int sl__tmp_b = 5;
     constexpr int sl_d = 6;
     memset(&L, 0, sizeof(L));
-    STD_FUNCTION_ENTRY(L, 7);
+    CS_FUNCTION_ENTRY(L, 7);
     L.set(sl_n, n_);
     L.set(sl_tmp, 1.0 / (L.n * L.n));
     L.set(sl_a, new Array);
@@ -124,7 +124,7 @@ std::string test_matmul(Any n_) {
     return result;
 #endif
 
-    STD_FUNCTION_EXIT(L, "");
+    CS_FUNCTION_EXIT(L, "");
 }
 
 void run_benchmark(int n)

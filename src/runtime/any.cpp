@@ -65,6 +65,10 @@ Any::Any(void* x) {
 }
 */
 
+Any::Any(Heap_obj *x) {
+    integer = reinterpret_cast<uint64_t>(x);
+}
+
 Any::Any(String *x) {
     // make an Any to reference a String.
     integer = reinterpret_cast<uint64_t>(x) | STR_TAG;

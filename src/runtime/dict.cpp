@@ -61,7 +61,7 @@ Array *Dict::get_keys()
     } L;
     constexpr int sl_result = 0;
     memset(&L, 0, sizeof(L));
-    STD_FUNCTION_ENTRY(L, 1);
+    CS_FUNCTION_ENTRY(L, 1);
     std::vector<Any> *array = get_vector();
     // len is number of entries * 2
     int64_t slots = array->size() & ~1;  // make it even, round down
@@ -80,7 +80,7 @@ Array *Dict::get_keys()
         }
     }
     assert(j * 2 == used);
-    STD_FUNCTION_EXIT(L, result);
+    CS_FUNCTION_EXIT(L, result);
 }
 
 #ifdef DO_WE_NEED_THIS_FUNCTION
@@ -116,7 +116,7 @@ Array *Dict::get_values()
     } L;
     constexpr int sl_result = 0;
     memset(&L, 0, sizeof(L));
-    STD_FUNCTION_ENTRY(L, 1);
+    CS_FUNCTION_ENTRY(L, 1);
     std::vector<Any> *array = get_vector();
     int64_t slots = array->size() & ~1;  // make it even, round down
     Array *result = new Array(used / 2, nil);
@@ -134,7 +134,7 @@ Array *Dict::get_values()
         }
     }
     assert(j == used / 2);
-    STD_FUNCTION_EXIT(L, result);
+    CS_FUNCTION_EXIT(L, result);
 }
 
 

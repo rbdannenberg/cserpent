@@ -60,7 +60,8 @@ for target_file in session.get_topological_ordering():
         print "----- AST from", target_file, "-----"
         print_ast(ast)
 
-    var target_filename = file_change_suffix(file_name_from_path(target_file), nil)
+    var target_filename = file_change_suffix(file_name_from_path(
+                                                     target_file), nil)
     visitor.generate_code(target_filename, ast, session.deps[target_file])
     cmake_files.append(target_filename + ".cpp")
     cmake_files.append(target_filename + ".h")
@@ -137,22 +138,27 @@ if compile:
     else:
         print "--------------- running cmake configure step ----------------"
         print "-->", cmake_configure
-    system(cmake_configure)
+    display "run", system(cmake_configure)
     if debug:
         print "--------------- finished cmake configure step ---------------"
         print "--------------- running cmake build step --------------------"
         print "-->", cmake_build
-    system(cmake_build)
+    var build_error = system(cmake_build)
+    print "run: system(cmake_build) =", build_error
+    if isinteger(build_error):
+        if debug:
+            print "--------------- error", build_error, "in cmake build step --"
+        exit(1)
     if debug:
         print "--------------- finished cmake build step -------------------"
         print "--------------- running compiled program --------------------"
         print "-->", "./" + output_folder + "build/" + program_name
-    system("./" + output_folder + "build/" + program_name)
+    var cmd = output_folder + "build/" + program_name
+    var run_error = system(cmd)
     if debug:
         print "--------------- compiled program finished -------------------"
+        print "run system(\""; cmd; "\") = "; run_error
         print "--- to run it again, use this command:"
         print "---", "./" + output_folder + "build/" + program_name
         print "-------------------------------------------------------------"
-    
-
-exit()
+exit(0)
