@@ -1,3 +1,26 @@
+# codegen_visitor.srp -- code generator
+#
+# The basic idea is to do a depth-first traversal of the AST, producing
+# code as strings as you go. Code is generated one statement at a time,
+# although this is somewhat complicated by the fact that a statement
+# can be a block containing statements or more blocks.
+#     Often, statements involve nested expressions leading to intermediate
+# results that, due to garbage collection, must be stored and made
+# observable. A key idea making this possible is that code for a statement
+# is consolidated into a single string and output at the end of the
+# statement compilation. During the compilation, "preparatory" statements
+# can be created where intermediate values are computed and assigned to
+# temporary variables that are used subsequently. These "preparatory"
+# statements are output as a side-effect of expression evaluation.
+#     The code generator has methods to handle each kind of AST node.
+# These are all named "visitSomething" and there are basically two kinds
+# of "visit" functions: Functions that produce statements, such as
+# visitAssignment or visitForRange do not return results and generate
+# code as a side effect. Functions that compile expressions, such as
+# visitBinOp or visitFunctionCall return Value objects representing the
+# type and the compiled expression. These *may* also output complete
+# "preparatory" statements as a side effect.
+
 require "src/backend/visitor.srp"
 require "src/frontend/ast.srp"
 
@@ -16,7 +39,7 @@ CPP_TYPE_TO_TYPE_CODE = {
     "int": "Any_type::INT",
     "double": "Any_type::REAL",
     "bool": "Any_type::BOOL",
-    "variable": "Any_type::NIL",  // means "Any"
+    "Any": "Any_type::NIL",  // means "Any"
     "array": "Any_type::ARRAY",
     "dict": "Any_type::DICT",
     "symbol": "Any_type::SYMBOL"
@@ -36,6 +59,15 @@ NON_PTR_TYPES = ['int', 'real', 'bool', "int", "real", "bool"]
 def non_ptr_type(type):
     display "non_ptr_type", type, type in NON_PTR_TYPES
     type in NON_PTR_TYPES
+
+
+class Value:
+    var typ
+    var val
+
+    def init(type_, value_):
+        typ = type_
+        val = value_
 
 
 class CodegenVisitor(ASTVisitor):
@@ -159,11 +191,14 @@ class CodegenVisitor(ASTVisitor):
     def assign_to_global(name, value):
         // if the global is declared as int, real, or bool, we can
         // set it directly after coercing the value:
-        if non_ptr_type(global_variables[name]):
+        var gtype = global_variables[name]
+        if non_ptr_type(gtype):
+            if not non_ptr_type(value.typ):
+                value.typ = "as_" + gtype + "("
             code_line = name + " = ("
         else:  // otherwise, use set_any_global():
             code_line = "set_any_global(&" + name + ", "
-        add_to_cpp(code_line + value + ");")
+        add_to_cpp(code_line + value.val + ");")
 
 
     def visitLiteral(literal):
@@ -175,7 +210,7 @@ class CodegenVisitor(ASTVisitor):
                 string_counter = string_counter + 1
                 hoisted_strings[text] = var_name
                 global_variables[var_name] = "string" + text
-            return hoisted_strings[text]
+            return Value('string', hoisted_strings[text])
         elif literal.value[0] == "'":
             print "ERROR: need to implement literal symbols"
             exit()
@@ -184,73 +219,105 @@ class CodegenVisitor(ASTVisitor):
             // When global vars are initiated, if there is already a symbol
             // stored in a global, you can avoid looking it up.
             // return the global name here.
+        elif not isstring(literal.value):
+            print "Error: expecting literal.value to be string: ";
+            print     repr(literal.value)
+            exit(1)
         else:
-            return str(literal.value)
+            var typ = 'int'
+            for c in literal.value:
+                if c == '.':
+                    if typ == 'int':
+                        typ = 'real'
+                    elif typ == 'real':
+                        print "Error:", literal.value, "is not int or real"
+                        exit(1)
+                elif not isdigit(c):
+                    print "Error:", literal.value, "is not int or real"
+                    exit(1)
+            return Value(typ, literal.value)
 
 
     def visitIdentifier(identifier):
         # needs to encapsulate all inherited member variables:
+        # not sure why we need "get_" instead of just name
         if current_class and identifier.value in current_class.member_variables:
-            return "get_" + identifier.value + "()"
+            # also need parser to encode member_variables as
+            # dict from name to type so we can return correct type:
+            return Value('any', "get_" + identifier.value + "()")
         // not a declared local or instance variable, so must be a global
-        var code_str = identifier.value_as_global()
+        var ident = identifier.value_as_global()
+        var val = identifier.value_as_global()
         // if global is implicitly declared, insert into global_variables
-        if not global_variables.has_key(identifier.value_as_global()):
+        if not global_variables.has_key(ident):
             display "** visitIdentifier", identifier
             // if identifier.value_as_global() == "csg_b":
             //     print "=================================================="
             //     stacktrace()
             //     print "=================================================="
-            global_variables[identifier.value_as_global()] = "variable"
-        return code_str
+            global_variables[ident] = "Any"
+        return Value(global_variables[ident], val)
 
 
     def visitBoolOp(bool_op):
-        return bool_op.left.accept(this) + " " + bool_op.op + " " +
-               bool_op.right.accept(this)
+        return Value('bool', bool_op.left.accept(this).val + " " + bool_op.op +
+                             " " + bool_op.right.accept(this).val)
 
 
     def visitBinOp(bin_op):
-        var function_correction = nil
+        var function = nil
+        var type = 'real'
+        var left = bin_op.left.accept(this)
+        var right = bin_op.right.accept(this)
+
         if bin_op.op == "**":
-            function_correction = "pow"
+            func = "pow"
         if bin_op.op == "is":
-            function_correction = "is_equal"
-        if function_correction:
-            return function_correction + "(" + bin_op.left.accept(this) +
-                   ", " + bin_op.right.accept(this) + ")"
-        return bin_op.left.accept(this) + " " + bin_op.op + " " +
-               bin_op.right.accept(this)
+            func = "is_equal"
+            type = 'bool'
+        if func:
+            return Value(type, func + "(" + left.val + ", " + right.val + ")")
+        # this is probably wrong. It assumes int if left and right are int,
+        # and real otherwise (also, real for "/" operator)
+        if (left.typ == 'int' and right.typ == 'int' and bin_op.op != "/"):
+            typ = 'int'
+        return Value(type, "(" + left.val + ") " + bin_op.op +
+                           " (" + right.val + ")")
 
 
     def visitUnaryOp(unary_op):
+        var typ = 'real'
+        var operand = unary_op.value.accept(this)
         if unary_op.op == "not":
             unary_op.op = "!"
-        return unary_op.op + "(" + unary_op.value.accept(this) + ")"
+            typ = 'bool'
+        # this is probably wrong. It assumes int if operand is int,
+        elif operand.typ == 'int':
+            typ = 'int'
+        return Value(typ, unary_op.op + "(" + operand.val + ")")
 
 
-    def visitArray(array_node):
-        # array literal, adds a 
+    def visitArray(array_node):        # array literal
         var temp = allocate_temp('array')
         add_to_cpp("L.set(SL_" + temp + ", Any {new Array(" +
                    str(len(array_node.elements)) + ", nil)});")
         for element at i in array_node.elements:
             add_to_cpp("L." + temp + "->set(" + str(i) + ", " +
-                       element.accept(this) + ");")
-        return "L." + temp
+                       element.accept(this).val + ");")
+        return Value('array', "L." + temp)
 
 
     def visitDictionary(dictionary_node):
-        var code_str = "*(new Dictionary {"
+        var temp = allocate_temp('dict')
+        add_to_cpp("L.set(SL_" + temp + ", Any {new Dictionary()});")
         for pair at i in dictionary.pairs:
-            code_str = code_str + "{" + pair[0].accept(this) + ", " +
-                       pair[1].accept(this) + "}"
-            if i < len(dictionary.pairs) - 1:
-                code_str = code_str + ", "
-        return code_str + "})"
+            add_to_cpp("L." + temp + "->set(" + pair[0].accept(this).val +
+                       ", " + pair[1].accept(this).val + ");")
+        return Value('dict', "L." + temp)
 
 
     def visitArgumentList(arg_list):
+    # this is "special" because it returns a string rather than Value
         var kwargs = arg_list.kwargs
         var code_str = ""
         if len(arg_list.args) == 0 and arg_list.dispatch == "dynamic":
@@ -260,7 +327,7 @@ class CodegenVisitor(ASTVisitor):
                 code_str = code_str + "Array {"
 
             for i = 0 to len(arg_list.args):
-                code_str = code_str + arg_list.args[i].accept(this)
+                code_str = code_str + arg_list.args[i].accept(this).val
                 if i < len(arg_list.args) - 1
                     code_str = code_str + ", "
 
@@ -274,8 +341,8 @@ class CodegenVisitor(ASTVisitor):
                 code_str = code_str + ", Dictionary {"
                 for i = 0 to len(kwargs.keys()):
                     key = kwargs.keys()[i]
-                    code_str = code_str + "{" + key.accept(this) + ", " +
-                               kwargs[key].accept(this) + "}"
+                    code_str = code_str + "{" + key.accept(this).val + ", " +
+                               kwargs[key].accept(this).val + "}"
                     if i < len(kwargs) - 1:
                         code_str = code_str + ", "
                 code_str = code_str + "}"
@@ -284,8 +351,7 @@ class CodegenVisitor(ASTVisitor):
 
     def visitFunctionCall(fcall):
         if fcall.name in user_defined_classes:
-            visitConstructor(fcall)
-            return
+            return visitConstructor(fcall)
         if fcall.name in function_corrections.keys():
             fcall.name = function_corrections[fcall.name]
         var code_str
@@ -296,7 +362,7 @@ class CodegenVisitor(ASTVisitor):
                 print "Error: print function does not take keyword arguments"
                 exit()
             for i = 0 to len(args):
-                code_str = code_str + "(" + args[i].accept(this) + ")"
+                code_str = code_str + "(" + args[i].accept(this).val + ")"
                 if i < len(args) - 1:
                     code_str = code_str + " << "
             code_str = code_str + " << std::endl"
@@ -306,54 +372,58 @@ class CodegenVisitor(ASTVisitor):
             code_str = "apply(" + fcall.parameters.args[0].accept(this)
             code_str = code_str + ", *(new Array {"
             for i = 1 to len(args):
-                code_str = code_str + args[i].accept(this)
+                code_str = code_str + args[i].accept(this).val
                 if i < len(args) - 1
                     code_str = code_str + ", "
             code_str = code_str + "}))"
         elif fcall.name == "send":
-            code_str = "sendapply(" + fcall.parameters.args[0].accept(this) +
-                ", " + fcall.parameters.args[1].accept(this) + ", *(new Array {"
+            code_str = "sendapply(" +
+                       fcall.parameters.args[0].accept(this).val +
+                       ", " + fcall.parameters.args[1].accept(this).val +
+                       ", *(new Array {"
             for i = 2 to len(args):
-                code_str = code_str + args[i].accept(this)
+                code_str = code_str + args[i].accept(this).val
                 if i < len(args) - 1
                     code_str = code_str + ", "
             code_str = code_str + "}))"
         else:
-            code_str = fcall.name + "(" + fcall.parameters.accept(this)
+            code_str = fcall.name + "(" + fcall.parameters.accept(this).val
             code_str = code_str + ")"
-        return code_str
+        return Value('any', code_str)
 
 
     def visitConstructor(constr):
-        return "*(new " + constr.name +
-               " {" + constr.parameters.accept(this) + "})"
+        return Value(intern(constr.name),
+                     "(new " + constr.name + " {" +
+                     constr.parameters.accept(this).val + "})")
 
 
     def visitMethodCall(mcall):
-        var code_str = mcall.object.accept(this)
+        var code_str = mcall.object.accept(this).val
         # Special case for append method - call it directly
         if mcall.method_name == "append":
             code_str = code_str + ".append("
             # Append should have exactly one argument
             if len(mcall.parameters.args) == 1:
-                code_str = code_str + mcall.parameters.args[0].accept(this)
+                code_str = code_str + mcall.parameters.args[0].accept(this).val
             code_str = code_str + ")"
         else:
             # General case using .call()
             code_str = code_str + ".call(\"" + mcall.method_name + "\", "
             mcall.parameters.dispatch = "dynamic"
-            code_str = code_str + mcall.parameters.accept(this) + ")"
-        return code_str
+            code_str = code_str + mcall.parameters.accept(this).val + ")"
+        return Value('any', code_str)
 
 
     def visitGetAttribute(get_attribute):
-        return get_attribute.object.accept(this) + ".call(\"get_" +
+    # this needs work -- why do we need to call get_<attribute>?
+        return get_attribute.object.accept(this).val + ".call(\"get_" +
                get_attribute.attribute + "\", empty_array, empty_dict)"
 
 
     def visitIndex(index):
-        return index.object.accept(this) + "[to_int(" + 
-               index.index.accept(this) + ")]"
+        return Value('any', index.object.accept(this).val + "[to_int(" + 
+                            index.index.accept(this).val + ")]")
 
 
     def visitAssignment(assign):
@@ -361,7 +431,7 @@ class CodegenVisitor(ASTVisitor):
         var value
         if isinstance(ident, GetAttribute):
             # does this handle a.b.c[x].h = ?
-            code_line = ident.accept(this)
+            code_line = ident.accept(this).val
             # this all seems wrong - at least not fast when types are known
 #             code_line = code_line + ".call(\"set_" +
 #                 ident.attribute + "\", Array {"
@@ -387,7 +457,7 @@ class CodegenVisitor(ASTVisitor):
         if current_class and isinstance(ident, Identifier) and
            name in current_class.member_variables:
             code_line = "set_" + name + "(" + 
-                        assign.expression.accept(this) + ");"
+                        assign.expression.accept(this).val + ");"
             add_to_cpp(code_line)
             return
 
@@ -396,16 +466,23 @@ class CodegenVisitor(ASTVisitor):
         value = assign.expression.accept(this)
         // see if it is local
         if in_function and function_locals.has_key(name):  // it's local
-            add_to_cpp("L.set(SL_" + name + ", " + value + ");")
+            # non-ptr can just be directly assigned
+            if non_ptr_type(function_locals[name]):
+                if not non_ptr_type(value.typ):
+                    value.val = "as_" + function_locals[name] + "(" +
+                                value.val + ")"
+                add_to_cpp(name + " = " + value.val + ";")
+            else:
+                add_to_cpp("L.set(SL_" + name + ", " + value.val + ");")
         else: // it's global
             if isinstance(ident, Identifier) and current_class == nil:
-               global_variables[ident.value_as_global()] = "variable"
+               global_variables[ident.value_as_global()] = "Any"
             assign_to_global(ident.value_as_global(), value)
 
 
     def visitStandaloneExpression(standalone_expression):
         var code_line = standalone_expression.expression.accept(this)
-        add_to_cpp(code_line + ";")
+        add_to_cpp(code_line.val + ";")
 
 
     def visitDeclaration(declaration):
@@ -796,8 +873,6 @@ class CodegenVisitor(ASTVisitor):
                 global_cpp_file.write("StringPtr " + global_variable + ";\n")
             else:
                 display repr(global_variable), repr(type)
-                if type == "variable":
-                    type = "Any"
                 global_vars_file.write("extern " + type + " " +
                                        global_variable + ";\n")
                 var initial_value = " = 0"
