@@ -35,18 +35,34 @@ FOR_CPP = 'cpp'
 FOR_H = 'h'
 FOR_MAIN = 'main'
 
-CPP_TYPE_TO_TYPE_CODE = {
-    "int": "Any_type::INT",
-    "double": "Any_type::REAL",
-    "bool": "Any_type::BOOL",
-    "Any": "Any_type::NIL",  // means "Any"
-    "array": "Any_type::ARRAY",
-    "dict": "Any_type::DICT",
-    "symbol": "Any_type::SYMBOL"
-    }
+// do we need this?
+
+//CPP_TYPE_TO_TYPE_CODE = {
+//    "int": "Any_type::INT",
+//    "double": "Any_type::REAL",
+//    "bool": "Any_type::BOOL",
+//    "Any": "Any_type::NIL",  // means "Any"
+//    "array": "Any_type::ARRAY",
+//    "dict": "Any_type::DICT",
+//    "symbol": "Any_type::SYMBOL"
+//    }
+//
+
+TYPE_TO_TYPE_CODE = {
+    'int': "Any_type::INT",
+    'real': "Any_type::REAL",
+    'bool': "Any_type::BOOL",
+    'any': "Any_type::NIL",  // means 'Any'
+    'array': "Any_type::ARRAY",
+    'dict': "Any_type::DICT",
+    'symbol': "Any_type::SYMBOL"
+}
 
 
 TYPE_TO_CPP_TYPE = {
+    'int': "int",
+    'real': "double",
+    'bool': "bool",
     'any': "Any",
     'array': "ArrayPtr",
     'dict': "DictPtr" }
@@ -61,13 +77,41 @@ def non_ptr_type(type):
     type in NON_PTR_TYPES
 
 
+class Type:
+    var typ   // the type of the value
+    var string_const  // if type is literal string, this is the literal
+    
+    def init(typ_, optional string_const_):
+        assert(issymbol(typ_))
+        typ = 'any' if typ_ == 'var' else typ_
+        string_const = string_const_
+        
+    def is_string_type(): typ == 'string'
+
+    def type_code(): TYPE_TO_TYPE_CODE[typ]
+
+    def c_type(): TYPE_TO_CPP_TYPE[typ]
+
+STRING = Type('string')
+INT = Type('int')
+REAL = Type('real')
+ANY = Type('any')
+ARRAY = Type('array')
+DICT = Type('dict')
+
+
 class Value:
-    var typ
-    var val
+    var val   // the code that delivers the value
+    var typ   // the Type description
 
     def init(type_, value_):
+        assert(isinstance(type_, Type))
         typ = type_
         val = value_
+
+    def is_string_type(): typ.is_string_typ()
+
+    def type_code(): typ.type_code()
 
 
 class CodegenVisitor(ASTVisitor):
@@ -194,7 +238,7 @@ class CodegenVisitor(ASTVisitor):
         var gtype = global_variables[name]
         if non_ptr_type(gtype):
             if not non_ptr_type(value.typ):
-                value.typ = "as_" + gtype + "("
+                value.val = "as_" + gtype + "("
             code_line = name + " = ("
         else:  // otherwise, use set_any_global():
             code_line = "set_any_global(&" + name + ", "
@@ -205,12 +249,13 @@ class CodegenVisitor(ASTVisitor):
         # print literal.value, type(literal.value), isstring(literal.value)
         if literal.value[0] == "\"":
             var text = literal.value
+            var typ = Type('string', text)
             if not hoisted_strings.has_key(text):
                 var var_name = "string_" + str(string_counter)
                 string_counter = string_counter + 1
                 hoisted_strings[text] = var_name
-                global_variables[var_name] = "string" + text
-            return Value('string', hoisted_strings[text])
+                global_variables[var_name] = typ
+            return Value(typ, hoisted_strings[text])
         elif literal.value[0] == "'":
             print "ERROR: need to implement literal symbols"
             exit()
@@ -224,12 +269,12 @@ class CodegenVisitor(ASTVisitor):
             print     repr(literal.value)
             exit(1)
         else:
-            var typ = 'int'
+            var typ = INT
             for c in literal.value:
-                if c == '.':
-                    if typ == 'int':
-                        typ = 'real'
-                    elif typ == 'real':
+                if c == ".":
+                    if typ == INT:
+                        typ = REAL
+                    elif typ == REAL:
                         print "Error:", literal.value, "is not int or real"
                         exit(1)
                 elif not isdigit(c):
@@ -244,7 +289,7 @@ class CodegenVisitor(ASTVisitor):
         if current_class and identifier.value in current_class.member_variables:
             # also need parser to encode member_variables as
             # dict from name to type so we can return correct type:
-            return Value('any', "get_" + identifier.value + "()")
+            return Value(ANY, "get_" + identifier.value + "()")
         // not a declared local or instance variable, so must be a global
         var ident = identifier.value_as_global()
         var val = identifier.value_as_global()
@@ -255,18 +300,19 @@ class CodegenVisitor(ASTVisitor):
             //     print "=================================================="
             //     stacktrace()
             //     print "=================================================="
-            global_variables[ident] = "Any"
+            global_variables[ident] = ANY
+        display "calling Value", ident, repr(global_variables[ident])
         return Value(global_variables[ident], val)
 
 
     def visitBoolOp(bool_op):
-        return Value('bool', bool_op.left.accept(this).val + " " + bool_op.op +
+        return Value(BOOL, bool_op.left.accept(this).val + " " + bool_op.op +
                              " " + bool_op.right.accept(this).val)
 
 
     def visitBinOp(bin_op):
-        var function = nil
-        var type = 'real'
+        var func = nil
+        var typ = REAL
         var left = bin_op.left.accept(this)
         var right = bin_op.right.accept(this)
 
@@ -274,26 +320,26 @@ class CodegenVisitor(ASTVisitor):
             func = "pow"
         if bin_op.op == "is":
             func = "is_equal"
-            type = 'bool'
+            typ = BOOL
         if func:
-            return Value(type, func + "(" + left.val + ", " + right.val + ")")
+            return Value(typ, func + "(" + left.val + ", " + right.val + ")")
         # this is probably wrong. It assumes int if left and right are int,
         # and real otherwise (also, real for "/" operator)
-        if (left.typ == 'int' and right.typ == 'int' and bin_op.op != "/"):
-            typ = 'int'
-        return Value(type, "(" + left.val + ") " + bin_op.op +
-                           " (" + right.val + ")")
+        if (left.typ == INT and right.typ == INT and bin_op.op != "/"):
+            typ = INT
+        return Value(typ, "(" + left.val + ") " + bin_op.op +
+                          " (" + right.val + ")")
 
 
     def visitUnaryOp(unary_op):
-        var typ = 'real'
+        var typ = REAL
         var operand = unary_op.value.accept(this)
         if unary_op.op == "not":
             unary_op.op = "!"
-            typ = 'bool'
+            typ = BOOL
         # this is probably wrong. It assumes int if operand is int,
         elif operand.typ == 'int':
-            typ = 'int'
+            typ = INT
         return Value(typ, unary_op.op + "(" + operand.val + ")")
 
 
@@ -304,7 +350,7 @@ class CodegenVisitor(ASTVisitor):
         for element at i in array_node.elements:
             add_to_cpp("L." + temp + "->set(" + str(i) + ", " +
                        element.accept(this).val + ");")
-        return Value('array', "L." + temp)
+        return Value(ARRAY, "L." + temp)
 
 
     def visitDictionary(dictionary_node):
@@ -313,7 +359,7 @@ class CodegenVisitor(ASTVisitor):
         for pair at i in dictionary.pairs:
             add_to_cpp("L." + temp + "->set(" + pair[0].accept(this).val +
                        ", " + pair[1].accept(this).val + ");")
-        return Value('dict', "L." + temp)
+        return Value(DICT, "L." + temp)
 
 
     def visitArgumentList(arg_list):
@@ -389,11 +435,11 @@ class CodegenVisitor(ASTVisitor):
         else:
             code_str = fcall.name + "(" + fcall.parameters.accept(this).val
             code_str = code_str + ")"
-        return Value('any', code_str)
+        return Value(ANY, code_str)
 
 
     def visitConstructor(constr):
-        return Value(intern(constr.name),
+        return Value(Type(intern(constr.name)),
                      "(new " + constr.name + " {" +
                      constr.parameters.accept(this).val + "})")
 
@@ -412,7 +458,7 @@ class CodegenVisitor(ASTVisitor):
             code_str = code_str + ".call(\"" + mcall.method_name + "\", "
             mcall.parameters.dispatch = "dynamic"
             code_str = code_str + mcall.parameters.accept(this).val + ")"
-        return Value('any', code_str)
+        return Value(ANY, code_str)
 
 
     def visitGetAttribute(get_attribute):
@@ -422,8 +468,8 @@ class CodegenVisitor(ASTVisitor):
 
 
     def visitIndex(index):
-        return Value('any', index.object.accept(this).val + "[to_int(" + 
-                            index.index.accept(this).val + ")]")
+        return Value(ANY, index.object.accept(this).val + "[to_int(" + 
+                          index.index.accept(this).val + ")]")
 
 
     def visitAssignment(assign):
@@ -476,7 +522,7 @@ class CodegenVisitor(ASTVisitor):
                 add_to_cpp("L.set(SL_" + name + ", " + value.val + ");")
         else: // it's global
             if isinstance(ident, Identifier) and current_class == nil:
-               global_variables[ident.value_as_global()] = "Any"
+               global_variables[ident.value_as_global()] = ANY
             assign_to_global(ident.value_as_global(), value)
 
 
@@ -491,7 +537,7 @@ class CodegenVisitor(ASTVisitor):
         display "** visitDeclaration", declaration.declared_type,
         display         declaration.identifier.value
         global_variables[declaration.identifier.value_as_global()] =
-                declaration.declared_type
+                Type(declaration.declared_type)
 
 
     def visitDeclarationNAssignment(d_and_a):
@@ -503,9 +549,10 @@ class CodegenVisitor(ASTVisitor):
                 print "ERROR: local", d_and_a.identifier.value,
                 print     "already declared."
                 exit();
-            function_locals[name] = d_and_a.declared_type
-            if d_and_a.declared_type in ["int", "real", "bool"]:
-                code_line = d_and_a.declared_type + " " + name + " = ("
+            function_locals[name] = intern(d_and_a.declared_type)
+            if d_and_a.declared_type in ['int', 'real', 'bool']:
+                code_line = TYPE_TO_CPP_TYPE(d_and_a.declared_type) + " " +
+                            name + " = ("
             else:
                 code_line = "L.set(SL_" + name + ", "
             add_to_cpp(code_line + ");")            
@@ -513,7 +560,8 @@ class CodegenVisitor(ASTVisitor):
             var ident = d_and_a.identifier
             display "** visitDeclarationNAssignment", d_and_a.declared_type,
             display         ident.value, type(d_and_a.declared_type)
-            global_variables[ident.value_as_global()] = d_and_a.declared_type
+            global_variables[ident.value_as_global()] = 
+                    Type(d_and_a.declared_type)
             display "   ", global_variables[ident.value_as_global()],
             display     ident.value_as_global()
 
@@ -864,33 +912,28 @@ class CodegenVisitor(ASTVisitor):
         display "** generate_globals", global_variables
         var before_s = "Symbol *"
         for global_variable in global_variables.keys():
-            string = global_variables[global_variable]
-            prefix = subseq(string, 0, 6)
-            var type = global_variables[global_variable]
-            if prefix == "string":
+            var typ = global_variables[global_variable]
+            if typ.is_string_type():
                 global_vars_file.write("extern StringPtr " + global_variable +
                                        ";\n")
                 global_cpp_file.write("StringPtr " + global_variable + ";\n")
             else:
-                display repr(global_variable), repr(type)
-                global_vars_file.write("extern " + type + " " +
+                display repr(global_variable), repr(typ)
+                global_vars_file.write("extern " + typ.c_type() + " " +
                                        global_variable + ";\n")
                 var initial_value = " = 0"
-                if type == "Any":
+                if typ == ANY:
                     initial_value = ""
-                global_cpp_file.write(type + " " + global_variable +
+                global_cpp_file.write(typ.c_type() + " " + global_variable +
                                       initial_value + ";\n")
         global_cpp_file.write("\nint cs_global_init()\n{\n")
         global_cpp_file.write("    // Initialize global variables here\n")
         for global_variable in global_variables.keys():
-            string = global_variables[global_variable]
-            prefix = subseq(string, 0, 6)
-            text = subseq(string, 6, -1)
-            type = global_variables[global_variable]
-            if prefix == "string":
+            typ = global_variables[global_variable]
+            if typ.is_string_type():
                 global_cpp_file.write("    " + global_variable +
                                       " = StringPtr{new String(" +
-                                      text + "\")};\n")
+                                      typ.string_const + ")};\n")
             else:
                  // output: Symbol *s = get_symbol("a");
                 global_cpp_file.write("    " + before_s + "s = get_symbol(\"" +
@@ -901,7 +944,7 @@ class CodegenVisitor(ASTVisitor):
                                       global_variable + ";\n")
                 // output: s->symbol_type() = Any_type::???
                 global_cpp_file.write("    *(s->symbol_type()) = " +
-                                      CPP_TYPE_TO_TYPE_CODE[type] + ";\n")
+                                      typ.type_code() + ";\n")
         global_vars_file.write("int cs_global_init();\n")
 //        global_cpp_file.write("    CS_FUNCTION_EXIT(L, 0);\n")
         global_cpp_file.write("}\n")

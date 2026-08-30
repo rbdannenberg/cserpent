@@ -268,7 +268,7 @@ def parse_statement(ctx):
 
     # val decl with `var`
     if ctx.get(FS_DECLARATION, false):
-        type = ctx.next().content
+        type = intern(ctx.next().content)
         ctx.skip_store(TK_IDENTIFIER)  // get the identifier
         iden = ctx.pop_partial().content
         if ctx.skip("=", false):  // look for initial value

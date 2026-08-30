@@ -205,21 +205,21 @@ class StandaloneExpression(Statement):
         visitor.visitStandaloneExpression(this)
 
 
-SERPENT_TO_CPP_TYPES = {"var": "Any", "int": "int", "real": "double",
-                        "bool": "bool", "array": "Array", "dict": "Dictionary",
-                        "symbol": "Symbol"}
+// SERPENT_TO_CPP_TYPES = {"var": "Any", "int": "int", "real": "double",
+//                      "bool": "bool", "array": "Array", "dict": "Dictionary",
+//                        "symbol": "Symbol"}
 
 class Declaration(Statement):
-    var declared_type # : string
+    var declared_type # : symbol
     var identifier # : Identifier
     var local_flag  # : boolean
 
-    def init(_identifier, _declared_type, _local_flag):
+    def init(identifier_, optional declared_type_ = 'any', local_flag_):
         super.init()
-        assert(isstring(_identifier))
-        declared_type = SERPENT_TO_CPP_TYPES[_declared_type]
-        identifier = Identifier(_identifier)
-        local_flag = _local_flag
+        assert(isstring(identifier_))
+        declared_type = declared_type_
+        identifier = Identifier(identifier_)
+        local_flag = local_flag_
         // global_table.add_entry(identifier)
 
     def accept(visitor):
@@ -233,17 +233,16 @@ class Declaration(Statement):
 
 
 class DeclarationNAssignment(Statement):
-    var declared_type # : string
+    var declared_type # : symbol
     var identifier # : string
     var expression # : Expression
     var local_flag  # : boolean
 
-    def init(_declared_type, _identifier, _expression, ctx):
+    def init(declared_type_, identifier_, expression_, ctx):
         super.init()
-        declared_type = _declared_type
-        declared_type = SERPENT_TO_CPP_TYPES[_declared_type]
-        identifier = Identifier(_identifier)
-        expression = _expression
+        declared_type = declared_type_
+        identifier = Identifier(identifier_)
+        expression = expression_
         local_flag = ctx.in_function
 
     def accept(visitor):
@@ -412,8 +411,8 @@ def print_ast(ast, optional prefix = "", name):
 
 # Test case for print_ast:
 def test_print_ast():
-    var ast = File([Declaration(Identifier("a"), "var", false),
-                    Declaration(Identifier("b"), "var", false)])
+    var ast = File([Declaration(Identifier("a")),
+                    Declaration(Identifier("b"))])
     print_ast(ast)
     # Combine the provided ASTs into one larger AST
     combined_ast = File([
@@ -421,7 +420,7 @@ def test_print_ast():
     BinOp(Identifier("a"), "+", Identifier("b")),
     FunctionCall(Identifier("my_function"), ArgumentList([Identifier("arg1"),
                                                           Identifier("arg2")], {})),
-    Class(Identifier("MyClass"), [Declaration(Identifier("var1"), "var", true)],
+    Class(Identifier("MyClass"), [Declaration(Identifier("var1"), 'any', true)],
           [Function(Identifier("func1"), [], [], Block([]))]),
     File([Declaration(Identifier("var1")), Function(Identifier("func1"), [], [],
                                                     Block([]))])])
