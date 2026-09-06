@@ -21,13 +21,35 @@ class Expression:
 
 
 class Literal(Expression):
-    var value # a value of type object_type e.g. 5, "hello", etc.
-    var object_type # : string
+    var value  # a value of type object_type e.g. 5, "hello", etc.
+    var value_type  # : string
+    var range  # source code location
 
-    def init(_value, _object_type):
+    def init(ctx, token, optional _value_type):
         super.init()
-        value = _value
-        object_type = _object_type
+        value = token.content
+        range = token.range
+        value_type = _value_type
+        if not value_type:
+            if value[0] == "\"":
+                value_type = 'string'
+            elif value[0] == "'":
+                value_type = 'symbol'
+            elif value == "true" or value == "false" or value == "t":
+                value_type = 'bool'
+            else:
+                value_type = 'int'
+                for c in value:
+                    if c == ".":
+                        if value_type == 'int':
+                            value_type = 'real'
+                        elif value_type == 'real':
+                            ctx.err(value.range, "literal is not valid real")
+                            value_type = nil  // signals error
+                    elif not isdigit(c):
+                        ctx.err(value.range, "literal is not int or real")
+                        value_type = nil  // signals error
+        
 
     def accept(visitor):
         visitor.visitLiteral(this)
@@ -35,15 +57,18 @@ class Literal(Expression):
 
 
 class Identifier(Expression):
-    var value # : string
+    var name # : string
 
-    def init(_value):
+    def init(_name):
         super.init()
-        value = _value
+        name = _name
 
 
-    def value_as_global():
-        "csg_" + value
+    def cpp_for_local():
+        "csl_" + name
+
+    def cpp_for_global():
+        "csg_" + name
 
 
     def accept(visitor):
@@ -51,7 +76,7 @@ class Identifier(Expression):
 
 
     def to_string():
-        var s = "Identifier " + str(value)
+        var s = "Identifier " + str(name)
         s
 
 
@@ -69,16 +94,20 @@ class BinOp(Expression):
     def accept(visitor):
         visitor.visitBinOp(this)
 
+
+
 class UnaryOp(Expression):
     var op # : string (one of +, -, not, ~)
-    var value # : Expression
-    def init(_op, _value):
+    var operand # : Expression
+    def init(_op, _operand):
         super.init()
         op = _op
-        value = _value
+        operand = _operand
 
     def accept(visitor):
         visitor.visitUnaryOp(this)
+
+
 
 class Array(Expression):
     var elements # : Array[Expression]
@@ -89,6 +118,8 @@ class Array(Expression):
     def accept(visitor):
         visitor.visitArray(this)
 
+
+
 class Dictionary(Expression):
     var pairs # : Array[Array[Expression, Expression]], no tuples
     def init(_pairs):
@@ -97,6 +128,8 @@ class Dictionary(Expression):
 
     def accept(visitor):
         visitor.visitDictionary(this)
+
+
 
 class ArgumentList:
     var args # : Array [Expression]
@@ -110,6 +143,8 @@ class ArgumentList:
     def accept(visitor):
         visitor.visitArgumentList(this)
 
+
+
 class FunctionCall(Expression):
     var name # : string
     var parameters # : ArgumentList
@@ -120,6 +155,8 @@ class FunctionCall(Expression):
 
     def accept(visitor):
         visitor.visitFunctionCall(this)
+
+
 
 class Constructor(Expression):
     var name # : string
@@ -132,6 +169,8 @@ class Constructor(Expression):
 
     def accept(visitor):
         visitor.visitConstructor(this)
+
+
 
 class MethodCall(Expression):
     var object # : Expression
@@ -146,6 +185,8 @@ class MethodCall(Expression):
     def accept(visitor):
         visitor.visitMethodCall(this)
 
+
+
 class GetAttribute(Expression):
     var object # : Expression
     var attribute # : string
@@ -159,6 +200,8 @@ class GetAttribute(Expression):
     def accept(visitor):
         visitor.visitGetAttribute(this)
 
+
+
 class Index(Expression):
     var object # : Expression
     var index # : Expression
@@ -170,15 +213,21 @@ class Index(Expression):
     def accept(visitor):
         visitor.visitIndex(this)
 
+
+
 class BlockElement:
 
     def accept(visitor):
         pass
 
+
+
 class Statement(BlockElement):
 
     def accept(visitor):
         pass
+
+
 
 # TODO: change name for `identifier` (currently preserved for compatibility)
 class Assignment(Statement):
@@ -195,6 +244,8 @@ class Assignment(Statement):
     def accept(visitor):
         visitor.visitAssignment(this)
 
+
+
 class StandaloneExpression(Statement):
     var expression # : Expression
     def init(_expression):
@@ -208,6 +259,8 @@ class StandaloneExpression(Statement):
 // SERPENT_TO_CPP_TYPES = {"var": "Any", "int": "int", "real": "double",
 //                      "bool": "bool", "array": "Array", "dict": "Dictionary",
 //                        "symbol": "Symbol"}
+
+
 
 class Declaration(Statement):
     var declared_type # : symbol
@@ -232,6 +285,7 @@ class Declaration(Statement):
         "<Declaration id=" + str(id) + " type=" + str(declared_type) + ">"
 
 
+
 class DeclarationNAssignment(Statement):
     var declared_type # : symbol
     var identifier # : string
@@ -248,6 +302,8 @@ class DeclarationNAssignment(Statement):
     def accept(visitor):
         visitor.visitDeclarationNAssignment(this)
 
+
+
 class ReturnStatement(Statement):
     var expression # : Expression
     def init(_expression):
@@ -257,18 +313,27 @@ class ReturnStatement(Statement):
     def accept(visitor):
         visitor.visitReturnStatement(this)
 
+
+
 class ControlFlow(BlockElement):
 
     def accept(visitor):
         pass
 
+
+
 class Block:
     var statements # : List[BlockElement]
+    var needs_open_brace
+
     def init(_statements):
         statements = _statements
+        needs_open_brace = true
 
     def accept(visitor):
         visitor.visitBlock(this)
+
+
 
 class If(ControlFlow):
     var condition # : Expression # must be a boolean
@@ -283,6 +348,8 @@ class If(ControlFlow):
     def accept(visitor):
         visitor.visitIf(this)
 
+
+
 class While(ControlFlow):
     var condition # : Expression # must be a boolean
     var block # : Block
@@ -294,22 +361,27 @@ class While(ControlFlow):
     def accept(visitor):
         visitor.visitWhile(this)
 
+
+
 class ForRange(ControlFlow):
+    var var_type
     var identifier # : Identifier # loop variable
     var start # : Expression
     var end # : Expression
     var by_amount # : Expression
     var block # : Block
-    def init(_identifier, _start, _end, _by, _block):
+    def init(var_type_, identifier_, start_, end_, by_, block_):
         super.init()
-        identifier = _identifier
-        start = _start
-        end = _end
-        by_amount = _by
-        block = _block
+        var_type = var_type_
+        identifier = identifier_
+        start = start_
+        end = end_
+        by_amount = by_
+        block = block_
 
     def accept(visitor):
         visitor.visitForRange(this)
+
 
 
 class ForEach(ControlFlow):
@@ -324,6 +396,7 @@ class ForEach(ControlFlow):
 
     def accept(visitor):
         visitor.visitForEach(this)
+
 
 
 class Function:
@@ -341,6 +414,8 @@ class Function:
     def accept(visitor):
         visitor.visitFunction(this)
 
+
+
 class Class:
     var name # : string
     var parent # : string
@@ -356,6 +431,8 @@ class Class:
     def accept(visitor):
         visitor.visitClass(this)
 
+
+
 class File:
     var deps # all depending files, List[string]
     var elements # list of class/function/block elements,
@@ -366,6 +443,8 @@ class File:
 
     def accept(visitor):
         visitor.visitFile(this)
+
+
 
 # for debugging: print the tree
 def print_ast(ast, optional prefix = "", name):
@@ -407,6 +486,7 @@ def print_ast(ast, optional prefix = "", name):
     var fields = object_variables(ast)
     for child_name in fields.keys():
         print_ast(fields[child_name], prefix + "-----", child_name)
+
 
 
 # Test case for print_ast:

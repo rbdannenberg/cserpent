@@ -147,7 +147,9 @@ def parse_inner(ctx):
     # literal
     elif ctx.skip_store(TK_LITERAL, false):
         // TODO: object_type
-        res = Literal(ctx.pop_partial().content, nil)
+        res = Literal(ctx, ctx.pop_partial())
+        if not res.value_type:
+            return false
 
     # identifier
     elif ctx.skip_store(TK_IDENTIFIER, false):
@@ -280,14 +282,17 @@ def parse_statement(ctx):
             ctx.set_result(Declaration(iden, type, ctx.in_function))
 
     # return
-    elif ctx.skip("return", false):
+    elif ctx.get("return", false):
+        var return_token = ctx.next()
         if ctx.get(FS_EXPRESSION, false):
             if not parse_expression(ctx):
                 return false
             ctx.set_result(ReturnStatement(ctx.pop_result()))
         
         else:
-            ctx.set_result(ReturnStatement(Literal("nil", "Any")))
+            var return_val = Literal(ctx, return_token, 'any')
+            return_val.value = "nil"
+            ctx.set_result(ReturnStatement(return_val))
 
     # standalone expression
     elif ctx.get(FS_EXPRESSION, false):
@@ -301,8 +306,8 @@ def parse_statement(ctx):
                 return false
             
             var rhs = ctx.pop_result()
-            if not (isinstance(lhs, Identifier) or isinstance(lhs, GetAttribute) or 
-                    isinstance(lhs, Index)):
+            if not (isinstance(lhs, Identifier) or
+                    isinstance(lhs, GetAttribute) or isinstance(lhs, Index)):
                 ctx.err(
                     eq.range,
                     "LHS of assignment must be identifier, attribute or index"
@@ -327,7 +332,7 @@ def parse_statement(ctx):
             if is_semi:
                 semicolon_encountered = semicolon_encountered + 1
             else:
-                exps.append(Literal("\" \"", nil))
+                exps.append(Literal(ctx, "\" \"", 'string'))
 
             if semicolon_encountered <= 1:
                 if not parse_expression(ctx):
@@ -361,7 +366,8 @@ def parse_statement(ctx):
             )
             return false
 
-        ctx.set_result(StandaloneExpression(FunctionCall("display", ArgumentList(exps, {}))))
+        ctx.set_result(StandaloneExpression(
+                           FunctionCall("display", ArgumentList(exps, {}))))
 
     else:
         ctx.err_fset_miss(FS_EXPRESSION + ["return", "var", "print", "display"])
@@ -453,24 +459,59 @@ def parse_while(ctx):
 def parse_for(ctx):
     if not ctx.skip_store(TK_IDENTIFIER):
         return false
+    var var_type = nil  // unknown type so far: could be int or float
     var var_name = ctx.pop_partial().content
-    if not (ctx.skip("=") and parse_expression(ctx) and ctx.skip("to")):
+    if ctx.skip_store(TK_IDENTIFIER):
+        // first identifier must have been a type and this is the loop
+        // variable
+        var_type = var_name
+        var_name = ctx.pop_partial().content
+    if not (ctx.skip("=") and parse_expression(ctx) and ctx.get("to")):
         return false
+    var to_token = ctx.next()
     var start = ctx.pop_result()
     if not parse_expression(ctx):
         return false
     var end = ctx.pop_result()
-    var amount = Literal("1", "int")
+    var amount
     if ctx.skip("by", false):
         if not parse_expression(ctx):
             return false
         amount = ctx.pop_result()
-    
+    else:  # use "to" as the location for implied "by 1"
+        amount = Literal(ctx, to_token, 'int')
+        amount.value = "1"
     ctx.skip(":", false)
     if not parse_block(ctx):
         return false
     
-    ctx.set_result(ForRange(var_name, start, end, amount, ctx.pop_result()))
+    if not var_type:  // see if we can figure out type. If not, use int
+        // if initial value is a literal integer (e.g., 0) and the increment
+        // is either a literal integer or omitted, then var_type is "int".
+        // if either initial value or increment is a literal float, then
+        // var_type is "real". Otherwise, var_type is "any".
+        var_type = "any"
+        if isinstance(start, Literal):
+            var start_type = start.value_type
+            if start_type == 'int':
+                if isinstance(amount, Literal):
+                    var amount_type = amount.value_type
+                    if amount_type == 'int':
+                        var_type = "int"
+                    elif amount_type == 'real'
+                        var_type = "real"
+                    else:
+                        ctx.err(amount.range, "increment must be a number")
+                        return false
+            elif start_type == 'real':
+                var_type = "real"
+            else:
+                display "parsefor error", start, start.value
+                ctx.err(start.range, "start value must be a number")
+                return false
+
+    ctx.set_result(ForRange(var_type, var_name, start, end, amount,
+                            ctx.pop_result()))
     return true
 
 

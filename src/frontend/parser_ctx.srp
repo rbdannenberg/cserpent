@@ -17,7 +17,7 @@ class ParseContext:
     var pos      // 1-D position of the context, i.e., current character pointer
     var error    // Error message.
     var res      // An AST holder used for return type.
-    var partial  // Partial result store (for tokens).
+    var partial  // Partial result store (array of tokens).
     var should_ignore_whitespace
     var in_function  // boolean: true if we are parsing a function (where a
                      //          variable declaration is local)

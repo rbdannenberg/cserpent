@@ -61,6 +61,18 @@ Symbol::Symbol(const char *name_string, Any value, Any func,
 }
 
 
+Symbol *intern(const char *name)
+{
+    int64_t index = cs_symbol_table->find(Any{name}, true);
+    Symbol *s = to_symbol((*cs_symbol_table)[index + 1]);
+    if (!s) {
+        s = new Symbol(name);
+        (*cs_symbol_table)[index + 1] = s;
+    }
+    return s;
+}
+
+
 std::ostream& operator<<(std::ostream& os, Symbol *x) {
     os << get_c_str(x->name());
     return os;

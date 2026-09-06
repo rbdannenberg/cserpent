@@ -1,6 +1,6 @@
 # For every file $TESTFILE in tests/serpent/full_pipeline,
 # runs the following two commands:
-# serpent64 compiler.srp $TESTFILE -o test_temp -c
+# serpent64 compiler.srp $TESTFILE -o tsttmp -c
 # serpent64 $TESTFILE
 # If the output of the second command is the same as the output of the first command,
 # the test passes. Otherwise, the test fails.
@@ -38,9 +38,9 @@ PASSED=0
 FAILED=0
 TIMEOUT_DURATION=5s
 
-if [ -d autotest_temp_dir ]
+if [ -d autotsttmp_dir ]
 then
-    rm -r autotest_temp_dir
+    rm -r autotsttmp_dir
 fi
 # For every file $TESTFILE in tests/serpent/full_pipeline
 # Try for TESTIFLE = $TESTDIR/arrays.srp
@@ -49,9 +49,9 @@ do
     echo "---------------------------------------------------------"
     echo -e "${BLUE}Running test ${TESTFILE}...${NC}"
     # Run the following two commands:
-    # serpent64 compiler.srp $TESTFILE -o test_temp -c
+    # serpent64 compiler.srp $TESTFILE -o tsttmp -c
     # serpent64 $TESTFILE
-    timeout $TIMEOUT_DURATION serpent64 $COMPILERDIR $TESTFILE -o autotest_temp_dir -c > $OUTPUT_FILE1 2>/dev/null
+    timeout $TIMEOUT_DURATION serpent64 $COMPILERDIR $TESTFILE -o autotsttmp_dir -c > $OUTPUT_FILE1 2>/dev/null
     EXIT_STATUS1=$?
     timeout $TIMEOUT_DURATION serpent64 $TESTFILE > $OUTPUT_FILE2 2>/dev/null
     EXIT_STATUS2=$?
@@ -75,7 +75,7 @@ do
         diff $OUTPUT_FILE1 $OUTPUT_FILE2
     fi
     # Remove the temporary test directory
-    rm -r autotest_temp_dir
+    rm -r autotsttmp_dir
     #rm $OUTPUT_FILE1
     #rm $OUTPUT_FILE2
 done

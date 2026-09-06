@@ -1,0 +1,4 @@
+--------------- running compiled program --------------------
+--> ./tsttmp/build/array
+[1, 2, 3]
+--------------- compiled program finished -------------------

@@ -15,4 +15,4 @@
 #include <iostream>
 #include "csstring.h"
 #include "symbol.h"
-
+#include "dict.h"

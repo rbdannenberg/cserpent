@@ -1,0 +1,6 @@
+# callreturn.srp -- simple test for function call
+
+def adder(a, b):
+    return a + b
+
+print adder(4, 5.5)

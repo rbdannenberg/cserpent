@@ -27,6 +27,8 @@ public:
     Cs_class **symbol_class() { return (Cs_class **) (slots + 4); }
 };
 
+Symbol *intern(const char *name);
+
 Any *set_any_global(Any *global_addr, Any value);
 Any *set_any_global(Any *global_addr, Heap_obj *value);
 Any *set_any_global(Any *global_addr, const char *value);

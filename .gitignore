@@ -93,3 +93,5 @@ benchmarks/mypyc-benchmarks
 /tests/serpent/simple/easyglobal/output.xcodeproj/project.xcworkspace/xcshareddata/IDEWorkspaceChecks.plist
 
 /tests/serpent/simple/easyglobal/output.xcodeproj/project.xcworkspace/xcshareddata/WorkspaceSettings.xcsettings
+
+/tsttmp/

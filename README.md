@@ -4,18 +4,18 @@ For contributors, see TODO.md and FILE_STRUCTURE.md.
 
 ## Basic testing:
 To compile a cserpent program:
-`    serpent64 compiler.srp file-to-compile.srp -o test_temp -c -d`
+`    serpent64 compiler.srp file-to-compile.srp -o tsttmp -c -d`
 The -c flag will create CMakeLists.txt and compile.
 The -d flag will run with more debug output.
 
-To (re)compile the generated C++ code in test_temp:
+To (re)compile the generated C++ code in tsttmp:
 ```
-    cd test_temp
+    cd tsttmp
     cmake --build build
 ```
 ### Example:
 ```
-serpent64 compiler.srp tests/serpent/simple/oneplustwo.srp -o test_temp -c -d
+serpent64 compiler.srp tests/serpent/simple/oneplustwo.srp -o tsttmp -c -d
 ```
 compiles and runs oneplustwo.srp, printing the output "3".
 

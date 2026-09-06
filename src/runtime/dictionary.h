@@ -21,19 +21,19 @@ struct KeyEqual {
 
 
 
-class Dictionary : public Basic_obj {
+class Dict : public Heap_obj {
 public:
     using value_type = std::pair<const Any, Any>;
     using map_type = std::unordered_map<Any, Any, std::hash<Any>, KeyEqual>;
     int64_t more_slots[((sizeof(map_type) + sizeof(int64_t) - 1) /
                         sizeof(int64_t)) - 1];
-    Dictionary();
+    Dict();
     // TODO: what happens here? Adding elements to a dictionary requires
     // that you check gc_write_block and possible add new values to the
-    // gray list for GC. See Basic_obj::set_slot().
-    Dictionary(std::initializer_list<std::pair<const Any, Any>> l);
+    // gray list for GC. See Heap_obj::set_slot().
+    Dict(std::initializer_list<std::pair<const Any, Any>> l);
 
-    friend std::string debug_str(const Dictionary& x);
+    friend std::string debug_str(const Dict& x);
 
 };
 
@@ -41,6 +41,6 @@ public:
 // heap to this object, we will crash in GC. If this were placed on the
 // heap and not reported by gc_mark_roots(), it will be freed, overwritten,
 // and we will crash.
-inline const Dictionary empty_dict {};
+inline const Dict empty_dict {};
 
-std::unordered_map<Any, Any> *to_map(const Dictionary& x);
+std::unordered_map<Any, Any> *to_map(const Dict& x);
