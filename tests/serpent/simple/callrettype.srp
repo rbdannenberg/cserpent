@@ -1,0 +1,6 @@
+# callrettype.srp -- simple test for function call
+
+def real adder(int a, real b):
+    return a + b
+
+print adder(4, 5.5)

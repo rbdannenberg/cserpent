@@ -10,13 +10,20 @@ INLINE_WHITESPACE = [" ", "\t", "\v", "\r", "\f"]
 # e.g. `expect(["if", TK_IDENTIFIER])`
 TK_KEYWORD = 'KEYWORD'
 TK_IDENTIFIER = 'IDENTIFIER'
-TK_SYMBOL = 'SYMBOL'
+TK_SYMBOL = 'symbol'
 TK_LITERAL = 'LITERAL'
 TK_WHITESPACE = 'WHITESPACE'
 TK_INDENT = 'INDENT'
 TK_DEDENT = 'DEDENT'
-TK_BREAK = 'LINEBREAK'
-
+TK_SPACES = 'SPACES'
+TK_OTHER = 'OTHER'
+TK_COMMENT = 'COMMENT'
+TK_NEWLINE = 'NEWLINE'
+TK_EOF = 'EOF'
+TK_INT = 'int'
+TK_REAL = 'real'
+TK_STRING = 'string'
+TK_RESERVED = 'RESERVED'
 
 KW_STR = [
     "class",
@@ -53,6 +60,12 @@ SYMBOL_STR = [
     "*", "/", "%", "&", "~", ".", ";"
 ]
 
+RESERVED_WORDS = ["and", "or", "not", "in", "def", "return", "if",
+                  "while", "print", "display", "class", "for", "load"]
+
+def is_reserved(id):
+    id in RESERVED_WORDS
+
 
 class Token:
 
@@ -64,19 +77,23 @@ class Token:
         tk_type = tk_type_
         content = content_
         range = range_
-        display "Token constructor", tk_type, content, range
+        // display "Token constructor", tk_type, content, range
+
+
+    def to_str():
+        var rslt = "<Token " + str(tk_type) + " " + repr(content) + " " +
+                   range.file.get_formatted_line_col(range.start)
+        if range.start != range.end:
+            rslt = rslt + range.file.get_formatted_line_col(range.end)
+        return rslt + ">"
+
 
     def render():
         return "(" + str(tk_type) + ": \"" + content + "\")"
 
 
-# Since `continue` doesn't exist in Serpent, we are using boxed value (single
-# integer inside a singleton list) to pass output from a tokenizing function
-# so that everything can be put into a single `if/else` condition and avoid
-# a bunch of guards or nested `if/else` or smth.
 
-
-def tk_iden(source_file, pos, boxed_output):
+def tk_iden(source_file, pos):
     stream = source_file.source
     if not (isalpha(stream[pos]) or stream[pos] == "_"):
         return false
@@ -85,50 +102,54 @@ def tk_iden(source_file, pos, boxed_output):
     while ptr < len(stream) and (isalnum(stream[ptr]) or stream[ptr] == "_"):
         ptr = ptr + 1
     
-    boxed_output[0] = ptr
+    tokenizer_posn = ptr
     return true
 
 
-def tk_symbol(source_file, pos, boxed_output):
+def tk_symbol(source_file, pos):
     stream = source_file.source
     for s in SYMBOL_STR:
         if s == subseq(stream, pos, pos + len(s)):
-            boxed_output[0] = pos + len(s)
+            tokenizer_posn = pos + len(s)
             return true
 
     return false
 
 
-def tk_whitespace(source_file, pos, boxed_output):
+def tk_whitespace(source_file, pos):
+# look for whitespace
+# return false if none
+# return true if any space AND 
+#     set tokenizer_posn to location of next non-space char
     stream = source_file.source
     if stream[pos] not in INLINE_WHITESPACE:
         return false
     
     for i = pos + 1 to len(stream):
         if stream[i] not in INLINE_WHITESPACE:
-            boxed_output[0] = i
+            tokenizer_posn = i
             return true
         
-    boxed_output[0] = len(stream)
+    tokenizer_posn = len(stream)
     return true
 
 
 # tokenizes a comment up to (excluding) the next line break
-def tk_comment(source_file, pos, boxed_output):
+def tk_comment(source_file, pos):
     stream = source_file.source
     if not (stream[pos] == "#" or subseq(stream, pos, pos + 2) == "//"):
         return false
         
     for i = pos + 1 to len(stream):
         if stream[i] == "\n":
-            boxed_output[0] = i
+            tokenizer_posn = i
             return true
 
-    boxed_output[0] = len(stream)
+    tokenizer_posn = len(stream)
     return true
 
 
-def tk_dec(source_file, pos, boxed_output):
+def tk_dec(source_file, pos):
     stream = source_file.source
     if not isdigit(stream[pos]):
         return false
@@ -150,11 +171,11 @@ def tk_dec(source_file, pos, boxed_output):
         while pos < len(stream) and isdigit(stream[pos]):
             pos = pos + 1
     
-    boxed_output[0] = pos
+    tokenizer_posn = pos
     return true
 
 
-def tk_hex(source_file, pos, boxed_output):
+def tk_hex(source_file, pos):
     stream = source_file.source
     header = subseq(stream, pos, pos + 2)
     if header != "0x" and header != "0X":
@@ -164,15 +185,15 @@ def tk_hex(source_file, pos, boxed_output):
     while isalnum(stream[pos]):
         pos = pos + 1
     
-    boxed_output[0] = pos
+    tokenizer_posn = pos
     return true
 
 
-def tk_number(source_file, pos, boxed_output):
-    return tk_hex(source_file, pos, boxed_output) or tk_dec(source_file, pos, boxed_output)
+def tk_number(source_file, pos):
+    return tk_hex(source_file, pos) or tk_dec(source_file, pos)
 
 
-def tk_string(source_file, pos, boxed_output):
+def tk_string(source_file, pos):
     stream = source_file.source
     if stream[pos] != "\"":
         return false
@@ -183,11 +204,11 @@ def tk_string(source_file, pos, boxed_output):
         pos = pos + 1
     
     # TODO: fix end of file str lit
-    boxed_output[0] = pos + 1
+    tokenizer_posn = pos + 1
     return true
 
 
-def tk_symlit(source_file, pos, boxed_output):
+def tk_symlit(source_file, pos):
     stream = source_file.source
     if stream[pos] != "'":
         return false
@@ -198,55 +219,12 @@ def tk_symlit(source_file, pos, boxed_output):
         pos = pos + 1
     
     # TODO: fix end of file str lit
-    boxed_output[0] = pos + 1
+    tokenizer_posn = pos + 1
     return true
 
 
-def strip_empty_lines(source_file, pos):
-    stream = source_file.source
-    ptr = pos
-    while ptr < len(stream):
-        line_ptr = ptr
-
-        # clear preceding whitespaces
-        flag = true
-        in_comment = false
-        while ptr < len(stream) and flag:
-            char = stream[ptr]
-
-            # hashtag comment
-            if char == "#":
-                in_comment = true
-
-            # slash comment
-            if ptr < len(stream) - 1 and char == "/" and stream[ptr + 1] == "/":
-                in_comment = true
-
-            # end search on linebreak
-            if char == "\n":
-                flag = false
-                ptr = ptr - 1
-            
-            # end search on non-whitespace if not in comment
-            elif char not in INLINE_WHITESPACE and not in_comment:
-                flag = false
-                ptr = ptr - 1
-
-            ptr = ptr + 1
-        
-        # return EOF position if file ended
-        if ptr == len(stream):
-            return ptr
-
-        if stream[ptr] == "\n":
-            # skip linebreak if line is empty
-            ptr = ptr + 1
-        else:
-            # return posiion of <last linebreak + 1>
-            return line_ptr
-
-
 def indent_size(source_file, start, end):
+    error("indent_size is probably not what you want")
     if start == end:
         return res(0)
 
@@ -255,146 +233,319 @@ def indent_size(source_file, start, end):
     tabs = raw.count("\t")
     spaces = raw.count(" ")
 
-    if tabs != 0 and spaces != 0:
+    if tabs != 0:
         return err_res(
-            "cannot use mixed space and tabs in indentation",
+            "cannot use tabs in indentation",
             source_file.get_range(start, end)
         )
 
-    # true if whitespace contains anything other than " " and "\t"
-    if tabs + spaces != end - start:
+    # true if whitespace contains anything other than " "
+    if spaces != end - start:
         return err_res(
-            "cannot use whitespace in indentation other than space or tab",
+            "cannot use whitespace in indentation other than space",
             source_file.get_range(start, end)
         )
 
-    if spaces % TAB_SIZE != 0:
-        return err_res(
-            "space indentation must be a multiple of " + str(TAB_SIZE) +
-            ", got " + str(spaces),
-            source_file.get_range(start, end)
-        )
-
-    return res(int(spaces / TAB_SIZE) + tabs)
+    return res(spaces)
 
 
-def tokenize(source_file):
-    var pos = 0
-    var indent_level = 0
-    var newline = true # true if a linebreak was just encountered
-
-    var tokens = []  // an array of Token
-    var stream = source_file.source
-
+class Tokenizer:
+    var src
+    var current
+    var after_current
+    var line
+    var pos
+    var indent
+    var istack  // indent/dedent stack
     var range
-    var lit
-    var iden
-    var pass
-    var tk_type
+    var indent_dedent_mode
+    var ignore_indentation
+    var linewrap_flag
+    var line_start
 
-    while pos < len(stream):
-        // print source_file.get_formatted_pos(pos)
+    def init(src_):
+        src = src_
+        istack = [0]
+        indent = 0
+        line_start = true
+        newline()
 
-        # skip empty lines (that doesn't contribute to indentation levels)
-        # TODO: find out why hashtag isnt skipped
-        if newline:
-            pos = strip_empty_lines(source_file, pos)
-            if pos == len(stream):
-                for i = 0 to indent_level:
-                    tokens.append(Token(TK_DEDENT, "", range))
-                return res(tokens)
 
-            var whitespace_end = [-1]
-            if not tk_whitespace(source_file, pos, whitespace_end):
-                whitespace_end[0] = pos
+    def newline():
+        line = src.readline()
+        print "************************************"
+        print "* "; len(src.source_map) - 1; ": "; line;
+        print "************************************"
+        pos = 0
 
-            var result = indent_size(source_file, pos, whitespace_end[0])
-            if not result.ok:
-                return result
-            
-            indent = result.result
-            range = source_file.get_range(pos, whitespace_end[0])
-            if indent < indent_level:
-                for i = indent to indent_level:
-                    tokens.append(Token(TK_DEDENT, "", range))
-            elif indent > indent_level:
-                for i = indent_level to indent:
-                    tokens.append(Token(TK_INDENT, "", range))
 
-            indent_level = indent
-            newline = false
-
-        # ugly boxed value representation for cursor position
-        var new_pos = [-1]
-
-        if stream[pos] == "\n": # line break
-            newline = true
-            new_pos[0] = pos + 1
-            range = source_file.get_range(pos, pos + 1)
-            tokens.append(Token(TK_BREAK, "", range))
-
-        elif tk_whitespace(source_file, pos, new_pos): # whitespace
-            pass = 1
-
-        elif tk_comment(source_file, pos, new_pos): # comment
-            pass = 1
-
-        elif tk_number(source_file, pos, new_pos): # numeric literal
-            lit = subseq(stream, pos, new_pos[0])
-            range = source_file.get_range(pos, new_pos[0])
-            tokens.append(Token(TK_LITERAL, lit, range))
-
-        elif tk_iden(source_file, pos, new_pos): # identifier
-            iden = subseq(stream, pos, new_pos[0])
-            tk_type = TK_IDENTIFIER
-            if iden in KW_STR:
-                tk_type = TK_KEYWORD
-            elif iden in LITERAL_STR:
-                tk_type = TK_LITERAL
-                if iden == "true":
-                    iden = "True"
-                elif iden == "false":
-                    iden = "False"
-
-            range = source_file.get_range(pos, new_pos[0])
-            tokens.append(Token(tk_type, iden, range))
-
-        elif tk_symbol(source_file, pos, new_pos): # symbol
-            lit = subseq(stream, pos, new_pos[0])
-            range = source_file.get_range(pos, new_pos[0])
-            tokens.append(Token(TK_SYMBOL, lit, range))
+    def strip_empty_lines():
+        while line != "" and is_empty_line():
+            newline()
         
-        elif tk_string(source_file, pos, new_pos): # string literal
-            lit = subseq(stream, pos, new_pos[0])
-            range = source_file.get_range(pos, new_pos[0])
-            tokens.append(Token(TK_LITERAL, lit, range))
 
-        elif tk_symlit(source_file, pos, new_pos): # symbol literal
-            lit = subseq(stream, pos, new_pos[0])
-            range = source_file.get_range(pos, new_pos[0])
-            tokens.append(Token(TK_LITERAL, lit, range))
-
-        if new_pos[0] == -1:
-            range = source_file.get_range(pos, pos + 1)
-            return err_res(
-                "invalid character during tokenizing: " + stream[pos],
-                range
-            )
-
-        pos = new_pos[0]
-
-    for i = 0 to indent_level:
-        tokens.append(Token(TK_DEDENT, "", range))
-    return res(tokens)
+    def is_empty_line():
+    # test if line has any code (false if empty or just comment)
+        for char at i in line:
+            if char == "#":
+                return true
+            elif i + 1 < len(line) and char == "/" and line[i + 1] == "/":
+                return true
+            elif char == "\n":  // end of line
+                return true
+            elif not isspace(char):
+                return false
+        return true
 
 
-def pretty_print_tokenize_result(result):
-    if result.ok:
-        print "Sucessful. Tokens:"
-        for tok in result.result:
-            print tok.tk_type, tok.content
-    else:
-        var err = result.error
-        var range_str = str(err.range.start) + "-" + str(err.range.end)
-        print "Tokenizer Error (" + range_str + ")"
-        print err.msg
+    def check_indent_dedent():
+    # After newline with content, indent is the indentation which we compare
+    # to istack.last() and possibly report indentation or dedentation. This
+    # state is enabled by indent_dedent_mode. It's tricky because in one
+    # line, we can have multiple dedentations (although never more than one
+    # indentation).
+        if indent < istack.last():
+            istack.unappend()
+            return Token(TK_DEDENT, "", get_range())
+        elif indent > istack.last():
+            istack.append(indent)
+            return Token(TK_INDENT, "", get_range())
+        else:
+            return nil
+
+
+    def peek():
+    # lookahead at next token without consuming it
+        // display "entering peek", current, after_current
+        if not current:
+            current = indent_dedent_mode and check_indent_dedent()
+        if not current:
+            after_current_to_current()
+        if not current:
+            get_next_token()
+//            print "## Tokenizer.peek got", current
+        return current
+
+
+    def undo_next(token):
+        if current:
+            if after_current:
+                error("Cannot undo_next if current and after_current exist: " +
+                      str(current) + " " + str(after_current))
+            after_current = current
+        current = token
+
+
+    def next():
+    # return the next token and consume it
+        if not current:
+            current = indent_dedent_mode and check_indent_dedent()
+        if not current:
+            after_current_to_current()
+        if not current:
+            get_next_token()
+            // print "Tokenizer(next) got", current
+        var rslt = current
+        current = nil
+        display "### Token.next returns", rslt
+//        if rslt.tk_type == TK_DEDENT:
+//            print "####################### FOUND DEDENT ! ###################"
+//            stacktrace()
+//            print "####################### RETURNING DEDENT ! ###############"
+        // if rslt.tk_type == TK_NEWLINE:
+        //     stacktrace()  // who gets the newline?
+        return rslt
+
+
+    def get_range(optional start):
+        if not start:
+            start = pos
+        var file_pos = src.offset - len(line) + start
+        Range(src, file_pos, file_pos)
+
+
+    def scan_token():
+        if pos == len(line) and pos > 0:
+            newline()
+        while line != "" and (ignore_indentation or line[pos] != "\n") and
+              isspace(line[pos]):
+            pos = pos + 1  // skip spaces
+        if line_start:
+            line_start = false
+//            display "scan_token returns TK_SPACES", pos
+            return Token(TK_SPACES, "", get_range())
+        if line == "":
+//            display "scan_token returns TK_EOF", pos
+            return Token(TK_EOF, "", get_range())
+        var c = line[pos]
+        pos = pos + 1
+        var comment = false
+        if c == "#":
+            comment = true
+        elif c == "/":
+            if line[pos] == "/":
+                comment = true
+            else:
+//                display "scan_token returns TK_OTHER", pos
+                return Token(TK_OTHER, "/", get_range())
+        if comment:
+            pos = len(line) - 1
+//            display "scan_token returns TK_COMMENT", pos
+            return Token(TK_COMMENT, "", get_range())
+        var start = pos - 1  // location of c
+        if c == "\n":
+            line_start = true
+//            display "scan_token returns TK_NEWLINE", pos
+            return Token(TK_NEWLINE, "\n", get_range(start))
+        if isalpha(c) or c == "_":
+            while isalpha(line[pos]) or line[pos] == "_" or isdigit(line[pos]):
+                pos = pos + 1
+            var id = subseq(line, start, pos)
+//            display "scan_token returns TK_RESERVED or TK_IDENTIFIER", id, pos
+            return Token(TK_RESERVED if is_reserved(id) else TK_IDENTIFIER, id, 
+                         get_range(start))
+        if isdigit(c) or c == ".":
+            if c != ".":  // get digits before decimal point
+                while isdigit(c):
+                    c = line[pos]
+                    pos = pos + 1
+            if c == "." or tolower(c) == "e":
+                if c == ".":  // get fraction part first
+                    c = line[pos]
+                    pos = pos + 1
+                    while isdigit(c)
+                        c = line[pos]
+                        pos = pos + 1
+                    if pos - start == 2: // just "."
+                        pos = pos - 1  // unget c so pos is after "."
+//                        display "scan_token returns TK_OTHER (.)", pos
+                        return Token(TK_OTHER, ".", get_range(start))
+                if tolower(c) == "e":  // may be followed by exponent "e+006"
+                    if c == "-" or c == "+":
+                        c = line[pos]
+                        pos = pos + 1
+                    var expcount = 0
+                    while isdigit(c)
+                        expcount = expcount + 1
+                        c = line[pos]
+                        pos = pos + 1
+                    if expcount == 0:
+                        print "ERROR: No digit in exponent", get_range(start)
+                        exit(1)
+                pos = pos - 1
+//                display "scan_token returns TK_REAL", start, pos, subseq(line, start, pos), line
+                return Token(TK_REAL, subseq(line, start, pos),
+                             get_range(start))
+            if pos - start == 2 and c == "x":  // got "0x" so far
+                c = line[pos]
+                pos = pos + 1
+                var digit_count
+                while isdigit(c) or tolower(c) in "abcdef":
+                    digit_count = digit_count + 1
+                    c = line[pos]
+                    pos = pos + 1
+                if digit_count == 0:
+                    print "ERROR: No digits in hex constant", get_range(start)
+                    exit(1)
+            pos = pos - 1  // undo last (unused) char
+//            display "scan_token returns TK_INT", start, pos, subseq(line, start, pos), line
+            return Token(TK_INT, subseq(line, start, pos), get_range(start))
+        if c == "\"":
+//            display "scan_token expects to return TK_STRING", pos
+            return scan_string(TK_STRING, c)
+        if c == "'":
+//            display "scan_token expects to return TK_SYMBOL", pos
+            return scan_string(TK_SYMBOL, c)
+        if find("><!=", c) >= 0:
+            var c2 = line[pos]
+            if c2 == "=" or ((c == ">" and c2 == ">") or
+                             (c == "<" and c2 == "<")):
+                pos = pos + 1
+//        display "scan_token returns TK_OTHER", pos
+        return Token(TK_OTHER, subseq(line, start, pos), get_range(start))
+
+
+    def scan_string(token_type, quote):
+    # scan string in single or double quotes with escapes
+        var s = quote  // start with open quote
+        var start = pos
+        var range = get_range(start)
+        var line_count = 0
+        while true:
+            var c = line[pos]
+            pos = pos + 1
+            if pos >= len(line):
+                s = s + subseq(line, start)
+                newline()
+                line_count = line_count + 1
+                if line_count > 10:
+                    error("String constant exceeds 10 lines - probably there" +
+                          " is an unclosed quote (" + quote + "): " + s)
+                start = 0
+            if c == quote:
+                if line[pos] == quote:  // two quotes -> one quote
+                    pos = pos + 1
+                else:
+                    s = s + subseq(line, start, pos)
+//                    display "scan_string got", repr(s), start, pos, line
+                    return Token(token_type, s, range)
+            elif c == "\\":
+                pos = pos + 1
+
+
+    def after_current_to_current():
+        current = after_current
+        after_current = nil
+
+
+    def maybe_non_indent_dedent_mode():
+    #
+        while not indent_dedent_mode:
+            current = scan_token()
+//            display "maybe_non_indent_dedent_mode top", current
+            if linewrap_flag:
+                while current.tk_type == TK_COMMENT or
+                      current.tk_type == TK_NEWLINE or
+                      current.tk_type == TK_SPACES:
+                    current = scan_token()
+//                    display "maybe_non_indent_dedent_mode wrap", current
+                return
+            if current.tk_type != TK_SPACES:
+                return
+            indent = pos
+            after_current = scan_token()  // lookahead after spaces
+//            display "maybe_non_indent_dedent_mode after scan",
+//            display     current, after_current
+            // if we leave this code here, we don't get dedent after last line
+//            if after_current.tk_type == TK_EOF:
+//                after_current_to_current()
+//                return
+            if after_current.tk_type == TK_COMMENT:
+                indent = pos
+                after_current_to_current()
+                after_current = scan_token()
+//                display "maybe_non_indent_dedent_mode comment", current
+            if after_current.tk_type != TK_NEWLINE:
+                indent_dedent_mode = true
+            // else ignore comments-only line
+                
+
+    def get_next_token():
+    # scan for the next token and assign it to current
+//        display "get_next_token called", current, indent_dedent_mode,
+//        display     linewrap_flag, ignore_indentation
+        maybe_non_indent_dedent_mode()
+//        display "get_next_token after maybe_non_...", current, indent, istack,
+//        display     indent_dedent_mode
+        linewrap_flag = false
+        if indent_dedent_mode:
+            current = check_indent_dedent()
+            if current:
+                return
+            after_current_to_current()
+            indent_dedent_mode = false
+//            display "get_next_token after indent test", current, indent,
+//            display     istack, indent_dedent_mode, after_current
+        if not current or current.tk_type == TK_COMMENT:
+            current = scan_token()
+        // display "get_next_token normal exit", current

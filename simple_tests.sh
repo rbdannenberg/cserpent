@@ -1,13 +1,18 @@
 #!/usr/bin/env bash
 #
-# run_tests.sh - run serpent test programs and check for a literal
+# simple_tests.sh - run serpent test programs and check for a literal
 # substring match in their output.
 #
 # Usage:
-#   ./run_tests.sh              # run all tests
-#   ./run_tests.sh <name>       # run only the named test (e.g. forloop)
+#   ./simple_tests.sh              # run all tests
+#   ./simple_tests.sh <name>       # run only the named test (e.g. forloop)
 #
-# To add a new test:
+# Every test needs tests/serpent/simple/<name>.expected -- testone
+# creates this automatically (by extracting the compiled program's
+# output section) the first time a test passes, so you normally won't
+# write these by hand.
+#
+# To add a new test by hand instead:
 #   1. Put the program at tests/serpent/simple/<name>.srp
 #   2. Put the expected output snippet at tests/serpent/simple/<name>.expected
 #   3. Add "<name>" to the TESTS array below.
@@ -19,6 +24,12 @@ BUILD_OUT="tsttmp"
 
 # ---- list of tests: just the base name (no .srp) ----
 TESTS=(
+    append
+    aref
+    abs
+    add
+    callretopt
+    callrettype
     oneplustwo
     forloop
     forintloop

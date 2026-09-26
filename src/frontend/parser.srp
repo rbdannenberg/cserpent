@@ -1,13 +1,15 @@
 require "src/frontend/parser_ctx"
 require "src/frontend/ast"
 
+TYPE_NAMES = ["int", "real", "array", "dict", "bool", "symbol"]
 
 ### FIRST SETS ###
 
 FS_DECLARATION = ["var", "int", "real", "array", "dict", "bool", "symbol"]
 
-FS_EXPRESSION = [
-    TK_LITERAL,
+FS_LITERAL = [TK_INT, TK_REAL, TK_STRING]
+
+FS_EXPRESSION = FS_LITERAL + [
     TK_IDENTIFIER,
     "[",
     "{",
@@ -19,6 +21,7 @@ FS_EXPRESSION = [
 ]
 
 FS_CONTROL = ["if", "while", "for"]
+
 
 
 ### PRECEDENCE SYMBOLS ###
@@ -38,9 +41,6 @@ PREFIX_TABLE = ["+", "-", "~", "not"]
 
 ### MISC CONSTRUCTS ###
 
-def second_token_is_assign(ctx):
-    return ctx.pos + 1 < len(ctx.input) and ctx.input[ctx.pos + 1].content == "="
-
 
 def add_to_arg_lists(val, args, kwargs):
     if val[0] == 0:
@@ -54,54 +54,54 @@ def add_to_arg_lists(val, args, kwargs):
 #   0: normal argument (value is just an AST of expression)
 #   1: keyword argument (value is [Identifier, Expression])
 def parse_arg_list_entry(ctx):
-    if second_token_is_assign(ctx):
-        if not ctx.skip_store(TK_IDENTIFIER):
-            return false
-        var key = ctx.pop_partial().content
-        if not ctx.skip("="):
-            return false
-        if not parse_expression(ctx):
-            return false
-        var value = ctx.pop_result()
-        ctx.set_result([1, [key, value]])
-    else:
-        if not parse_expression(ctx):
-            return false
-        ctx.set_result([0, ctx.pop_result()])
+    var key = ctx.peek_token(TK_IDENTIFIER, false)
+    var value
+    if key:
+        key = ctx.get_token()
+        var assign_op = ctx.peek_token("=", false)
+        if assign_op:
+            ctx.get_token()  // skip the "="
+            value = parse_expression(ctx)
+            return [1, [key, value]] if value else nil
+        ctx.unget_token(key) // key is part of an positional actual parameter
+    value = parse_expression(ctx)
+    return [0, value] if value else nil
 
-    return true
 
 
 def parse_arg_list(ctx):
     var args = []
     var kwargs = {}
-    if ctx.get(FS_EXPRESSION, false):
-        if not parse_arg_list_entry(ctx):
-            return false
+//    print "ENTERING parse_arg_list"
+    if ctx.peek_token(FS_EXPRESSION, false):
+        var entry = parse_arg_list_entry(ctx)
+        if isnull(entry):
+            print "FAIL FROM parse_arg_list, no entry"
+            return nil
 
-        add_to_arg_lists(ctx.pop_result(),args, kwargs)
+        add_to_arg_lists(entry, args, kwargs)
 
-        while ctx.skip(",", false):
-            if not parse_arg_list_entry(ctx):
-                return false
-            add_to_arg_lists(ctx.pop_result(), args, kwargs)
+        while ctx.get_token(",", false):
+            entry = parse_arg_list_entry(ctx)
+            if isnull(entry):
+                print "FAIL FROM parse_arg_list, no entry after comma"
+                return nil
+            add_to_arg_lists(entry, args, kwargs)
 
-    ctx.set_result(ArgumentList(args, kwargs))
-    return true
+//    print "EXIT FROM parse_arg_list, args "; args, kwargs 
+    return ArgumentList(args, kwargs)
 
 
 def parse_dict_entry(ctx):
-    if not parse_expression(ctx):
-        return false
-    var key = ctx.pop_result()
-    if not ctx.skip(","):
-        return false
-    if not parse_expression(ctx):
-        return false
-    var value = ctx.pop_result()
-
-    ctx.set_result([key, value])
-    return true
+    var key = parse_expression(ctx)
+    if isnull(key):
+        return nil
+    if not ctx.get_token(","):
+        return nil
+    var value = parse_expression(ctx)
+    if isnull(value):
+        return nil
+    return [key, value]
 
 
 ### EXPRESSIONS ###
@@ -111,124 +111,128 @@ def parse_inner(ctx):
     var vals = nil
 
     # array
-    if ctx.skip("[", false):
+    if ctx.get_token("[", false):
         vals = []
-        if ctx.get(FS_EXPRESSION, false):
-            if not parse_expression(ctx):
-                return false
-            vals.append(ctx.pop_result())
+        if ctx.peek_token(FS_EXPRESSION, false):
+            var val = parse_expression(ctx)
+            if isnull(val):
+                return nil
+            vals.append(val)
 
-            while ctx.skip(",", false):
-                if not parse_expression(ctx):
-                    return false
-                vals.append(ctx.pop_result())
+            while ctx.get_token(",", false):
+                val = parse_expression(ctx)
+                vals.append(val)
 
-        if not ctx.skip("]"):
-            return false
+        if not ctx.get_token("]"):
+            return nil
         res = Array(vals)
 
     # dict
-    elif ctx.skip("{", false):
+    elif ctx.get_token("{", false):
         vals = []
-        if ctx.get(FS_EXPRESSION, false):
+        if ctx.peek_token(FS_EXPRESSION, false):
             if not parse_dict_entry(ctx):
-                return false
+                return nil
             vals.append(ctx.pop_result())
 
-            while ctx.skip(",", false):
-                if not parse_dict_entry(ctx):
-                    return false
-                vals.append(ctx.pop_result())
+            while ctx.get_token(",", false):
+                val = parse_dict_entry(ctx)
+                if isnull(val):
+                    return nil
+                vals.append(val)
 
-        if not ctx.skip("}"):
-            return false
+        if not ctx.get_token("}"):
+            return nil
         res = Dictionary(vals)
     
     # literal
-    elif ctx.skip_store(TK_LITERAL, false):
+    elif ctx.peek_token(FS_LITERAL, false):
         // TODO: object_type
-        res = Literal(ctx, ctx.pop_partial())
+        res = ctx.get_token()
+        res = Literal(ctx, res, res.tk_type)
         if not res.value_type:
-            return false
+            return nil
 
     # identifier
-    elif ctx.skip_store(TK_IDENTIFIER, false):
-        var iden = ctx.pop_partial().content
-        if ctx.skip("(", false):
-            if not parse_arg_list(ctx):
-                return false
-            res = FunctionCall(iden, ctx.pop_result())
-            if not ctx.skip(")"):
-                return false
+    elif ctx.peek_token(TK_IDENTIFIER, false):
+        var iden = ctx.get_token().content
+        if ctx.get_token("(", false):
+            print "parse_inner got open-paren after identifier "; iden
+            var args = parse_arg_list(ctx)
+            display "after parse_arg_list", repr(args.args) if args else nil
+            if isnull(args):
+                return nil
+            res = FunctionCall(iden, args)
+            print "parse_inner looking for close-paren after identifier "; iden
+            if not ctx.get_token(")"):
+                return nil
+            print "parse_inner failed to get close-paren after identifier "; iden
         else:
             res = Identifier(iden)
 
     # parenthesized expression
-    elif ctx.skip("(", false):
-        if not parse_expression(ctx):
-            return false
-        if not ctx.skip(")"):
-            return false
-        res = ctx.pop_result()
+    elif ctx.get_token("(", false):
+        print "parse_inner got open-paren"
+        res = parse_expression(ctx)
+        if not res or not ctx.get_token(")"):
+            return nil
+        print "parse_inner did NOT get close-paren"
 
     else:
-        ctx.err_fset_miss([TK_LITERAL, TK_IDENTIFIER, "[", "{", "("])
-        return false
+        ctx.err_fset_miss(FS_LITERAL + [TK_IDENTIFIER, "[", "{", "("])
+        return nil
 
     # postfix constructs
-    while ctx.skip_store([".", "["], false):
-        var fst = ctx.pop_partial().content
+    while ctx.peek_token([".", "["], false):
+        var fst = ctx.get_token().content
         if fst == ".":
-            if not ctx.skip_store(TK_IDENTIFIER):
-                return false
-            iden = ctx.pop_partial().content
-            if ctx.skip("(", false):
-                if not parse_arg_list(ctx):
-                    return false
-                res = MethodCall(res, iden, ctx.pop_result())
-                if not ctx.skip(")"):
-                    return false
+            iden = ctx.get_token(TK_IDENTIFIER)
+            if not iden:
+                return nil
+            if ctx.get_token("(", false):
+                val = parse_arg_list(ctx)
+                if isnull(val):
+                    return nil
+                res = MethodCall(res, iden.content, val)
+                if not ctx.get_token(")"):
+                    return nil
             else:
-                res = GetAttribute(res, iden)
+                res = GetAttribute(res, iden.content)
         else:
-            if not parse_expression(ctx):
-                return false
-            res = Index(res, ctx.pop_result())
-            if not ctx.skip("]"):
-                return false
-
-    ctx.set_result(res)
-    return true
+            val = parse_expression(ctx)
+            if isnull(val):
+                return nil
+            res = Index(res, val)
+            if not ctx.get_token("]"):
+                return nil
+    return res
 
 
 def parse_exponent(ctx):
-    if not parse_inner(ctx):
-        return false
-    var ast = ctx.pop_result()
+    var ast = parse_inner(ctx)
+    if isnull(ast):
+        return nil
 
-    while ctx.skip("**", false):
-        if not parse_inner(ctx):
-            return false
-        var rhs = ctx.pop_result()
+    while ctx.get_token("**", false):
+        var rhs = parse_inner(ctx)
+        if isnull(exp):
+            return nil
         ast = BinOp(ast, "**", rhs)
     
-    ctx.set_result(ast)
-    return true
+    return ast
 
 
 def parse_term(ctx):
-    var precs = []
-    while ctx.skip_store(PREFIX_TABLE, false):
-        precs.append(ctx.pop_partial().content)
-
-    if not parse_exponent(ctx):
-        return false
-    var inner = ctx.pop_result()
-    for i = len(precs) - 1 to -1 by -1:
-        inner = UnaryOp(precs[i], inner)
-    
-    ctx.set_result(inner)
-    return true
+    var tok = ctx.peek_token(PREFIX_TABLE, false)
+    if tok:
+        tok = ctx.get_token()
+        var term = parse_term(ctx)
+        if term:
+            return UnaryOp(tok.content, term)
+        else:
+            return nil
+    else:
+        return parse_exponent(ctx)
 
 
 def parse_infix(ctx, optional level = 0):
@@ -237,28 +241,31 @@ def parse_infix(ctx, optional level = 0):
     if level == len(PREC_TABLE):
         return parse_term(ctx)
     
-    if not parse_infix(ctx, level + 1):
-        return false
-    var ast = ctx.pop_result()
+    var ast = parse_infix(ctx, level + 1)
+    if isnull(ast):
+        return nil
     var pred = PREC_TABLE[level]
 
-    while ctx.skip_store(pred, false):
-        var symbol = ctx.pop_partial().content
-        if not parse_infix(ctx, level + 1):
-            return false
-        var rhs = ctx.pop_result()
+    while ctx.peek_token(pred, false):
+        var symbol = ctx.get_token().content
+        ctx.possible_linewrap()
+        var rhs = parse_infix(ctx, level + 1)
+        if isnull(rhs):
+            return nil
         ast = BinOp(ast, symbol, rhs)
         pred = PREC_TABLE[level]
     
-    ctx.set_result(ast)
-    return true
+    return ast
 
 
 def parse_expression(ctx):
-    var restore = ctx.ignore_whitespace(true)
-    ok = parse_infix(ctx)
-    ctx.ignore_whitespace(restore)
-    return ok
+//    var restore = ctx.ignore_whitespace(true)
+    print "ENTERING parse_expression"
+    var expr = parse_infix(ctx)
+    print "EXITING parse_expression: "; (expr if expr else "**FAILED**")
+    return expr
+//    ctx.ignore_whitespace(restore)
+//    return ok
 
 
 ### STATEMENT ###
@@ -267,223 +274,273 @@ def parse_expression(ctx):
 def parse_statement(ctx):
     var iden = nil
     var exps = nil
+    var ast = nil
 
     # val decl with `var`
-    if ctx.get(FS_DECLARATION, false):
-        type = intern(ctx.next().content)
-        ctx.skip_store(TK_IDENTIFIER)  // get the identifier
-        iden = ctx.pop_partial().content
-        if ctx.skip("=", false):  // look for initial value
-            if not parse_expression(ctx):
-                return false
-            ctx.set_result(DeclarationNAssignment(type, iden, ctx.pop_result(),
-                                                  ctx))
+    if ctx.peek_token(FS_DECLARATION, false):
+        type = intern(ctx.get_token().content)
+        iden = ctx.get_token(TK_IDENTIFIER)  // get the identifier
+        iden = iden.content if iden else "MISSING_IDENTIFIER"
+        if ctx.get_token("=", false):  // look for initial value
+            ast = parse_expression(ctx)
+            if isnull(ast):
+                return nil
+            ast = DeclarationNAssignment(type, iden, ast, ctx)
         else:
-            ctx.set_result(Declaration(iden, type, ctx.in_function))
+            ast = Declaration(iden, type, ctx.in_function)
 
     # return
-    elif ctx.get("return", false):
-        var return_token = ctx.next()
-        if ctx.get(FS_EXPRESSION, false):
-            if not parse_expression(ctx):
-                return false
-            ctx.set_result(ReturnStatement(ctx.pop_result()))
-        
+    elif ctx.peek_token("return", false):
+        var return_token = ctx.get_token()
+        if ctx.peek_token(FS_EXPRESSION, false):
+            ast = parse_expression(ctx)
+            if isnull(ast):
+                return nil
+            ast = ReturnStatement(ast)
         else:
             var return_val = Literal(ctx, return_token, 'any')
             return_val.value = "nil"
-            ctx.set_result(ReturnStatement(return_val))
+            ast = ReturnStatement(return_val)
 
     # standalone expression
-    elif ctx.get(FS_EXPRESSION, false):
-        if not parse_expression(ctx):
-            return false
-        
-        var lhs = ctx.pop_result()
-        if ctx.skip_store("=", false):
-            eq = ctx.pop_partial()
-            if not parse_expression(ctx):
-                return false
+    elif ctx.peek_token(FS_EXPRESSION, false):
+        var lhs = parse_expression(ctx)
+        if isnull(lhs):
+            return nil
+        var eq = ctx.get_token("=", false)
+        if eq:
+            var rhs = parse_expression(ctx)
+            if isnull(rhs):
+                return nil
             
-            var rhs = ctx.pop_result()
             if not (isinstance(lhs, Identifier) or
                     isinstance(lhs, GetAttribute) or isinstance(lhs, Index)):
                 ctx.err(
                     eq.range,
                     "LHS of assignment must be identifier, attribute or index"
                 )
-                return false
-            ctx.set_result(Assignment(lhs, rhs, ctx.in_function))
+                return nil
+            ast = Assignment(lhs, rhs, ctx.in_function)
         
         else:
-            ctx.set_result(StandaloneExpression(lhs))
+            ast = StandaloneExpression(lhs)
     
     # print statements
-    elif ctx.skip("print", false):
+    elif ctx.get_token("print", false):
+        var print_endl = true  // means that the next token cannot be a comma
+            // or semicolon (either no expression yet, or just parsed a comma
+            // or semicolon and don't want another.  If !print_endl is followed
+            // by semicolon, the semicolon is not part of print but a separator
+            // and there can be another statement.
         exps = []
-        var semicolon_encountered = 0
-        if not parse_expression(ctx):
-            return false
-        exps.append(ctx.pop_result())
-
-        while ctx.skip_store([",", ";"], false) and semicolon_encountered <= 1:
-            var is_semi = ctx.pop_partial().content == ";"
-
-            if is_semi:
-                semicolon_encountered = semicolon_encountered + 1
+        var done = false
+        var range
+        while not done:
+            var peek = ctx.peek_token()
+            if peek.tk_type == TK_EOF:
+                return nil
+            elif peek.tk_type == TK_NEWLINE or
+               ((not print_endl) and ctx.peek_token(";", false)):
+                if print_endl:
+                    exps.append(Literal(ctx, "\"\\n\"", 'string'))
+                done = true
             else:
-                exps.append(Literal(ctx, "\" \"", 'string'))
+                display "@@ print stmt parsing expression", peek
+                var exp = parse_expression(ctx)
+                range = ctx.peek_token().range
+                if exp:
+                    exps.append(exp)
+                    print_endl = true
+                    peek = ctx.peek_token()
+                    display "@@ print stmt after expr", peek
+                    if peek.tk_type == TK_EOF:
+                        return nil
+                    elif peek.tk_type == TK_NEWLINE:
+                        exps.append(Literal(ctx,
+                                            Token(TK_STRING, "\"\\n\"", range),
+                                            'string'))
+                        done = true  // newline is read after statement
+                    elif peek.content == ",":
+                        exps.append(Literal(ctx,
+                                            Token(TK_STRING, "\" \"", range),
+                                            'string'))
+                        ctx.get_token()  // consume ","
+                        print_endl = false
+                    elif peek.content == ";":
+                        ctx.get_token()  // consume ";"
+                        print_endl = false
+                    # otherwise error
+                    else:
+                        print "ERROR: syntax in print statement"
+                        return nil
+        ast = StandaloneExpression(
+                      FunctionCall("print", ArgumentList(exps, {})))
 
-            if semicolon_encountered <= 1:
-                if not parse_expression(ctx):
-                    return false
-                exps.append(ctx.pop_result())
-
-        var last_tok = ctx.input[ctx.pos - 1]
-        if last_tok.content == ";" and semicolon_encountered == 2:
-            ctx.pos = ctx.pos - 1
-
-        ctx.set_result(StandaloneExpression(FunctionCall("print", ArgumentList(exps, {}))))
+//
+//        var semicolon_encountered = 0
+//        if not parse_expression(ctx):
+//            return nil
+//        exps.append(ctx.pop_result())
+//
+//        while ctx.peek_token([",", ";"], false) and
+//              semicolon_encountered <= 1:
+//            var sep = ctx.get_token().content
+//            if sep == ";":
+//                semicolon_encountered = semicolon_encountered + 1
+//            else:
+//                exps.append(Literal(ctx, "\" \"", 'string'))
+//
+//            if semicolon_encountered <= 1:
+//                if not parse_expression(ctx):
+//                    return nil
+//                exps.append(ctx.pop_result())
+//
+//        var last_tok = ctx.input[ctx.pos - 1]
+//        if last_tok.content == ";" and semicolon_encountered == 2:
+//            ctx.pos = ctx.pos - 1
+//
+//        ctx.set_result(StandaloneExpression(FunctionCall("print", ArgumentList(exps, {}))))
 
     # display statements
-    elif ctx.skip_store("display", false):
-        iden = ctx.pop_partial()
+    elif ctx.get_token("display", false):
+        print_endl = true
         exps = []
-        if not parse_expression(ctx):
-            return false
-        exps.append(ctx.pop_result())
 
-        while ctx.skip(",", false):
-            if not parse_expression(ctx):
-                return false
-            exps.append(ctx.pop_result())
+        while not done:
+            if ctx.peek_token(TK_NEWLINE, false):
+                done = true
+            elif not parse_expression(ctx):
+                return nil
+            else:
+                exps.append(ctx.pop_result())
+                // now we have expression; check for comma
+                if ctx.get_token(",", false):
+                    print_endl = false
 
-        # first exp must be a string literal
-        if not isinstance(exps[0], Literal) or exps[0].value[0] != "\"":
-            ctx.err(
-                iden.range,
-                "First parameter to display must be a string literal"
-            )
-            return false
-
-        ctx.set_result(StandaloneExpression(
-                           FunctionCall("display", ArgumentList(exps, {}))))
+        ast = StandaloneExpression(
+                      FunctionCall("display", ArgumentList(exps, {})))
 
     else:
         ctx.err_fset_miss(FS_EXPRESSION + ["return", "var", "print", "display"])
-        return false
+        return nil
 
+    var next_token = ctx.peek_token(nil, false)
+    display "$ at end of parse_statement before skip_eol", next_token
     if not ctx.skip_eol():
-        return false
-    return true
+        return nil
+    return ast
 
 
 ### MULTILINE ###
 
 def parse_block(ctx):
-    if not (ctx.skip(TK_BREAK) and ctx.indent()):
-        return false
+    if not (ctx.get_token(TK_NEWLINE) and ctx.indent()):
+        return nil
 
     var content = []
     skip_linebreaks(ctx)
-    while not ctx.get(TK_DEDENT, false):
+    while not ctx.peek_token(TK_DEDENT, false):
         skip_linebreaks(ctx)
-        if ctx.get(FS_CONTROL, false):
-            if not parse_control(ctx):
-                return false
+        var stmt
+        if ctx.peek_token(FS_CONTROL, false):
+            stmt = parse_control(ctx)
         else:
-            if not parse_statement(ctx):
-                return false
-        content.append(ctx.pop_result())
+            stmt = parse_statement(ctx)
+        if isnull(stmt):
+            return nil
+        content.append(stmt)
+        display "&&&parse_block got stmt", content
         skip_linebreaks(ctx)
 
-    if not ctx.dedent():
-        return false
-
-    ctx.set_result(Block(content))
-    return true
+    var end_token = ctx.dedent()
+    if not end_token
+        return nil
+    return Block(content, end_token)
 
 
 def parse_if(ctx):
-    if not parse_expression(ctx):
-        return false
-    ctx.skip(":", false)
-    var if_cond = ctx.pop_result()
-    if not parse_block(ctx):
-        return false
-
-    var if_block = ctx.pop_result()
+    display "&&&parse_if called"
+    var if_cond = parse_expression(ctx)
+    if isnull(if_cond):
+        return nil
+    ctx.get_token(":", false)
+    var if_block = parse_block(ctx)
+    if isnull(if_block):
+        return nil
     var elifs = []
     skip_linebreaks(ctx)
-    while ctx.skip("elif", false):
+    while ctx.get_token("elif", false):
         skip_linebreaks(ctx)
-        if not parse_expression(ctx):
-            return false
-        ctx.skip(":", false)
-        var cond = ctx.pop_result()
-        if not parse_block(ctx):
-            return false
-        var block = ctx.pop_result()
+        var cond = parse_expression(ctx)
+        if isnull(cond):
+            return nil
+        ctx.get_token(":", false)
+        var block = parse_block(ctx)
+        if isnull(block):
+            return nil
         elifs.append([cond, block])
         skip_linebreaks(ctx)
     
-    var else_block
-    if ctx.skip("else", false):
-        if not parse_block(ctx):
-            return false
-        else_block = ctx.pop_result()
-    else:
-        else_block = nil
+    var else_block = nil
+    if ctx.get_token("else", false):
+        else_block = parse_block(ctx)
+        if isnull(else_block):
+            return nil
 
     var acc = else_block
     for i = len(elifs) - 1 to -1 by -1:
         var curr = elifs[i]
         acc = If(curr[0], curr[1], acc)
     
-    ctx.set_result(If(if_cond, if_block, acc))
-    return true
+    display "&&&parse_if returning If object"
+    return If(if_cond, if_block, acc)
 
 
 def parse_while(ctx):
-    if not parse_expression(ctx):
-        return false
-    ctx.skip(":", false)
-    var cond = ctx.pop_result()
-    if not parse_block(ctx):
-        return false
-    
-    ctx.set_result(While(cond, ctx.pop_result()))
-    return true
+    var cond = parse_expression(ctx)
+    if isnull(cond):
+        return nil
+    ctx.get_token(":", false)
+    var block = parse_block(ctx)
+    if isnull(block):
+        return nil
+    return While(cond, block)
 
 
 def parse_for(ctx):
-    if not ctx.skip_store(TK_IDENTIFIER):
-        return false
-    var var_type = nil  // unknown type so far: could be int or float
-    var var_name = ctx.pop_partial().content
-    if ctx.skip_store(TK_IDENTIFIER):
-        // first identifier must have been a type and this is the loop
-        // variable
-        var_type = var_name
-        var_name = ctx.pop_partial().content
-    if not (ctx.skip("=") and parse_expression(ctx) and ctx.get("to")):
-        return false
-    var to_token = ctx.next()
-    var start = ctx.pop_result()
-    if not parse_expression(ctx):
-        return false
-    var end = ctx.pop_result()
+    var var_type = ctx.get_token(TK_IDENTIFIER)
+    if isnull(var_type):
+        return nil
+    var_type = var_type.content
+    var var_name = ctx.get_token(TK_IDENTIFIER, false)
+    if isnull(var_name):  // must not have had a type
+        var_name = var_type
+        var_type = nil
+    else:
+        var_name = var_name.content
+    if isnull(ctx.get_token("=")):
+        return nil
+    var start = parse_expression(ctx)
+    if isnull(start):
+        return nil
+    var to_token = ctx.get_token("to")
+    if not to_token:
+        return nil
+    var end = parse_expression(ctx)
+    if not end:
+        return nil
     var amount
-    if ctx.skip("by", false):
-        if not parse_expression(ctx):
-            return false
-        amount = ctx.pop_result()
+    if ctx.get_token("by", false):
+        amount = parse_expression(ctx)
+        if isnull(amount):
+            return nil
     else:  # use "to" as the location for implied "by 1"
         amount = Literal(ctx, to_token, 'int')
         amount.value = "1"
-    ctx.skip(":", false)
-    if not parse_block(ctx):
-        return false
+    ctx.get_token(":", false)
+    var block = parse_block(ctx)
+    if not block:
+        return nil
     
     if not var_type:  // see if we can figure out type. If not, use int
         // if initial value is a literal integer (e.g., 0) and the increment
@@ -502,115 +559,184 @@ def parse_for(ctx):
                         var_type = "real"
                     else:
                         ctx.err(amount.range, "increment must be a number")
-                        return false
+                        return nil
             elif start_type == 'real':
                 var_type = "real"
             else:
                 display "parsefor error", start, start.value
                 ctx.err(start.range, "start value must be a number")
-                return false
+                return nil
 
-    ctx.set_result(ForRange(var_type, var_name, start, end, amount,
-                            ctx.pop_result()))
-    return true
+    return ForRange(var_type, var_name, start, end, amount, block)
 
 
 def parse_control(ctx):
-    if ctx.skip("if", false):
+    if ctx.get_token("if", false):
         return parse_if(ctx)
-    if ctx.skip("while", false):
+    if ctx.get_token("while", false):
         return parse_while(ctx)
-    if ctx.skip("for", false):
+    if ctx.get_token("for", false):
         return parse_for(ctx)
     ctx.err_fset_miss(FS_CONTROL)
-    return false
+    return nil
 
 
 def skip_linebreaks(ctx):
-    while ctx.skip(TK_BREAK, false):
-        var pass = 1
+    while ctx.get_token(TK_NEWLINE, false):
+        nil
 
 
 ### DECL STUFF ###
 
+def parse_formals(ctx):
+# returns [requireds, optionals, keywords, restparam, dictparam]
+# or false if there is a syntax error
+    var requireds
+    var optionals
+    var keywords
+    var restparam
+    var dictparam
+    var formal_type = 'required'
+    while ctx.peek_token(TK_IDENTIFIER, false):
+        var ptype = "var"
+        var pname = ctx.get_token().content
+        display "parse_formals initial pname", pname
+        var pdefault = nil
+        if pname == "optional" or pname == "keyword" or pname == "rest" or
+           pname == "dictionary" or pname == "required":
+            formal_type = intern(pname)
+            display "formal_type changed", repr(formal_type)
+            pname = ctx.get_token(TK_IDENTIFIER)
+            if not pname:
+                return nil
+            pname = pname.content
+            
+        if formal_type != 'rest' and formal_type != 'dictionary' and 
+           ctx.peek_token(TK_IDENTIFIER, false):
+            // first identifier must have been a type and this is the loop
+            // variable
+            ptype = pname
+            pname = ctx.get_token().content
+        display "parse_formals after type check", ptype, pname, formal_type
+        if formal_type == 'required':
+            requireds = requireds or []
+            display "add to requireds", ptype, pname
+            requireds.append(ptype)
+            requireds.append(pname)
+        elif formal_type == 'optional':
+            if ctx.get_token("="):
+                pdefault = parse_expression(ctx)
+                if isnull(pdefault):
+                    return nil
+            optionals = optionals or []
+            display "add to optionals", ptype, pname, pdefault
+            optionals.append(ptype)
+            optionals.append(pname)
+            optionals.append(pdefault)
+        elif formal_type == 'keyword':
+            if ctx.get_token("="):
+                pdefault = parse_expression(ctx)
+                if isnull(pdefault):
+                    return nil
+            keywords = keywords or []
+            keywords.append(ptype)
+            keywords.append(pname)
+            keywords.append(pdefault)
+        elif formal_type == 'rest':
+            restparam = pname
+        elif formal_type == 'dictionary':
+            dictparam = pname
+        if not ctx.get_token(",", false):
+            if not ctx.get_token(")"):
+                return nil
+            display "parse_formals", requireds, optionals, keywords,
+            display                  restparam, dictparam
+            return [requireds, optionals, keywords, restparam, dictparam]
+    if not ctx.get_token(")"):
+        return nil
+    return array(5)  // == [nil, nil, nil, nil, nil]
+
+
 def parse_function(ctx):
-    if not (ctx.skip_store(TK_IDENTIFIER) and ctx.skip("(")):
-        return false
+    var name = ctx.get_token(TK_IDENTIFIER)
+    if not name
+        return nil
+    var ftype = "var"
+    if name.content in TYPE_NAMES:
+        ftype = name.content
+        name = ctx.get_token(TK_IDENTIFIER)
+        if not name:
+            return nil
+    name = name.content
 
-    var name = ctx.pop_partial().content
+    if not ctx.get_token("("):
+        return nil
+
     ctx.in_function = true
-    var params = []
-    if ctx.skip_store(TK_IDENTIFIER, false):
-        params.append(ctx.pop_partial().content)
-        while ctx.skip(",", false):
-            if not ctx.skip_store(TK_IDENTIFIER):
-                ctx.in_function = false
-                return false
-            params.append(ctx.pop_partial().content)
+    var params = parse_formals(ctx)
+    if not params:
+        ctx.in_function = false
+        return nil
 
-    if not ctx.skip(")"):
-        ctx.in_function = false
-        return false
-    ctx.skip(":", false)
-    if not parse_block(ctx):
-        ctx.in_function = false
-        return false
+    params.append(ftype)  // last element in signature is function return type
+    ctx.get_token(":", false)
+    var stmts = parse_block(ctx)
+    ctx.in_function = false
+    if isnull(stmts):
+        return nil
 
     # TODO: optionals
-
-    var stmts = ctx.pop_result()
-    ctx.in_function = false
-    ctx.set_result(Function(name, params, [], stmts))
-    return true
+    return Function(name, params, stmts)
 
 
 def parse_class(ctx):
-    if not ctx.skip_store(TK_IDENTIFIER):
-        return false
+    var name = ctx.get_token()
+    if not name
+        return nil
     
-    var name = ctx.pop_partial().content
     var parent = nil
-    if ctx.skip("(", false):
-        if not (ctx.skip_store(TK_IDENTIFIER) and ctx.skip(")")):
-            return false
-        
-        parent = ctx.pop_partial().content
+    if ctx.get_token("(", false):
+        parent = ctx.get_token(TK_IDENTIFIER)
+        if not parent or not ctx.get_token(")")
+            return nil
+        parent = parent.content
 
-    ctx.skip(":", false)
+    ctx.get_token(":", false)
     if not (ctx.br() and ctx.indent()):
-        return false
+        return nil
 
     var vars = []
     var funcs = []
-    while not ctx.get(TK_DEDENT, false):
-
-        if ctx.skip("var", false):
-            if not ctx.skip_store(TK_IDENTIFIER):
-                return false
-            vars.append(ctx.pop_partial().content)
+    while true:
+        display "in parse_class while loop", ctx.peek_token(nil, false)
+        if ctx.get_token("var", false):
+            var v = ctx.get_token(TK_IDENTIFIER)
+            if not v
+                return nil
+            vars.append(v.content)
             if not ctx.skip_eol():
-                return false
+                return nil
 
-        elif ctx.skip("def", false):
-            if not parse_function(ctx):
-                return false
-            funcs.append(ctx.pop_result())
+        elif ctx.get_token("def", false):
+            var func = parse_function(ctx)
+            if isnull(func):
+                return nil
+            funcs.append(func)
 
-    if not ctx.dedent():
-        return false
-
-    ctx.set_result(Class(name, parent, vars, funcs))
-    return true
+        elif ctx.get_token(TK_DEDENT)
+            return Class(name.content, parent, vars, funcs)
+        else:
+            return nil
 
 
 ### GLOBAL ###
 
 def parse_load_req(ctx):
-    if not ctx.skip_store(TK_LITERAL):
-        return false
     
-    var path_lit = ctx.pop_partial().content
-    var path = subseq(path_lit, 1, len(path_lit) - 1)
+    var path_lit = ctx.get_token(TK_STRING)
+    if not path_lit:
+        return nil
+    var path = subseq(path_lit.content, 1, len(path_lit.content) - 1)
     ctx.add_dep(path)
     # print "DEP", path
     return true
@@ -619,38 +745,44 @@ def parse_load_req(ctx):
 
 
 def parse_global_decls(ctx):
-    display "parse_global_decls", ctx.input
     var decls = []
     while not ctx.at_eof():
+        display "parse_global_decls not at eof", tokenizer.current
         skip_linebreaks(ctx)
+        display "parse_global_decls after skip_linebreaks", tokenizer.current
 
-        if ctx.skip("class", false):
-            if not parse_class(ctx):
-                return false
-            
-            decls.append(ctx.pop_result())
+        if ctx.get_token("class", false):
+            print "Calling parse_class..."
+            var cls = parse_class(ctx)
+            if isnull(cls):
+                return nil
+            decls.append(cls)
         
-        elif ctx.skip("load", false) or ctx.skip("require", false):
+        elif ctx.get_token("load", false) or ctx.get_token("require", false):
             if not parse_load_req(ctx):
-                return false
+                return nil
         
-        elif ctx.skip("def", false):
-            if not parse_function(ctx):
-                return false
+        elif ctx.get_token("def", false):
+            var func = parse_function(ctx)
+            if isnull(func):
+                return nil
+            decls.append(func)
 
-            decls.append(ctx.pop_result())
-
-        elif ctx.get(FS_CONTROL, false):  // "if", "while", etc.
-            if not parse_control(ctx):
-                return false
-            
-            decls.append(ctx.pop_result())
+        elif ctx.peek_token(FS_CONTROL, false):  // "if", "while", etc.
+            var ctrl = parse_control(ctx)
+            if isnull(ctrl):
+                return nil
+            decls.append(ctrl)
         
         else:
-            if not parse_statement(ctx):
-                return false
+            var stmt = parse_statement(ctx)
+            var next_token = ctx.peek_token()
+            display "$ after parse_global_decls parse_statement", next_token
+            if isnull(stmt):
+                return nil
+            decls.append(stmt)
 
-            decls.append(ctx.pop_result())
-    
-    ctx.set_result(File(ctx.deps, decls))
-    return true
+        next_token = ctx.peek_token()
+        display "$ at end of parse_global_decls loop", next_token
+
+    return File(ctx.deps, decls)

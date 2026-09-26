@@ -1,5 +1,6 @@
 #include "any.h"
 #include "gc.h"
+#include "header.h"
 #include "heap_obj.h"
 #include "obj.h"
 #include "any_utils.h"
@@ -11,23 +12,23 @@
 
 // ARITHMETIC OPERATORS
 
-// Right now, we are ignoring the fact that strings and lists can be added to
+// Right now, we are ignoring the fact that strings and lists can be added
 Any operator+ (Any lhs, int64_t rhs) {
     if (is_int(lhs)) {
-        return Any(to_int(lhs) + rhs);
+        return Any{to_int(lhs) + rhs};
     }
     else if (is_real(lhs)) {
-        return Any(to_real(lhs) + static_cast<double>(rhs));
+        return Any{to_real(lhs) + static_cast<double>(rhs)};
     }
     else type_error(lhs);
 }
 
 Any operator+ (Any lhs, int rhs) {
-    return Any(to_int(lhs) + static_cast<int64_t>(rhs));
+    return Any{to_int(lhs) + static_cast<int64_t>(rhs)};
 }
 
 Any operator+ (Any lhs, double rhs) {
-    return Any(force_real(lhs) + rhs);
+    return Any{force_real(lhs) + rhs};
 }
 
 /* Any operator+ (Any lhs, const String *rhs) {
@@ -39,13 +40,13 @@ Any operator+ (Any lhs, double rhs) {
         return nil;
     }
 }
- */
+
 
 Any operator+ (Any lhs, StringPtr rhs) {
     if (is_string(lhs)) {
         String* lhs_str = to_string(lhs);
         std::string result = *lhs_str->get_string() + *rhs.ptr->get_string();
-        return Any(new String(result));
+        return Any{new String(result)};
     } else type_error(lhs);
 }
 
@@ -53,43 +54,38 @@ Any operator+ (StringPtr lhs, Any rhs) {
     if (is_string(rhs)) {
         String* rhs_str = to_string(rhs);
         std::string result = *lhs.ptr->get_string() + *rhs_str->get_string();
-        return Any(new String(result));
+        return Any{new String(result)};
     } else type_error(rhs);
 }
-
+ */
 Any operator+ (Any lhs, const char *rhs) {
-    if (is_string(lhs)) {
-        const char *lhs_c_str = get_c_str(&lhs);
+    if (is_str(lhs)) {
+        const char *lhs_c_str = get_c_str(lhs);
         std::string result(lhs_c_str);
         result += rhs;
-        return Any(new String(result));
+        return Any{result};
     } else {
         assert(false);
     }
 }
 
 Any operator+ (Any lhs, ArrayPtr rhs) {
-    if (is_heap_obj(lhs)) {
+    if (is_array(lhs)) {
         Heap_obj *heap_obj = to_heap_obj(lhs);
-        if (heap_obj->get_tag() == tag_array) {
-            return Any(ArrayPtr(to_array(lhs)) + rhs);
-        }
+        return Any{to_array(lhs) + rhs};
     }
     return type_error(lhs);
 }
 
 Any operator+ (Any lhs, Any rhs) {
-    if (is_string(rhs)) {
-        return Any(lhs + get_c_str(&rhs));
+    if (is_str(rhs)) {
+        return Any{lhs + get_c_str(rhs)};
     } else if (is_int(rhs)) {
-        return Any(lhs + to_int(rhs));
+        return Any{lhs + to_int(rhs)};
     } else if (is_real(rhs)) {
-        return Any(lhs + to_real(rhs));
-    } else if (is_heap_obj(rhs)) {
-        Heap_obj* heap_obj = to_heap_obj(rhs);
-        if (heap_obj->get_tag() == tag_array) {
-            return Any(lhs + ArrayPtr(to_array(rhs)));
-        }
+        return Any{lhs + to_real(rhs)};
+    } else if (is_array(rhs)) {
+        return Any{lhs + to_array(rhs)};
     }
     type_error(rhs);
 }
@@ -97,86 +93,86 @@ Any operator+ (Any lhs, Any rhs) {
 // * operators
 Any operator* (Any lhs, int64_t rhs) {
     if (is_int(lhs)) {
-        return Any(to_int(lhs) * rhs);
+        return Any{to_int(lhs) * rhs};
     }
     else if (is_real(lhs)) {
-        return Any(to_real(lhs) * static_cast<double>(rhs));
+        return Any{to_real(lhs) * static_cast<double>(rhs)};
     }
     else type_error(lhs);
 }
 
 Any operator* (Any lhs, int rhs) {
-    return Any(lhs * static_cast<int64_t>(rhs));
+    return Any{lhs * static_cast<int64_t>(rhs)};
 }
 
 Any operator* (Any lhs, double rhs) {
-    return Any(force_real(lhs) * rhs);
+    return Any{force_real(lhs) * rhs};
 }
 
 Any operator* (Any lhs, Any rhs) {
     if (is_int(rhs)) {
-        return Any(lhs * to_int(rhs));
+        return Any{lhs * to_int(rhs)};
     }
     else if (is_real(rhs)) {
-        return Any(lhs * to_real(rhs));
+        return Any{lhs * to_real(rhs)};
     }
     else type_error(rhs);
 }
 
 // Symmetrical * operators
 Any operator* (int64_t lhs, Any rhs) {
-    return Any(rhs * lhs);
+    return Any{rhs * lhs};
 }
 
 Any operator* (int lhs, Any rhs) {
-    return Any(rhs * lhs);
+    return Any{rhs * lhs};
 }
 
 Any operator* (double lhs, Any rhs) {
-    return Any(rhs * lhs);
+    return Any{rhs * lhs};
 }
 
 // - operators
 Any operator- (Any lhs, int64_t rhs) {
     if (is_int(lhs)) {
-        return Any(to_int(lhs) - rhs);
+        return Any{to_int(lhs) - rhs};
     } else if (is_real(lhs)) {
-        return Any(to_real(lhs) - static_cast<double>(rhs));
+        return Any{to_real(lhs) - static_cast<double>(rhs)};
     } else type_error(lhs);
 }
 
 Any operator- (Any lhs, int rhs) {
-    return Any(lhs - static_cast<int64_t>(rhs));
+    return Any{lhs - static_cast<int64_t>(rhs)};
 }
 
 Any operator- (Any lhs, double rhs) {
-    return Any(force_real(lhs) - rhs);
+    return Any{force_real(lhs) - rhs};
 }
 
 Any operator- (Any lhs, Any rhs) {
     if (is_int(rhs)) {
-        return Any(lhs - to_int(rhs));
+        return Any{lhs - to_int(rhs)};
     }
     else if (is_real(rhs)) {
-        return Any(lhs - to_real(rhs));
+        return Any{lhs - to_real(rhs)};
     }
     else type_error(rhs);
 }
 
 Any operator- (int64_t lhs, Any rhs) {
     if (is_int(rhs)) {
-        return Any(lhs - to_int(rhs));
+        return Any{lhs - to_int(rhs)};
     } else if (is_real(rhs)) {
-        return Any(static_cast<double>(lhs) - to_real(rhs));
+        return Any{static_cast<double>(lhs) - to_real(rhs)};
     } else type_error(rhs);
 }
 
 Any operator- (int lhs, Any rhs) {
-    return Any(static_cast<int64_t>(lhs) - rhs);
+    return Any{static_cast<int64_t>(lhs) - rhs};
 }
 
 Any operator- (double lhs, Any rhs) {
-    return Any(lhs - force_real(rhs));
+    return Any{lhs - force_real(rhs)};
 }
 
 // / operators
@@ -275,10 +271,10 @@ int64_t operator&= (int64_t& lhs, Any rhs) {
     else type_error(rhs);
 }
 
-int64_t operator&= (Any& lhs, int64_t rhs) {
+int64_t operator&= (Any &lhs, int64_t rhs) {
     if (is_int(lhs)) {
         int64_t _tmp = to_int(lhs) & rhs;
-        lhs = _tmp;
+        lhs = Any{_tmp};
         return _tmp;
     }
     else {
@@ -286,10 +282,10 @@ int64_t operator&= (Any& lhs, int64_t rhs) {
     }
 }
 
-int64_t operator&= (Any& lhs, Any rhs) {
+int64_t operator&= (Any &lhs, Any rhs) {
     if (is_int(rhs) && is_int(lhs)) {
         int64_t _tmp = to_int(lhs) & to_int(rhs);
-        lhs = _tmp;
+        lhs = Any{_tmp};
         return _tmp;
     }
     else {
@@ -398,18 +394,14 @@ int64_t operator>> (Any lhs, int rhs) {
 
 std::ostream& operator<<(std::ostream& os, Any a) {
     //Any s(force_str(x));
-    //return os << get_c_str(&s);
+    //return os << get_c_str(s);
     if (a.integer == 0) {  // NIL case
         os << "nil";
-    } else if (is_string(a)) {
-        os << StringPtr(to_string(a));
-    } else if (is_heap_obj(a)) {
+    } else if (is_str(a)) {
+        os << get_c_str(a);
+    } else if (is_array(a)) {
         Heap_obj *heap_obj = to_heap_obj(a);
-        if (heap_obj->get_tag() == tag_array) {
-            os << ArrayPtr(to_array(a));
-        } else {
-            os << "<unknown Heap_obj>";
-        }
+        os << to_array(a);
     } else if (is_int(a)) {
         os << to_int(a);
     } else if (is_real(a)) {
@@ -431,22 +423,22 @@ bool operator==(Any lhs, int rhs) {
 }
 
 bool operator==(Any lhs, Any rhs) {
-    if (is_heap_obj(rhs)) {
+    if (lhs.integer == rhs.integer) {
+        return true;
+    } else if (is_array(rhs)) {
         Heap_obj* rhs_heap = to_heap_obj(rhs);
-        if (rhs_heap->get_tag() == tag_array) {
-            return lhs == ArrayPtr{to_array(rhs)};
-        }
-        // Add other heap object comparisons here as needed
-        return false; // Different heap object types
-    } else if (is_string(rhs)) {
-        return lhs == StringPtr(to_string(rhs));
+        return lhs == to_array(rhs);
     } else if (is_symbol(rhs)) {
         assert(false);  // needs work
         // return lhs == to_symbol(rhs);
+    } else if (is_str(lhs) && is_str(rhs)) {
+        return strcmp(get_c_str(lhs), get_c_str(rhs)) == 0;
     }
-    return lhs.integer == rhs.integer;
+    return false;
 }
 
+
+/*
 bool operator==(Any lhs, String *rhs) {
     if (is_string(lhs)) {
         return as_string(lhs) == rhs;
@@ -462,6 +454,7 @@ bool operator==(Any lhs, StringPtr rhs) {
     }
     else type_error(lhs, __func__);
 }
+*/
 
 bool operator==(Any lhs, ArrayPtr rhs) {
     if (!is_array(lhs)) return false;
@@ -484,7 +477,7 @@ bool operator!=(Any lhs, Any rhs) {
     return !(lhs == rhs);
 }
 
-//Any& Any::operator[](int64_t i) {
+//Any &Any::operator[](int64_t i) {
 //    if (is_ptr(*this)) {
 //        Heap_obj *heap_obj= to_heap_obj(*this);
 //        if (heap_obj->get_tag() == tag_array) {
@@ -509,30 +502,26 @@ bool operator!=(Any lhs, Any rhs) {
 //    }
 //}
 void Any::set(int64_t i, Any val) {
-    if (is_heap_obj(*this)) {
+    if (is_array(*this)) {
         Heap_obj *heap_obj = to_heap_obj(*this);
-        if (heap_obj->get_tag() == tag_array) {
-            (static_cast<Array*>(heap_obj))->set(i, val);
-            return;
-        }
+        (static_cast<Array *>(heap_obj))->set(i, val);
+        return;
     }
     type_error(*this);
 }
 
 Any Any::operator[](int64_t i) const {
-    if (is_heap_obj(*this)) {
+    if (is_array(*this)) {
         Heap_obj *heap_obj= to_heap_obj(*this);
-        if (heap_obj->get_tag() == tag_array) {
-            return (*(static_cast<Array*>(heap_obj)))[i];
-        }
-    } else if (is_string(*this)) {
+        return (*(static_cast<Array*>(heap_obj)))[i];
+    } else if (is_str(*this)) {
         // TODO: this is not correct for Unicode 
         int64_t len;
-        const char *s = get_c_str(this, &len);
+        const char *s = get_c_str(*this, &len);
         if (i < 0 || i >= len) {
             throw std::out_of_range("String index is out of range");
         }
-        return Any(s[i]);
+        return Any{s[i]};
     } else {
         type_error(*this);
     }

@@ -5,7 +5,9 @@
 #include "any.h"
 #include "op_overload.h"
 #include "gc.h"
+#include "header.h"
 #include "heap_obj.h"
+#include "csstring.h"
 #include "obj.h"
 #include "any_utils.h"
 #include "array.h"
@@ -24,7 +26,8 @@ Hex | Binary   | Hex | Binary   | Hex | Binary   | Hex | Binary
  3  | 0011     | 7   | 0111     | B   | 1011     | F   | 1111
 */
 
-/// @note integer promotion rules - int64_t & uint64_t, int64_t gets cast to uint64_t
+/// @note integer promotion rules - int64_t & uint64_t, 
+//    int64_t gets cast to uint64_t
 
 // Default constructor: 0, nullptr, nil
 Any::Any() : integer {0} {}
@@ -66,42 +69,50 @@ Any::Any(void* x) {
 */
 
 Any::Any(Heap_obj *x) {
-    integer = reinterpret_cast<uint64_t>(x);
+    heap_obj = x;
 }
 
-Any::Any(String *x) {
+/*Any::Any(String *x) {
     // make an Any to reference a String.
-    integer = reinterpret_cast<uint64_t>(x) | STR_TAG;
+    integer = reinterpret_cast<uint64_t>(x) | BIGSTR_TAG;
 }
 
 Any::Any(StringPtr x) {
     // make an Any to reference a StringPtr.
-    integer = reinterpret_cast<uint64_t>(x.ptr) | STR_TAG;
+    integer = reinterpret_cast<uint64_t>(x.ptr) | BIGSTR_TAG;
 }
+*/
 
 Any::Any(Symbol *x) {
     integer = reinterpret_cast<uint64_t>(x) | SYMBOL_TAG;
 }
 
 /*
+Any::Any(Symbol &x) {
+    integer = reinterpret_cast<uint64_t>(&x) | SYMBOL_TAG;
+}
+
+
 Any::Any(Array *x) {
     integer = reinterpret_cast<uint64_t>(x);
 }
-*/
 
 Any::Any(ArrayPtr x) {
-    integer = reinterpret_cast<uint64_t>(x.ptr);
-}
-
-/* handled by Heap_obj
-Any::Any(Dict *x) {
-    integer = reinterpret_cast<uint64_t>(x);
-}
-
-Any::Any(Obj *x) {
-    integer = reinterpret_cast<uint64_t>(x);
+    heap_obj = x.ptr;
 }
 */
+
+/*
+Any::Any(Dict &x) {
+    heap_obj = x;
+}
+*/
+
+
+Any::Any(Obj *x) {
+    obj = x;
+}
+
 
 Any::Any(const char *x) {
     size_t len = strlen(x);
@@ -109,8 +120,8 @@ Any::Any(const char *x) {
         integer = SHORT_TAG;
         strncpy(bytes + SHORTSTR_BASE, x, 6);
     } else {
-        String *ss = new String(x);
-        integer = reinterpret_cast<uint64_t>(ss) | STR_TAG;
+        Big_string *ss = new Big_string{x};
+        integer = reinterpret_cast<uint64_t>(ss) | BIGSTR_TAG;
     }
 }
 
@@ -120,15 +131,16 @@ Any::Any(std::string &x) {
         integer = SHORT_TAG;
         strncpy(bytes + SHORTSTR_BASE, x.c_str(), 6);
     } else {
-        String *ss = new String(x);
-        integer = reinterpret_cast<uint64_t>(ss) | STR_TAG;
+        Big_string *ss = new Big_string(x);
+        integer = reinterpret_cast<uint64_t>(ss) | BIGSTR_TAG;
     }
 }
 
 Any::Any(bool x) {
-    integer = x ? reinterpret_cast<uint64_t>(css_t) : 0;
+    heap_obj = x ? css_t : nullptr;
 }
 
+/*
 Any& Any::operator=(int64_t x) {
 #ifdef DEBUG
     // check for int out of range: if x is positive, high-order bits are
@@ -156,12 +168,12 @@ Any& Any::operator=(double x) {
 }
 
 Any& Any::operator=(String *x) {
-   integer = reinterpret_cast<uint64_t>(x) | STR_TAG;
+   integer = reinterpret_cast<uint64_t>(x) | BIGSTR_TAG;
    return *this;
 }
 
 Any& Any::operator=(StringPtr x) {
-    integer = reinterpret_cast<uint64_t>(x.ptr) | STR_TAG;
+    integer = reinterpret_cast<uint64_t>(x.ptr) | BIGSTR_TAG;
     return *this;
 }
 
@@ -182,6 +194,7 @@ Any& Any::operator=(Symbol *x) {
 //#endif
 //    return *this;
 //}
+*/
 
 /* handled by Heap_obj
 Any& Any::operator=(Array *x) {
@@ -190,10 +203,12 @@ Any& Any::operator=(Array *x) {
 }
 */
 
+/*
 Any& Any::operator=(ArrayPtr x) {
     integer = reinterpret_cast<uint64_t>(x.ptr);
     return *this;
 }
+*/
 
 /* handled by Heap_obj
 Any &Any::operator=(Dict *x) {
@@ -207,12 +222,14 @@ Any &Any::operator=(Obj *x) {
 }
 */
 
+/*
 Any &Any::operator=(Heap_obj *x) {
     integer = reinterpret_cast<uint64_t>(x);
     return *this;
 }
+*/
 
-
+/*
 Any& Any::operator=(bool x) {
     integer = x ? reinterpret_cast<uint64_t>(css_t) : 0;
     return *this;
@@ -225,11 +242,11 @@ Any& Any::operator=(const char *s) {
         strncpy(bytes + SHORTSTR_BASE, s, 6);
     } else {
         String *ss = new String(s);
-        integer = reinterpret_cast<uint64_t>(ss) | STR_TAG;
+        integer = reinterpret_cast<uint64_t>(ss) | BIGSTR_TAG;
     }
     return *this;
 }
-
+*/
 
 bool is_int(Any x) {
     return (x.integer & INT_TAG) == INT_TAG;
@@ -239,25 +256,45 @@ bool is_real(Any x) {
     return x.integer - BIAS < REAL_LIMIT;
 }
 
+// is_in_heap - test if Any is on the heap (not number or short string)
+//     is_in_heap is true for null pointers as well
+bool is_in_heap(Any x) {
+    uint64_t tag = x.integer & TAG_MASK;
+    return (tag == PTR_TAG) || (tag == SYMBOL_TAG) || (tag == BIGSTR_TAG);
+}
+/*
 bool is_heap_obj(Any x) {
-    return (x.integer & TAG_MASK) == PTR_TAG;
+    uint64_t tag = x.integer & TAG_MASK;
+    return (tag == PTR_TAG ? !(to_header(x)->get_tag() == tag_object) :
+                             (tag == SYMBOL_TAG) || (tag == BIGSTR_TAG));
+}
+*/
+bool is_obj(Any x) {
+    return ((x.integer & TAG_MASK) == PTR_TAG) &&
+           (to_header(x)->get_tag() == tag_object);
 }
 
 bool is_array(Any x) {
-    return is_heap_obj(x) && (to_heap_obj(x)->get_tag() == tag_array);
+    return ((x.integer & TAG_MASK) == PTR_TAG) &&
+           (to_header(x)->get_tag() == tag_array);
+}
+
+bool is_dict(Any x) {
+    return ((x.integer & TAG_MASK) == PTR_TAG) &&
+           (to_header(x)->get_tag() == tag_dict);
 }
 
 bool is_str(Any x) {
     uint64_t tag = x.integer & TAG_MASK;
-    return (tag == STR_TAG || tag == SHORT_TAG);
+    return (tag == BIGSTR_TAG || tag == SHORT_TAG);
 }
 
 bool is_short(Any x) {
     return (x.integer & TAG_MASK) == SHORT_TAG;
 }
 
-bool is_string(Any x) {
-    return (x.integer & TAG_MASK) == STR_TAG;
+bool is_big_string(Any x) {
+    return (x.integer & TAG_MASK) == BIGSTR_TAG;
 }
 
 bool is_symbol(Any x) {
@@ -276,36 +313,34 @@ double to_real(Any x) {
 }
 
 bool to_bool(Any x) {
-    if (x.integer == 0) return false;  // nil
-    if (is_int(x)) return to_int(x) != 0;
-    if (is_real(x)) return to_real(x) != 0.0;
-    return true;  // all other types (strings, arrays, etc.) are truthy
+    return (x.integer != 0);
 }
 
 
-// note that Heap_obj has no vtable but Obj does, so there is an 8-byte
-// offset in their addresses.
 Heap_obj *to_heap_obj(Any x) {
     // precondition: is_heap_obj()
-    return reinterpret_cast<Heap_obj*>(x.integer);
+    return x.heap_obj;
 }
 
 
-// note that Heap_obj has no vtable but Obj does, so there is an 8-byte
-// offset in their addresses.
+Header *to_header(Any x) {
+    return x.heap_obj->get_header();
+}
+
+
 Obj *to_obj(Any x) {
-    return reinterpret_cast<Obj*>(x.integer);
+    return x.obj;
 }
 
 
-String *to_string(Any x) {
-    // precondition: is_string()
-    return reinterpret_cast<String *>(x.integer & ~TAG_MASK);
+Big_string *to_big_string(Any x) {
+    // precondition: is_big_string()
+    return reinterpret_cast<Big_string *>(x.integer & ~TAG_MASK);
 }
 
-const char *to_c_str(Any x) {
+const char *to_short_c_str(const Any &x) {
     // precondition: is_short()
-    return reinterpret_cast<const char *>(x.integer) + SHORTSTR_BASE;
+    return reinterpret_cast<const char *>(&(x.integer)) + SHORTSTR_BASE;
 }
 
 Symbol *to_symbol(Any x) {
@@ -318,57 +353,71 @@ Symbol *to_symbol(Any x) {
 }*/
 
 Array *to_array(Any x) {
-    return reinterpret_cast<Array *>(x.integer);
+    return reinterpret_cast<Array *>(x.heap_obj);
 }
 
 Dict *to_dict(Any x) {
-    return reinterpret_cast<Dict *>(x.integer);
+    return reinterpret_cast<Dict *>(x.heap_obj);
 }
-
-
-// check is like assert except it always executes, even in optimized code
-// since the expression could be int, bool, or a test for non-null pointer,
-// we use a macro:
-#define check(c) if (!(c)) { printf("Failed at %s:%d (%s)\n", \
-                                    __FILE__, __LINE__, #c); exit(1); }
 
 
 int64_t as_int(Any x) {
-    check(is_int(x));
-    return to_int(x);
+    if (is_int(x)) return to_int(x);
+    else if (is_real(x)) return (int64_t) to_real(x);
+    else {
+        printf("as_int needs int or real argument\n");
+        exit(1);
+    }
 }
+
 
 double as_real(Any x) {
-    check(is_real(x));
-    return to_real(x);
+    if (is_int(x)) return (double) to_int(x);
+    else if (is_real(x)) return to_real(x);
+    else {
+        printf("as_real needs int or real argument\n");
+        exit(1);
+    }
 }
 
-String *as_string(Any x) {
-    check(is_string(x));
-    return to_string(x);
+
+String as_string(Any x) {
+    check(is_str(x));
+    return x;
 }
+
 
 Symbol *as_symbol(Any x) {
     check(is_symbol(x));
     return to_symbol(x);
 }
 
+
 Array *as_array(Any x) {
-    check(is_heap_obj(x));
+    check(is_array(x));
     return to_array(x);
 }
 
+
+Dict *as_dict(Any x) {
+    check(is_dict(x));
+    return to_dict(x);
+}
+
+
+// as_heap_object returns Heap_obj * including nullptr
 Heap_obj *as_heap_obj(Any x) {
-    check(is_heap_obj(x));
+    check(is_in_heap(x));
     return to_heap_obj(x);
 }
+
 
 Any_type get_type(Any x) {
     if (x.integer == 0) return Any_type::NIL;
     else if (is_int(x)) return Any_type::INT;
     else {
         switch (x.integer & TAG_MASK) {
-            case STR_TAG:
+            case BIGSTR_TAG:
                 return Any_type::STRING;
             case SHORT_TAG:
                 return Any_type::SHORT;
@@ -391,29 +440,41 @@ Any_type get_type(Any x) {
     }
 }
 
+
 std::string get_type_str(Any x) {
-    if (is_heap_obj(x)) return "pointer";
-    else if (is_int(x)) return "integer";
+    if (is_int(x)) return "integer";
     else if (is_real(x)) return "real";
     else if (is_str(x)) return "string";
     else if (is_symbol(x)) return "symbol";
+    else if (is_array(x)) return "array";
+    else if (is_dict(x)) return "dict";
+    else if (is_obj(x)) return "obj";
     else return "unknown";
 }
 
 
-const char *get_c_str(const Any *s, int64_t *len_ptr)
+const char *get_c_str(const Any &s, int64_t *len_ptr)
 {
     const char *str;
-    if (is_string(*s)) {
-        str = to_string(*s)->get_c_str();
+    if (is_big_string(s)) {
+        Big_string *bigstr = to_big_string(s);
+        str = bigstr->get_c_str();
+        /*
+        std::cout << "# get_c_str Any @ " << &s << " bigstr @ " <<
+                bigstr << " cstr @ " << (void *) str << " type " <<
+                get_type_str(s) << " tag " << (int) get_type(s) << "\n    \"" <<
+                str << "\"" << std::endl;
+        */
         if (len_ptr) {
-            *len_ptr = to_string(*s)->len();
+            *len_ptr = bigstr->len();
         }
-    } else {
-        str = s->bytes + SHORTSTR_BASE;
+    } else if (is_short(s)) {
+        str = to_short_c_str(s);
         if (len_ptr) {
             *len_ptr = strlen(str);
         }
+    } else {
+        type_error(s);
     }
     return str;
 }
@@ -451,7 +512,7 @@ Any::operator bool() {
 }
 
  */
-        
+
 static bool is_string_or_symbol(Any x) {
     return is_str(x) || is_symbol(x);
 }
@@ -461,34 +522,51 @@ bool Any::is(Any x) {
     return integer == x.integer;
 }
 
-void Any::append(Any x) {
-    if (is_heap_obj(*this)) {
+Any Any::append(Any x) {
+    if (is_array(*this)) {
         to_array(*this)->append(x);
+    } else if (is_str(*this) && is_str(x)) {
+        std::string s{get_c_str(*this)};
+        s.append(get_c_str(x));
+        return Any{s};
     } else {
         type_error(*this);
     }
+    return *this;
 }
 
-void Any::append(int64_t x) {
-    append(Any {x});
+Any Any::append(bool x) {
+    append(Any{x});
+    return *this;
 }
 
-void Any::append(double x) {
-    append(Any {x});
+Any Any::append(int64_t x) {
+    append(Any{x});
+    return *this;
+}
+
+Any Any::append(double x) {
+    append(Any{x});
+    return *this;
 }
 
 
-Any Any::call(Any method, Array *args, Dict *kwargs) {
-    if (is_heap_obj(*this)) {
+Any Any::call(Symbol *method) {
+    if (integer && is_in_heap(*this)) {
         Heap_obj *heap_obj = to_heap_obj(*this);
+        // printf("Any::call Any tag is %d, type_str %s\n", heap_obj->get_tag(),
+        //        get_type_str(*this).c_str());
         switch (heap_obj->get_tag()) {
             case tag_object: {
                 // TODO: define and use to_obj():
                 Obj *obj_ptr = to_obj(*this);
-                return obj_ptr->call(as_symbol(method), args, kwargs);
+                return obj_ptr->call(method);
             }
             case tag_array: {
-                return to_array(*this)->call(method, args, kwargs);
+                return to_array(*this)->call(method);
+            }
+            case tag_dict: {
+                return to_dict(*this)->call(method);
             }
             default:
                 type_error(*this);

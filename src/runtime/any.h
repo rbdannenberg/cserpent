@@ -7,27 +7,35 @@
 
 #pragma once
 
+// check is like assert except it always executes, even in optimized code
+// since the expression could be int, bool, or a test for non-null pointer,
+// we use a macro:
+#define check(c) if (!(c)) { printf("Failed at %s:%d (%s)\n", \
+                                    __FILE__, __LINE__, #c); \
+                             assert(false); exit(1); }
+
+
 using std::size_t;
 
 // forward declaration of Array and Dict for call()
 
-class String;
-struct StringPtr;
+class Big_string;
 class Array;
 struct ArrayPtr;
 class Symbol;
 class Dict;
 class Heap_obj;
+class Header;
 class Obj;
 
 constexpr uint64_t BIAS         =    0x1000000000000uLL;
-constexpr uint64_t INT_TAG      =  0xFFFC000000000000uLL;
-constexpr uint64_t INT_MASK     = ~0xFFFE000000000000uLL;  // 49 bits
+constexpr uint64_t INT_TAG      =  0xFFFE000000000000uLL;
+constexpr uint64_t INT_MASK     = ~INT_TAG;  // 49 bits
 constexpr uint64_t TAG_MASK     =  0xFFFF000000000000uLL;
 constexpr uint64_t PTR_TAG      =  0x0000000000000000uLL;
 constexpr uint64_t SYMBOL_TAG   =  0xFFFB000000000000uLL;
 constexpr uint64_t SHORT_TAG    =  0xFFFC000000000000uLL;
-constexpr uint64_t STR_TAG      =  0xFFFD000000000000uLL;
+constexpr uint64_t BIGSTR_TAG   =  0xFFFD000000000000uLL;
 // after subtracting BIAS, valid real (double) bits should be less than:
 constexpr uint64_t REAL_LIMIT   =  0xFFFA000000000000uLL;
 
@@ -50,6 +58,9 @@ union Any {
     uint64_t integer;
     double real;
     char bytes[8];
+    Heap_obj *heap_obj;
+    Obj *obj;
+
 public:
     Any();
 
@@ -73,14 +84,15 @@ public:
 
     /**@brief OCCUPY: 0x0000 */
     explicit Any(Heap_obj *x);
+    explicit Any(Obj *x);
 
     /**@brief OCCUPY: 0xFFFA
      * @pre x.length () <= 5
      */
-    explicit Any(String *x);
+    // explicit Any(String &x);
+//    explicit Any(Symbol &x);
     explicit Any(Symbol *x);
-    explicit Any(StringPtr x);
-    explicit Any(ArrayPtr x);
+    // explicit Any(ArrayPtr x);
     explicit Any(const char *x);
     explicit Any(std::string &x);
     explicit Any(bool x);
@@ -88,6 +100,7 @@ public:
 
     /// Implicit conversion: assignment
     /// Return type allows for chaining
+/*
     Any& operator=(int64_t x);
     Any& operator=(int x);
     Any& operator=(double x);
@@ -100,7 +113,7 @@ public:
     Any& operator=(Heap_obj *x);
     Any& operator=(const char *x);
     Any& operator=(bool x);
-
+*/
     /* Implicit conversion: type-cast operator - see note in Any.cpp
     Maybe even *worse* than implicit conversion through constructors!
     operator int64_t();
@@ -114,15 +127,18 @@ public:
 
 //    Any& operator[](int64_t i);
     // Use this instead of assignment through [] (gc reasons):
+
+    // See op_overload.cpp for definitions:
     void set(int64_t i, Any val);
     Any operator[](int64_t i) const; // return-by-value is faster
 
     bool is(Any x);
-    void append(Any x);
-    void append(int64_t x);
-    void append(double x);
+    Any append(Any x);
+    Any append(bool x);
+    Any append(int64_t x);
+    Any append(double x);
 
-    Any call(Any method, Array *args, Dict *kwargs);
+    Any call(Symbol *method);
 };
 
 inline const Any nil;
@@ -133,31 +149,38 @@ inline const Any nil;
 // that can be stored there when the user declares a type
 // for a global variable.
 // When get_type() return Any_type::NIL, it means the
-// nan-boxed value of an Any  is nil (NULL, nullptr). When
-// used as the type of a symbol, Any_type::NIL means this
-// symbol was declared implicitly or with "var" and can
-// have any type (it is a C++ variable of type Any).
+// nan-boxed value of an Any is nil (NULL, nullptr).
+// Symbols can have additional types: 
+//    Any_type::ANY - declared implicitly or with "var" and
+//        can have any type (it is a C++ variable of type Any).
+//    Any_type::DIRECT - there is no corresponding C++ global,
+//        and the value (type Any) is stored in slot 1
+
 enum class Any_type {
     INT,
     REAL,
-    STRING,
     SHORT,
     BOOL,
+    STRING,
     SYMBOL,
     ARRAY,
     DICT,
     OBJ,
-    NIL
+    NIL,
+    ANY,
+    DIRECT
 };
 
 // should we consider creating an enum type for the various underlying types?
 
 bool is_int(Any x);
 bool is_real(Any x);
+bool is_in_heap(Any x);
 bool is_heap_obj(Any x);
-bool is_str(Any x);     // tests for either short string or String
-bool is_string(Any x);  // tests for String
-bool is_short(Any x);   // tests for short string
+bool is_obj(Any x);
+bool is_str(Any x);     // tests for either short string or Big_string
+bool is_big_string(Any x);  // tests for Big_string
+bool is_short_string(Any x);   // tests for short string
 bool is_symbol(Any x);
 bool is_array(Any x);
 Any_type get_type(Any x);
@@ -168,8 +191,9 @@ int64_t to_int(Any x);
 double to_real(Any x);
 bool to_bool(Any x);
 Heap_obj *to_heap_obj(Any x);
-String *to_string(Any x);
-const char *to_c_str(Any x);
+Header *to_header(Any x);
+Big_string *to_big_string(Any x);
+const char *to_short_c_str(Any &x);
 Symbol *to_symbol(Any x);
 Array *to_array(Any x);
 Dict *to_dict(Any x);
@@ -182,11 +206,17 @@ int64_t as_int(Any x);
 double as_real(Any x);
 // String as_str(Any x);  --intended for testing string or short, but
 //     not sure what the return type should be.
-String *as_string(Any x);
+//String *as_string(Any x);
 Heap_obj *as_heap_obj(Any x);
+Symbol *as_symbol(Any x);
+Array *as_array(Any x);
+Dict *as_dict(Any x);
+
 
 /// Obtains the underlying type of an Any, mainly for debugging.
 std::string get_type_str(Any x);
 
-/// Get a const char * from short or long string
-const char *get_c_str(const Any *s, int64_t *len_ptr = NULL);
+/// Get a const char * from short or long string. s is passed by reference
+/// because the string could be *inside* the Any, so we do not what to
+/// return a pointer to a copy of the string.
+const char *get_c_str(const Any &s, int64_t *len_ptr = NULL);

@@ -2,6 +2,7 @@
 
 #include "any.h"
 #include "gc.h"
+#include "header.h"
 #include "heap_obj.h"
 #include "obj.h"
 #include "array.h"
@@ -101,18 +102,18 @@ void Array::set(int64_t index, Any value) {
 
 void Array::set(int64_t index, double value) {
     std::vector<Any> *data = get_vector();
-    data->at(index) = value;
+    data->at(index) = Any{value};
 }
 
 
 void Array::set(int64_t index, int64_t value) {
     std::vector<Any> *data = get_vector();
-    data->at(index) = value;
+    data->at(index) = Any{value};
 }
 
 void Array::set(int64_t index, int value) {
     std::vector<Any> *data = get_vector();
-    data->at(index) = (int64_t) value;
+    data->at(index) = Any{value};
 }
 
 /*
@@ -129,34 +130,34 @@ Any Array::operator[](int64_t i) const {
 }
 
 // Refactor to constexpr function, after validating correctness.
-Any Array::call(Any method, Array *args, Dict *kwargs) {
-    if (method.is(css_append)) { // potential symbol optimization here
-        check_dispatch(to_symbol(css_append), args, kwargs, 1, 0);
-        return Any(append((*args)[0]));
-    } else if (method.is(css_last)) {
-        check_dispatch(to_symbol(css_last), args, kwargs, 0, 0);
+Any Array::call(Symbol *method) {
+    if (method == css_append) {
+        check_dispatch(css_append, 1);
+        return Any{append(PPARMS[0])};
+    } else if (method == css_last) {
+        check_dispatch(css_last, 0);
         return last();
-    } else if (method.is(css_insert)) {
-        check_dispatch(to_symbol(css_insert), args, kwargs, 2, 0);
-        return Any(insert(to_int((*args)[0]), (*args)[1]));
-    } else if (method.is(css_unappend)) {
-        check_dispatch(to_symbol(css_unappend), args, kwargs, 0, 0);
+    } else if (method == css_insert) {
+        check_dispatch(css_insert, 2);
+        return Any{insert(to_int(PPARMS[0]), PPARMS[1])};
+    } else if (method == css_unappend) {
+        check_dispatch(css_unappend, 0);
         return unappend();
-    } else if (method.is(css_uninsert)) {
-        check_dispatch(to_symbol(css_uninsert), args, kwargs, 2, 0);
-        if (args->len() == 1) {
-            return Any(uninsert(to_int((*args)[0])));
+    } else if (method == css_uninsert) {
+        check_dispatch(css_uninsert, 2);
+        if (PPARMS.len() == 1) {
+            return Any{uninsert(to_int(PPARMS[0]))};
         }
-        return Any(uninsert(to_int((*args)[0]), to_int((*args)[1])));
-    } else if (method.is(css_reverse)) {
-        check_dispatch(to_symbol(css_reverse), args, kwargs, 0, 0);
-        return Any(reverse());
-    } else if (method.is(css_copy)) {
-        check_dispatch(to_symbol(css_copy), args, kwargs, 0, 0);
-        return Any(copy());
-    } else if (method.is(css_set_len)) {
-        check_dispatch(to_symbol(css_set_len), args, kwargs, 1, 0);
-        return Any(set_len(to_int((*args)[0])));
+        return Any{uninsert(to_int(PPARMS[0]), to_int(PPARMS[1]))};
+    } else if (method == css_reverse) {
+        check_dispatch(css_reverse, 0);
+        return Any{reverse()};
+    } else if (method == css_copy) {
+        check_dispatch(css_copy, 0);
+        return Any{copy()};
+    } else if (method == css_set_len) {
+        check_dispatch(css_set_len, 1);
+        return Any{set_len(to_int(PPARMS[0]))};
     }
     throw std::runtime_error("Array: no such method");
 }
@@ -190,7 +191,7 @@ Array *subseq(Array *arr, int64_t start, int64_t end) {
         throw std::out_of_range("subseq: out of range");
     }
     Array *result = new Array {};
-    L.set(sl_result, Any(result));
+    L.set(sl_result, Any{result});
     for (int64_t i = start; i < end; i++) {
         result->append((*arr)[i]);
     }

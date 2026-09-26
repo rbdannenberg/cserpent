@@ -8,12 +8,11 @@
 #include <cctype>
 #include "any.h"
 #include "gc.h"
+#include "header.h"
 #include "heap_obj.h"
 #include "obj.h"
 #include "op_overload.h"
 #include "csstring.h"
-
-int64_t len(String *x) { return x->len(); }
 
 /*
 static std::string * get_str_ptr(uint64_t s) {
@@ -41,24 +40,42 @@ std::string temp_str(const String& s) {
         return *get_str_ptr(s.data);
     }
 }
+
 */
 
-String::String(const char *s) {
+// constructor
+Big_string::Big_string(const char *s)
+{
     set_tag(tag_string);
-    slots[0].integer = (int64_t) (new std::string(s ? s : ""));
+    std::string *str_ptr = (std::string *) slots;
+    ::new (str_ptr) std::string(s);
+    /* std::cout << "^ new Big_string @ " << (void *) this << " string @ " <<
+            (void *) str_ptr << " \"" << *str_ptr << "\"" << std::endl; */
 }
 
 
-String::String(const std::string &s) {
+// constructor
+Big_string::Big_string(const std::string &s)
+{
     set_tag(tag_string);
-    slots[0].integer = (int64_t) (new std::string(s));
+    std::string *str_ptr = (std::string *) slots;
+    ::new (str_ptr) std::string(s);
 }
+
+
+void make_string_gray(String s)
+{
+    if (is_big_string(s)) {
+        MAKE_GRAY(to_big_string(s)->get_header());
+    }
+}
+
 
 /*
 uint64_t literal_string_to_data(const char *literal) {
     uint64_t data;
     if (is_short_literal(literal)) {
-        return STR_TAG;
+        return BIGSTR_TAG;
         char *chars = reinterpret_cast<char *>(data);
         for (int64_t i = 0; i < max_short_size; i++) {
             chars[SHORTSTR_BASE + i] = literal[i];
@@ -167,29 +184,8 @@ String subseq(const String &s, int64_t start, int64_t end) {
         return String {get_str_ptr(s.data)->substr(start, end - start)};
     }
 }
-
-int64_t find(const String& s, const String& pattern, int64_t start, int64_t end)
-{
-    int64_t s_len = len(s);
-    if (end == std::numeric_limits<int64_t>::max()) {
-        end = s_len;
-    }
-    if (end < 0) {
-        end = s_len + end;
-    }
-    if (start < 0) {
-        start = s_len + start;
-    }
-    // do bounds checking: 0 <= start <= end <= s_len
-    if (start < 0 || start > end || end > s_len) {
-        throw std::out_of_range("subseq: out of range");
-    }
-    // value semantics let us exploit move semantics
-    std::string sub = temp_str(subseq(s, start, end));
-    int64_t find_result = sub.find(temp_str(pattern));
-    return find_result == -1 ? -1 : find_result + start;
-}
-
+*/
+/*
 
 String toupper(const String& s) {
     if (is_short_string(s)) {
@@ -230,7 +226,6 @@ bool operator==(const String& a, const String& b) {
 }
 
 
-*/
 String operator+(const String& lhs, const String& rhs) {
     std::string* left = lhs.get_string();
     std::string* right = rhs.get_string();
@@ -246,8 +241,9 @@ String* operator+(const String* lhs, const String& rhs) {
     return NULL;
 }
 
-std::ostream& operator<<(std::ostream& os, const String& x) {
-    os << x.get_c_str();
+std::ostream& operator<<(std::ostream& os, const String &x) {
+    
+    os << get_c_str();
     return os;
 }
 
@@ -286,12 +282,11 @@ StringPtr operator+(StringPtr lhs, StringPtr rhs) {
     }
     return StringPtr(nullptr);
 }
+*/
 
-StringPtr subseq(StringPtr s, int64_t start, int64_t end) {
-    if (!s.ptr) {
-        throw std::invalid_argument("subseq: null StringPtr");
-    }
-    int64_t s_len = s.ptr->len();
+String subseq(const char *s, int64_t start, int64_t end) {
+    int64_t s_len = strlen(s);
+    char rslt[256];
     if (end == std::numeric_limits<int64_t>::max()) {
         end = s_len;
     }
@@ -305,37 +300,16 @@ StringPtr subseq(StringPtr s, int64_t start, int64_t end) {
     if (start < 0 || start > end || end > s_len) {
         throw std::out_of_range("subseq: out of range");
     }
-    std::string* str = s.ptr->get_string();
-    return StringPtr(new String(str->substr(start, end - start)));
-}
-
-int64_t find(StringPtr s, StringPtr pattern, int64_t start, int64_t end) {
-    if (!s.ptr) {
-        throw std::invalid_argument("find: null StringPtr");
-    }
-    if (!pattern.ptr) {
-        throw std::invalid_argument("find: null pattern StringPtr");
-    }
-    int64_t s_len = s.ptr->len();
-    if (end == std::numeric_limits<int64_t>::max()) {
-        end = s_len;
-    }
-    if (end < 0) {
-        end = s_len + end;
-    }
-    if (start < 0) {
-        start = s_len + start;
-    }
-    // do bounds checking: 0 <= start <= end <= s_len
-    if (start < 0 || start > end || end > s_len) {
+    if (end - start > 255) {  // could fix this by allocating string
         throw std::out_of_range("subseq: out of range");
     }
-    // value semantics let us exploit move semantics
-    std::string sub = s.ptr->get_string()->substr(start, end - start);
-    int64_t find_result = sub.find(*(pattern.ptr->get_string()));
-    return find_result == -1 ? -1 : find_result + start;
+    strncpy(rslt, s + start, end - start);
+    rslt[end - start] = '\0';
+    return String{rslt};
 }
 
+
+/*
 StringPtr toupper(StringPtr s) {
     if (!s.ptr) {
         throw std::invalid_argument("toupper: null StringPtr");
@@ -359,8 +333,6 @@ StringPtr tolower(StringPtr s) {
     }
     return StringPtr(new String(lower));
 }
-
-/*
 
 int64_t ord(const String& s) {
     if (is_short_string(s)) return s.chars[STR_BASE + 0];

@@ -22,14 +22,14 @@ class Expression:
 
 class Literal(Expression):
     var value  # a value of type object_type e.g. 5, "hello", etc.
-    var value_type  # : string
+    var value_type  # : symbol
     var range  # source code location
 
-    def init(ctx, token, optional _value_type):
+    def init(ctx, token, optional value_type_):
         super.init()
         value = token.content
         range = token.range
-        value_type = _value_type
+        value_type = value_type_
         if not value_type:
             if value[0] == "\"":
                 value_type = 'string'
@@ -59,13 +59,14 @@ class Literal(Expression):
 class Identifier(Expression):
     var name # : string
 
-    def init(_name):
+    def init(name_):
         super.init()
-        name = _name
+        name = name_
 
 
-    def cpp_for_local():
-        "csl_" + name
+    # get c++ code for local of type ltype
+    def cpp_for_local(ltype):
+        ("L." if ltype.on_heap() else "csl_") + name
 
     def cpp_for_global():
         "csg_" + name
@@ -85,11 +86,11 @@ class BinOp(Expression):
     var left # : Expression
     var op  # : string (one of +, -, *, /, %, &, |, ^, <<, >>, **)
     var right # : Expression
-    def init(_left, _op, _right):
+    def init(left_, op_, right_):
         super.init()
-        left = _left
-        op = _op
-        right = _right
+        left = left_
+        op = op_
+        right = right_
 
     def accept(visitor):
         visitor.visitBinOp(this)
@@ -99,10 +100,10 @@ class BinOp(Expression):
 class UnaryOp(Expression):
     var op # : string (one of +, -, not, ~)
     var operand # : Expression
-    def init(_op, _operand):
+    def init(op_, operand_):
         super.init()
-        op = _op
-        operand = _operand
+        op = op_
+        operand = operand_
 
     def accept(visitor):
         visitor.visitUnaryOp(this)
@@ -111,9 +112,9 @@ class UnaryOp(Expression):
 
 class Array(Expression):
     var elements # : Array[Expression]
-    def init(_elements):
+    def init(elements_):
         super.init()
-        elements = _elements
+        elements = elements_
 
     def accept(visitor):
         visitor.visitArray(this)
@@ -122,9 +123,9 @@ class Array(Expression):
 
 class Dictionary(Expression):
     var pairs # : Array[Array[Expression, Expression]], no tuples
-    def init(_pairs):
+    def init(pairs_):
         super.init()
-        pairs = _pairs
+        pairs = pairs_
 
     def accept(visitor):
         visitor.visitDictionary(this)
@@ -135,23 +136,23 @@ class ArgumentList:
     var args # : Array [Expression]
     var kwargs # : Dictionary[Identifier, Expression]
     var dispatch
-    def init(_args, _kwargs):
-        args = _args
-        kwargs = _kwargs
-        dispatch = "static"
+    def init(args_, kwargs_):
+        args = args_
+        kwargs = kwargs_
+        dispatch = 'static'
 
-    def accept(visitor):
-        visitor.visitArgumentList(this)
+    def accept(visitor, function_name):
+        visitor.visitArgumentList(this, function_name)
 
 
 
 class FunctionCall(Expression):
     var name # : string
     var parameters # : ArgumentList
-    def init(_name, _parameters):
+    def init(name_, parameters_):
         super.init()
-        name = _name
-        parameters = _parameters
+        name = name_
+        parameters = parameters_
 
     def accept(visitor):
         visitor.visitFunctionCall(this)
@@ -162,10 +163,10 @@ class Constructor(Expression):
     var name # : string
     var parameters # : ArgumentList
     # this is isomorphic to FunctionCall
-    def init(_name, _parameters):
+    def init(name_, parameters_):
         super.init()
-        name = _name
-        parameters = _parameters
+        name = name_
+        parameters = parameters_
 
     def accept(visitor):
         visitor.visitConstructor(this)
@@ -176,11 +177,11 @@ class MethodCall(Expression):
     var object # : Expression
     var method_name # : Identifier
     var parameters # : ArgumentList
-    def init(_object, _method_name, _parameters):
+    def init(object_, method_name_, parameters_):
         super.init()
-        object = _object
-        method_name = _method_name
-        parameters = _parameters
+        object = object_
+        method_name = method_name_
+        parameters = parameters_
 
     def accept(visitor):
         visitor.visitMethodCall(this)
@@ -191,10 +192,10 @@ class GetAttribute(Expression):
     var object # : Expression
     var attribute # : string
     var rhs # : bool
-    def init(_object, _attribute):
+    def init(object_, attribute_):
         super.init()
-        object = _object
-        attribute = _attribute
+        object = object_
+        attribute = attribute_
         rhs = true
 
     def accept(visitor):
@@ -205,10 +206,10 @@ class GetAttribute(Expression):
 class Index(Expression):
     var object # : Expression
     var index # : Expression
-    def init(_object, _index):
+    def init(object_, index_):
         super.init()
-        object = _object
-        index = _index
+        object = object_
+        index = index_
 
     def accept(visitor):
         visitor.visitIndex(this)
@@ -235,11 +236,11 @@ class Assignment(Statement):
     var expression # : Expression
     var local_flag # : boolean
 
-    def init(_identifier, _expression, _local_flag):
+    def init(identifier_, expression_, local_flag_):
         super.init()
-        identifier = _identifier
-        expression = _expression
-        local_flag = _local_flag
+        identifier = identifier_
+        expression = expression_
+        local_flag = local_flag_
 
     def accept(visitor):
         visitor.visitAssignment(this)
@@ -248,9 +249,9 @@ class Assignment(Statement):
 
 class StandaloneExpression(Statement):
     var expression # : Expression
-    def init(_expression):
+    def init(expression_):
         super.init()
-        expression = _expression
+        expression = expression_
 
     def accept(visitor):
         visitor.visitStandaloneExpression(this)
@@ -306,9 +307,9 @@ class DeclarationNAssignment(Statement):
 
 class ReturnStatement(Statement):
     var expression # : Expression
-    def init(_expression):
+    def init(expression_):
         super.init()
-        expression = _expression
+        expression = expression_
 
     def accept(visitor):
         visitor.visitReturnStatement(this)
@@ -324,10 +325,12 @@ class ControlFlow(BlockElement):
 
 class Block:
     var statements # : List[BlockElement]
+    var end_token
     var needs_open_brace
 
-    def init(_statements):
-        statements = _statements
+    def init(statements_, end_token_):
+        statements = statements_
+        end_token = end_token_
         needs_open_brace = true
 
     def accept(visitor):
@@ -339,11 +342,11 @@ class If(ControlFlow):
     var condition # : Expression # must be a boolean
     var block # : Block
     var else_block # : Block
-    def init(_condition, _block, optional _else_block=nil):
+    def init(condition_, block_, optional else_block_=nil):
         super.init()
-        condition = _condition
-        block = _block
-        else_block = _else_block
+        condition = condition_
+        block = block_
+        else_block = else_block_
 
     def accept(visitor):
         visitor.visitIf(this)
@@ -353,10 +356,10 @@ class If(ControlFlow):
 class While(ControlFlow):
     var condition # : Expression # must be a boolean
     var block # : Block
-    def init(_condition, _block):
+    def init(condition_, block_):
         super.init()
-        condition = _condition
-        block = _block
+        condition = condition_
+        block = block_
 
     def accept(visitor):
         visitor.visitWhile(this)
@@ -370,10 +373,12 @@ class ForRange(ControlFlow):
     var end # : Expression
     var by_amount # : Expression
     var block # : Block
+
     def init(var_type_, identifier_, start_, end_, by_, block_):
         super.init()
         var_type = var_type_
         identifier = identifier_
+        assert(isstring(identifier))
         start = start_
         end = end_
         by_amount = by_
@@ -388,11 +393,11 @@ class ForEach(ControlFlow):
     var identifier # : Identifier # loop variable
     var iter # : Expression
     var block # : Block
-    def init(_identifier, _iter, _end, _block):
+    def init(identifier_, iter_, block_):
         super.init()
-        identifier = _identifier
-        iter = _iter
-        block = _block
+        identifier = identifier_
+        iter = iter_
+        block = block_
 
     def accept(visitor):
         visitor.visitForEach(this)
@@ -401,15 +406,19 @@ class ForEach(ControlFlow):
 
 class Function:
     var name # : string
-    # Note: no type definitions yet
-    var positional # : List[string]
-    var optional   # : List[string + Expression]
+    var signature  # [required, optional, keyword, restparam, dictparam, ftype]
+    # where required is [rtype0, rname0, rtype1, rname1, ...], optional is
+    # [otype0, oname0, odefault0, otype1, oname1, odefault1, ...], keyword is 
+    # [ktype0, kname0, kdefault0, ktype1, kname1, kdefault1, ...], rest is the
+    # rest parameter name, keyword_dict is the dictionary name, and ftype is
+    # the function return type. (see top of codegen_visitor.srp)
     var block # : Block
-    def init(_name, _positional, _optional, _block):
-        name = _name
-        positional = _positional
-        optional = _optional
-        block = _block
+    def init(name_, signature_, block_):
+        name = name_
+        assert(isstring(name))
+        signature = signature_
+        assert(isstring(signature[5]) or issymbol(signature[5]))
+        block = block_
 
     def accept(visitor):
         visitor.visitFunction(this)
@@ -422,11 +431,11 @@ class Class:
     var member_variables # : List[string] # but how to handle types?
     var member_functions # : List[Function]
     var parents // a list of strings
-    def init(_name, _parent, _member_variables, _member_functions):
-        name = _name
-        parent = _parent
-        member_variables = _member_variables
-        member_functions = _member_functions
+    def init(name_, parent_, member_variables_, member_functions_):
+        name = name_
+        parent = parent_
+        member_variables = member_variables_
+        member_functions = member_functions_
 
     def accept(visitor):
         visitor.visitClass(this)
@@ -449,15 +458,14 @@ class File:
 # for debugging: print the tree
 def print_ast(ast, optional prefix = "", name):
     if isarray(ast):
-        for child in ast:
-            print_ast(child, prefix)
+        for child at i in ast:
+            print_ast(child, prefix, str(name) + "[" + str(i) + "]")
         return
     if isdict(ast):
         for key in ast.keys():
             print prefix; key
-            print_ast(ast[key], prefix + "---")
+            print_ast(ast[key], prefix + "---", name)
         return
-
     print prefix;
     if name:
         print name; ": ";
@@ -475,6 +483,36 @@ def print_ast(ast, optional prefix = "", name):
     # Recursively prints a node and its children
     // originally: print(prefix + class_name)
 
+    if isinstance(ast, Range):
+        print ast.file.get_formatted_pos(ast.start)
+        return
+    if isinstance(ast, Identifier):
+        print (ast.classname + "::") if ast.classname else "";
+        print ast.name
+        return
+    if isinstance(ast, Literal):
+        print (ast.classname + "::") if ast.classname else "";
+        print str(ast.value_type) + ":" + str(ast.value),
+        print "@ln" + ast.range.file.get_formatted_line_col(ast.range.start)
+        return
+    if isinstance(ast, Assignment):
+        print "Assignment ";
+        var id = ast.identifier
+        if ast.local_flag:
+            print "(local_flag) "
+        if isinstance(id, Identifier):
+            print (id.classname + "::") if id.classname else ""; id.name; " to... "
+        else:
+            print // newline after "Assignment "
+            print_ast(id, prefix + "----", "identifier")
+        print_ast(ast.expression, prefix + "----", "expression")
+        return
+    if isinstance(ast, BinOp):
+        print "BinOp "; ast.op
+        print_ast(ast.left, prefix + "----", 'left')
+        print_ast(ast.right, prefix + "----", 'right')
+        return
+
     print str(object_class(ast))
     // if class_name == "Class":
     //     print("DEBUG: " + str(ast.name))
@@ -485,7 +523,10 @@ def print_ast(ast, optional prefix = "", name):
 
     var fields = object_variables(ast)
     for child_name in fields.keys():
-        print_ast(fields[child_name], prefix + "-----", child_name)
+        if child_name == 'signature':
+            print prefix; "----signature: "; ast.signature
+        elif child_name != 'classname' or fields[child_name]:
+            print_ast(fields[child_name], prefix + "----", child_name)
 
 
 

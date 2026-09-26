@@ -6,8 +6,8 @@ Any operator+ (Any lhs, int rhs);
 Any operator+ (Any lhs, int64_t rhs);
 Any operator+ (Any lhs, double rhs);
 // Any operator+ (Any lhs, const String& rhs);
-Any operator+ (Any lhs, StringPtr rhs);
-Any operator+ (StringPtr lhs, Any rhs);
+//Any operator+ (Any lhs, String rhs);
+//Any operator+ (StringPtr lhs, Any rhs);
 Any operator+ (Any lhs, const char *rhs);
 Any operator+ (Any lhs, Any rhs);
 
@@ -80,8 +80,8 @@ std::ostream& operator<<(std::ostream& os, Any x);
 bool operator==(Any lhs, int64_t rhs);
 bool operator==(Any lhs, int rhs);
 bool operator==(Any lhs, Any rhs);
-bool operator==(Any lhs, String rhs);
-bool operator==(Any lhs, StringPtr rhs);
+//bool operator==(Any lhs, String rhs);
+//bool operator==(Any lhs, StringPtr rhs);
 bool operator==(Any lhs, ArrayPtr rhs);
 bool operator==(Any lhs, Symbol rhs);
 bool operator==(Symbol &lhs, Symbol &rhs);
@@ -96,8 +96,7 @@ constexpr bool is_comparable = std::disjunction<
         std::is_same<T, int>,
         std::is_same<T, double>,
         std::is_same<T, Symbol>,
-        std::is_same<T, String>,
-        std::is_same<T, StringPtr>,
+        std::is_same<T, Big_string>,
         std::is_same<T, ArrayPtr>
 >::value;
 

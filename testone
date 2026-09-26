@@ -1,0 +1,215 @@
+#!/bin/bash
+# testone
+#
+# Pop the next program off the regression-test queue
+# (tests/serpent/tobetested.txt), copy it into tests/serpent/simple/,
+# and run it through the compiler/build/execute cycle:
+#
+#   serpent64 compiler.srp tests/serpent/simple/<name>.srp -o tsttmp -c -d
+#
+# compiler.srp prints its own messages and also shells out to cmake and
+# to the compiled test program, all writing to stdout. This script
+# streams that output to the terminal live (via tee) while also
+# capturing it to check for a pass.
+#
+# Pass/fail: the test passes when the output contains the literal
+# string "COMPLETED".
+#
+# On a pass:
+#   - tests/serpent/simple/<name>.expected is created (or overwritten)
+#     by extracting everything between the marker lines
+#     "--------------- running compiled program --------------------"
+#     and "--------------- compiled program finished -------------------"
+#     -- i.e. just the compiled program's own output.
+#   - the program name is added to the TESTS list in simple_tests.sh
+#     (the batch script that reruns every passing test).
+#   - the program is removed from the to-be-tested queue.
+#
+# On a fail: the queue is left untouched, so the same program is
+# picked up again next time you run testone, after you've fixed it.
+#
+# Always operates in ~/cserpent (where compiler.srp lives), regardless
+# of the directory you're in when you invoke it.
+
+set -eu -o pipefail
+
+SRC_DIR="$HOME/serpent/programs/regr-test"
+REPO_DIR="$HOME/cserpent"
+QUEUE_FILE="tests/serpent/tobetested.txt"
+DEST_DIR="tests/serpent/simple"
+SIMPLE_TESTS="simple_tests.sh"
+
+cd "$REPO_DIR" || { echo "Error: cannot cd to $REPO_DIR" >&2; exit 1; }
+
+if [ ! -f "$QUEUE_FILE" ] || [ ! -s "$QUEUE_FILE" ]; then
+    echo "No programs left to test (missing or empty $QUEUE_FILE)."
+    echo "Run gen_tobetested.sh to (re)build the queue."
+    exit 0
+fi
+
+NAME=$(head -n 1 "$QUEUE_FILE")
+SRC="$SRC_DIR/$NAME.srp"
+
+if [ ! -f "$SRC" ]; then
+    echo "Error: $SRC not found." >&2
+    exit 1
+fi
+
+mkdir -p "$DEST_DIR"
+cp "$SRC" "$DEST_DIR/$NAME.srp"
+
+echo "=== testone: $NAME ==="
+
+OUTPUT_FILE=$(mktemp)
+EXTRACTED_FILE=$(mktemp)
+trap 'rm -f "$OUTPUT_FILE" "$EXTRACTED_FILE"' EXIT
+
+set +e
+serpent64 compiler.srp "$DEST_DIR/$NAME.srp" -o tsttmp -c -d 2>&1 | tee "$OUTPUT_FILE"
+STATUS=${PIPESTATUS[0]}
+set -e
+
+# Pull out just the compiled program's own output, between the two
+# marker lines. "COMPLETED" only counts as a pass when it shows up in
+# here -- the full debug output always contains the literal string
+# "COMPLETED" too, since it's part of the compiled program's source
+# text, not just its runtime output.
+awk '
+    /--------------- running compiled program --------------------/ { flag=1; next }
+    /--------------- compiled program finished -------------------/ { flag=0; next }
+    flag { print }
+' "$OUTPUT_FILE" > "$EXTRACTED_FILE"
+
+if grep -q "COMPLETED" "$EXTRACTED_FILE"; then
+    PASSED=1
+else
+    PASSED=0
+fi
+
+if [ "$PASSED" -eq 1 ]; then
+    echo "=== testone: $NAME PASSED (exit $STATUS) ==="
+
+    # Save the extracted section as the .expected snippet.
+    EXPECTED_FILE="$DEST_DIR/$NAME.expected"
+    cp "$EXTRACTED_FILE" "$EXPECTED_FILE"
+
+    if [ ! -s "$EXPECTED_FILE" ]; then
+        echo "Warning: $EXPECTED_FILE came out empty -- check that the marker lines matched." >&2
+    else
+        echo "Wrote $EXPECTED_FILE"
+    fi
+
+    # Create simple_tests.sh the first time it's needed.
+    if [ ! -f "$SIMPLE_TESTS" ]; then
+        cat > "$SIMPLE_TESTS" << 'INNER_EOF'
+#!/usr/bin/env bash
+#
+# simple_tests.sh - run serpent test programs and check for a literal
+# substring match in their output.
+#
+# Usage:
+#   ./simple_tests.sh              # run all tests
+#   ./simple_tests.sh <name>       # run only the named test
+#
+# The TESTS array is maintained by testone, which appends each newly
+# passing test automatically -- feel free to edit it by hand too.
+
+set -u
+
+SERPENT_DIR="tests/serpent/simple"
+BUILD_OUT="tsttmp"
+
+TESTS=(
+)
+
+if [[ $# -eq 0 ]]; then
+    tests_to_run=("${TESTS[@]}")
+elif [[ $# -eq 1 ]]; then
+    requested="$1"
+    found=0
+    for t in "${TESTS[@]}"; do
+        if [[ "$t" == "$requested" ]]; then
+            found=1
+            break
+        fi
+    done
+    if [[ $found -eq 0 ]]; then
+        echo "Error: no such test '$requested'"
+        echo "Available tests: ${TESTS[*]}"
+        exit 1
+    fi
+    tests_to_run=("$requested")
+else
+    echo "Usage: $0 [test-name]"
+    exit 1
+fi
+
+pass_count=0
+fail_count=0
+
+for name in "${tests_to_run[@]}"; do
+    srp_file="${SERPENT_DIR}/${name}.srp"
+    expected_file="${SERPENT_DIR}/${name}.expected"
+
+    echo "=== Running test: ${name} ==="
+
+    if [[ ! -f "$srp_file" ]]; then
+        echo "  FAIL: source file not found: $srp_file"
+        fail_count=$((fail_count + 1))
+        continue
+    fi
+
+    if [[ ! -f "$expected_file" ]]; then
+        echo "  FAIL: expected-output file not found: $expected_file"
+        fail_count=$((fail_count + 1))
+        continue
+    fi
+
+    actual_output=$(serpent64 compiler.srp "$srp_file" -o "$BUILD_OUT" -c -d 2>&1)
+
+    expected_output=$(cat "$expected_file")
+
+    if grep -F -q -- "$expected_output" <<< "$actual_output"; then
+        echo "  PASS"
+        pass_count=$((pass_count + 1))
+    else
+        echo "  FAIL: expected output not found in actual output"
+        echo "  ---- expected snippet ----"
+        echo "$expected_output"
+        echo "  ---- actual output ----"
+        echo "$actual_output"
+        echo "  ---------------------------"
+        fail_count=$((fail_count + 1))
+    fi
+done
+
+echo
+echo "===================================="
+echo "Passed: $pass_count   Failed: $fail_count"
+echo "===================================="
+
+[[ $fail_count -eq 0 ]]
+INNER_EOF
+        chmod +x "$SIMPLE_TESTS"
+    fi
+
+    # Add NAME to the TESTS list, unless it's already there.
+    if grep -qE "^[[:space:]]*${NAME}[[:space:]]*$" "$SIMPLE_TESTS"; then
+        echo "($NAME already listed in $SIMPLE_TESTS)"
+    else
+        awk -v name="$NAME" '
+            { print }
+            /^TESTS=\(/ && !inserted { print "    " name; inserted = 1 }
+        ' "$SIMPLE_TESTS" > "$SIMPLE_TESTS.tmp" && mv "$SIMPLE_TESTS.tmp" "$SIMPLE_TESTS"
+        chmod +x "$SIMPLE_TESTS"
+        echo "Added $NAME to $SIMPLE_TESTS"
+    fi
+
+    # Remove NAME from the front of the to-be-tested queue.
+    tail -n +2 "$QUEUE_FILE" > "$QUEUE_FILE.tmp" && mv "$QUEUE_FILE.tmp" "$QUEUE_FILE"
+    exit 0
+else
+    echo "=== testone: $NAME FAILED (exit $STATUS) ==="
+    echo "Left $NAME at the front of $QUEUE_FILE -- fix it and rerun testone to retry."
+    exit 1
+fi

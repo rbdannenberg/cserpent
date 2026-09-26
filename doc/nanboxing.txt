@@ -25,7 +25,7 @@ Symbols use the high order bits FFFB
 
 Short strings use the high order bits FFFC
 
-Strings use the high order bits FFFD
+Big strings use the high order bits FFFD
 
 
 
@@ -128,37 +128,32 @@ vector content.
 
 For objects, there's not nearly enough space in the header to encode
 all possible (user defined) classes, so the first field will be a
-pointer to a class structure (another subclass of Heap_obj) that
-among other things, will have to describe what slots in the object are
-possibly pointers (i.e. they are Any slots) for the garbage collector.
-I suggest using a bitmap, with each word describing the next 64 fields
-as either Any or not an Any.
+pointer to a class structure (another subclass of Object).
+This includes a bitmap to indicate what slots in the object are
+possibly pointers (i.e., they are Any slots or Symbol pointer, etc.)
+for the garbage collector.
 
 For strings, the first field after the header will be a C++ string.
 
-In Cserpent, like real and int, you can declare a string, allowing the
-compiler to use the built-in string class directly. If you convert a
-string to an Any*, you must construct a String (inherits from
-Heap_obj) and copy the string into it (in C++ this is a shallow copy
-that does not copy the actual string data). So you could end up with
-multiple String objects referencing the same underlying string. On
-the other hand, if you copy an Any* to an Any*, e.g.
-    var x = "foo"
-    var y = x
-then you just need to copy the 8-bytes of the Any, and you do not
-allocate another String. The String is now referenced by multiple
-pointers, but it's on the heap and will get GC'd when the references
-all go away. When the String is deleted, C++ reference counting will
-free the actual string data.
+C++ strings are too big to store into a 64-bit CSerpent slot, so the
+CSerpent representation of string must be a pointer, which must be
+garbage collectible, and therefore must be a Heap_obj. There is not
+much difference between Any and a pointer to a string, especially if
+we allow the optimization where we nan-box a short string directly
+into the slot bits to avoid the pointer and Heap_obj.
 
-We also have short strings which are encoded directly into the
-Any. This add a special case to every string operation but (we think)
-makes it much more efficient to work with characters (strings of
-length 1) which is probably the most common form of string. It is
-common to use the get_c_str() function which returns a direct pointer
-to const char *, whether the Any argument is a regular String or a short
-string, and we have is_str() which returns true if the Any argument is
-a regular String or a short string.
+Therefore, the CSerpent string type will be implemented simply as an
+Any with the restriction that the Any must satisfy is_str(), so it is
+either a pointer to a string or a short string.
+
+Short strings are encoded directly into the Any. This adds a special
+case to every string operation but (we think) makes it much more
+efficient to work with characters (strings of length 1) which is
+probably the most common form of string. It is common to use the
+get_c_str() function which returns a direct pointer to const char *,
+whether the Any argument is a regular String or a short string, and we
+have is_str() which returns true if the Any argument is a regular
+String or a short string.
 
 But be warned that with short strings, when you pass a short string
 Any as an argument, the short string is copied. For this reason,

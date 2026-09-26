@@ -66,10 +66,6 @@ public:
 
     int64_t find(Any key, bool inserting);
     
-    void set(int64_t index, Any value) {
-        assert(false);  // never call set on Dict - maybe you mean insert()?
-    }
-
     void insert(Any key, Any value);
 
     bool has_key(Any key) {

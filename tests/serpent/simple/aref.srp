@@ -1,0 +1,16 @@
+# aref.srp -- index an array
+#
+# tests op_aref, op_setalit, op_setaref
+
+array123 = [1, 2, 3]
+if array123[0] != 1 or array123[1] != 2 or array123[2] != 3
+    print "FAILURE TO INDEX AN ARRAY"
+    exit()
+
+array123[1] = 5
+if array123[1] != 5
+    print "AREF FAILURE OF SETAREF"
+    exit()
+
+
+print "AREF COMPLETED WITH SUCCESS"

@@ -1,4 +1,4 @@
 --------------- running compiled program --------------------
---> ./tsttmp/build/callreturn
-9.5
+--> ./tsttmp/build/callretopt
+22.1
 --------------- compiled program finished -------------------

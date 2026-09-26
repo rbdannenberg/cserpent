@@ -27,7 +27,7 @@ public:
     Array *reverse();
     Array *copy();
     Array *set_len(int64_t new_len);
-
+    Array *clear() { return set_len(0); }
 
     // to store at an address, use this:
     void set(int64_t index, Any value);
@@ -40,7 +40,7 @@ public:
     Any operator[](int64_t i) const;
     int64_t len() const;
 
-    Any call(Any method, Array *args, Dict *kwargs);
+    Any call(Symbol *method);
     friend std::ostream& operator<<(std::ostream& os, Array *x);
     friend std::string debug_str(Array *x);
 protected:
@@ -50,7 +50,8 @@ protected:
 
 int64_t len(Array *x);
 
-Array *subseq(Array *x, int64_t start, int64_t end = std::numeric_limits<int64_t>::max());
+Array *subseq(Array *x, int64_t start,
+              int64_t end = std::numeric_limits<int64_t>::max());
 bool is_equal(Array *lhs, Array *rhs);
 
 inline Array empty_array {};

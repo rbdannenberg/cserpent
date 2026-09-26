@@ -13,7 +13,8 @@
 #define GCS if (GC_DEBUG && GC_STATE_DEBUG)
 
 // trace GC activity around a particular address:
-#define GC_TRACE_ADDR 0
+#define GC_TRACE_ADDR 1
+#define GC_TRACE_ADDR_MASK 0xFFFFF
 #if (GC_TRACE_ADDR != 0) && (GC_DEBUG != 0)
 #define GCT if (1)
 #else
@@ -24,13 +25,13 @@
 class Heap_obj;
 
 // if obj matches GC_TRACE_ADDR, print msg and some object info
-void gc_trace(Heap_obj *obj, const char *msg);
+void gc_trace(Header *hdr, const char *msg);
 
 // same as gc_trace, but also prints index, e.g. a slot number
-void gc_trace_2(Heap_obj *obj, const char *msg, int index);
+void gc_trace_2(Header *hdr, const char *msg, int index);
 #else
-#define gc_trace(ptr, msg)
-#define gc_trace_2(ptr, msg, index)
+#define gc_trace(hdr, msg)
+#define gc_trace_2(hdr, msg, index)
 #endif
 
 enum Gc_color {
@@ -73,7 +74,7 @@ extern struct Gc_frame {
 extern void *gc_stack_top;  // link to top stack frame
 extern Gc_color gc_frame_color;  // initial color for new frames
 extern Gc_color gc_initial_color;
-extern Heap_obj *gc_gray_list;
+extern Header *gc_gray_list;
 extern bool gc_write_block;
 extern bool gc_local_write_block;
 extern Array *gc_array;
@@ -84,6 +85,8 @@ extern int64_t gc_cycles;
 
 void if_node_make_gray(Any x);
 void heap_obj_is_reachable(Heap_obj *obj);
+void object_is_reachable(Obj *obj);
+
 void gc_poll();
 
 // this function is defined by the runtime system to call heap_obj_make_gray
@@ -107,39 +110,42 @@ void gc_heap_check();
 
 // this macro is used before assigning an Any to a global
 #define GLOBAL_WRITE_BLOCK(x) \
-    { Heap_obj *xptr; \
-      GCT { if (x.integer == GC_TRACE_ADDR) { \
+    { Header *xptr; \
+      GCT { if ((x.integer & GC_TRACE_ADDR_MASK) == GC_TRACE_ADDR) { \
                 printf("In IF_HEAP_MAKE_GRAY: %llx found in gc_state %d\n", \
                        x.integer, gc_state); }} \
-      if (gc_write_block && x.integer && is_heap_obj(x) && \
-          (xptr = to_heap_obj(x))->get_color() == GC_BLACK) { \
+      if (gc_write_block && x.integer && is_in_heap(x) && \
+          (xptr = to_header(x))->get_color() == GC_BLACK) { \
           MAKE_GRAY(xptr); }}
 
 
 // this macro is used when you discover heap object x is reachable
-#define HEAP_OBJ_IS_REACHABLE(x) \
-    if ((x) && (x)->get_color() == GC_BLACK) { MAKE_GRAY(x); }
+#define HEAP_ITEM_IS_REACHABLE(x) \
+    { Header *hdr = (x)->get_header(); \
+      if ((x) && hdr->get_color() == GC_BLACK) { MAKE_GRAY(hdr); } }
 
        
-
 // this macro is used to put a heap object on the gray list,
-// precondition: ptr is a non-null pointer to a heap object
-#define MAKE_GRAY(ptr) \
-    { GCT gc_trace(ptr, "MAKE_GRAY"); \
-      ptr->set_color(GC_GRAY); \
-      ptr->set_next(gc_gray_list); \
-      gc_gray_list = ptr; }
+// precondition: ptr is a non-null pointer to a header
+#define MAKE_GRAY(hdr) \
+    { GCT gc_trace(hdr, "MAKE_GRAY"); \
+      hdr->set_color(GC_GRAY); \
+      hdr->set_next(gc_gray_list); \
+      gc_gray_list = hdr; }
 
+
+void make_heap_obj_gray(Heap_obj *heap_obj);
 
 // this macro is used before assigning an Any to a slot in a Heap_obj
-// or to an element of an Array
+// or to an element of an Array or slot of an Obj. obj can be Heap_obj
+// (no vtable) or Obj (with vtable)
 #define SLOT_WRITE_BLOCK(obj, x) \
-    { Heap_obj *xptr; \
-      GCT { if (x.integer == GC_TRACE_ADDR) { \
+    { Header *xptr; \
+      GCT { if ((x.integer & GC_TRACE_ADDR_MASK) == GC_TRACE_ADDR) { \
                 printf("In SLOT_WRITE_BLOCK: %llx found in gc_state %d\n", \
                        x.integer, gc_state); }} \
-      if (gc_write_block && x.integer && is_heap_obj(x) && \
-          (xptr = to_heap_obj(x))->get_color() == GC_BLACK && \
-          obj->get_color() != GC_BLACK) { \
+      if (gc_write_block && x.integer && is_in_heap(x) && \
+          (xptr = to_header(x))->get_color() == GC_BLACK && \
+          (obj)->get_color() != GC_BLACK) { \
           MAKE_GRAY(xptr); }}
 

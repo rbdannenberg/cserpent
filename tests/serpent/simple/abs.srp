@@ -1,0 +1,22 @@
+# abs.srp -- test abs()
+#
+# tests op_abs
+#
+
+if abs(20) != 20
+    print "ABS FAILED ON abs(20)"
+    exit()
+
+if abs(234.5) != 234.5
+    print "ABS FAILED ON abs(234.5)"
+    exit()
+
+if abs(-100) != 100
+    print "ABS FAILED ON abs(-100)"
+    exit()
+
+if abs(-77.234) != 77.234
+    print "ABS FAILED ON abs(77.234)"
+    exit()
+
+print "ABS COMPLETED WITH SUCCESS"

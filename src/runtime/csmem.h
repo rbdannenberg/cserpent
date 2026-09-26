@@ -50,7 +50,7 @@ public:
 
 void csmem_init();
 void *csmalloc(size_t len);
-void csfree(void *x);
+void csfree(Header *x);
 int64_t cs_chunkmem();  // how much is remaining in current chunk
 #define SUMMARY 1
 #ifdef SUMMARY

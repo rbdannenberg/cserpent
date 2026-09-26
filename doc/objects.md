@@ -17,18 +17,37 @@ Rather than writing my_obj.some_method(), which would require a
 vtable, we can use my_obj.get_class_ptr()->... to access a per-class
 data structure with methods for that class.
 
-In the implementation, we do both, where the normal C++ mechanism
-is used when we know the class of the object and we can construct
-a correct parameter list directly. If we do not know the class of
-the object, we must make a more generic call the way Serpent would
-do it, putting positional parameters into an array and keyword
-parameters into a dictionary. Then we do a hash table lookup to
-find the method, which is a function pointer taking parameters:
-(Obj* self, Array *args, const Dict& kwargs). This function will
-check parameter types and number and make a C++ style invocation
-of the method. Thus we need both the vtable for fast direct calls
-using type information and the Cs_class::MemberTable for invoking
-methods with dynamic typing.
+In the implementation, we do both, where the normal C++ mechanism is
+used when we know the class of the object and the method name, so we
+can construct a correct parameter list directly. If we do not know the
+class of the object or if the method is a variable (as in the "send"
+and "sendapply" functions), we must make a more generic call the way
+Serpent would do it, putting positional parameters into an array and
+keyword parameters into a dictionary. Then we do a hash table lookup
+to find the method, which is a function pointer taking parameters:
+(Obj* self, Array *args, const Dict& kwargs). This function will check
+parameter types and number and make a C++ style invocation of the
+method. Thus we need both the vtable for fast direct calls using type
+information and the Cs_class::MemberTable for invoking methods with
+dynamic typing.
+
+## Allocation and Garbage Collection
+
+The need for a vtable complicates allocation. In Serpent, we have a
+64-bit header at the base of every heap object, but C++ wants to put a
+vtable at the base, so there is a conflict. Our solution is to define
+class Header to contain only header, and when we need n bytes for
+an Object, we allocate sizeof(Header) + n bytes and return the address
+that *follows* the Header. The garbage collector will subtract the
+size of Header from every pointer to get to the header field.
+
+For non-Object heap objects, we define Heap\_obj to contain 1 slot
+named slots, and every heap object (Array, Dict, etc.) inherits
+Heap\_obj and uses its methods to access and set slot data.
+
+For Object (the superclass for all user-defined classes), we duplicate
+the code in Heap\_obj, except here the slots member will be at an
+offset of 8 bytes after the Compiler-created vtable pointer.
 
 ## Object Instance Variables (aka Member Variables)
 
@@ -45,7 +64,7 @@ calls.
 
 When accessing members of an object whose class is unknown, there will
 be one further transformation - which is to transform every member
-function call into a .call() function call that takes in args and
+access function into a .call() function call that takes in args and
 keyword args as an Array and Dictionary. (See funcalls.txt).
 
 Note: it seems that variable access will also need a special call when
@@ -62,11 +81,11 @@ In C++, this becomes something like:
 ```
 class Foo : public Obj {
 public:
-    // Obj has member variable slots with only one Any. This is not
-    // valid in the C++ spec, but in practice, we know any member
-    // variable declared here will be placed immediately after slots,
-    // so we can allocate as many "more slots" as we need. Here, we
-    // just need one more slot to hold x:
+    // Obj has member variable slots with only one Any, which is the
+    // class pointer. While not strictly valid in the C++ spec, we
+    // know any member variable declared here will be placed
+    // immediately after slots, so we can allocate as many "more
+    slots" as we need. Here, we just need one more slot to hold x:
     Any more_slots[1];  // extends the space allocated for slots
     
     Any get_x() { return slots[1]; }
@@ -83,29 +102,20 @@ In C++, this becomes something like:
 ```
 class Foo : public Obj {
 public:
-    // Obj has member variable slots with only one Any. This is not
-    // valid in the C++ spec, but in practice, we know any member
-    // variable declared here will be placed immediately after slots,
-    // so we can allocate as many "more slots" as we need. Here, we
-    // just need one more slot to hold x:
+    // Obj has member variable slots with only one Any, which is the
+    // class pointer. While not strictly valid in the C++ spec, we
+    // know any member variable declared here will be placed
+    // immediately after slots, so we can allocate as many "more
+    slots" as we need. Here, we just need one more slot to hold x:
     Any more_slots[1];  // extends the space allocated for slots
     
-    int get_x() { return to_int(slots[1]); }  // no type check needed
+    int get_x() { return slots[1].integer; }  // no type check needed
 
     // here, set_slot is NOT needed for GC because x cannot point to
     // an object on the heap, so no special GC handling is needed
-    int set_x(int x) { slots[1] = x; }
+    int set_x(int x) { slots[1].integer = x; }
 };
 ```
-
-### Note on Efficiency
-This could be more efficient if we make slots contain a union of all
-possible types. Then, in this case, x could be stored as int64\_t and
-`get_x()` could just `return slots[1].as_int64` and `set_x()` could just
-set `slots[1].as_int64 = x`.  We would probably need an array in the
-class object to tell us the type of each slot for debugging and
-perhaps computed access such as Serpents `get_slot(foo, 'x')` that
-retrieves the value of slot `x` in an arbitrary object `foo`.
 
 ## Local Variables
 Local variables exist for the lifetime of a function invocation, from
@@ -215,4 +225,37 @@ associated global. In that case, the type information should indicate
 that the symbol object maintains a value of type Any (rather than a
 pointer to a C++ global), and we can set the value slot of the symbol
 directly to implement `set\_symbol\_value('y', value)`.
+
+## Class, Class Class, Object Class
+
+Classes are represented by objects that store information about the
+class such as the slot layout and superclass. Therefore, classes
+themselves are of C++ class Obj, but in CSerpent, if `Foo` is a class,
+then `object_class(Foo)` fails: classes are not objects.
+
+To create a class, we make a Cs\_class object and set it as the value
+of a symbol. The Cs\_class is a Cs\_Obj, but the class pointer is nil.
+The class name is stored in slot 1 (not true in Serpent, where classes
+are anonymous, but in practice, it's nice to assume a 1:1 relationship
+between Class names and the Class itself.) The superclass is stored in
+slot 5.
+
+To create an instance of a class, we use the class to find the number
+of slots and allocate a Heap_obj. We set the class pointer to the
+class. The class then tells the GC how many slots and where to find
+possible pointers.
+
+### Obj Slots 
+
+slot 0: class pointer
+
+### Class Slots
+
+slot 0: pointer to superclass  
+slot 1: class name (== css\_Class)
+slot 2: number of instance slots (== 6)
+slot 3: bit map of instance slots of type Any (or pointer)
+slot 4: MemberTable pointer
+
+
 

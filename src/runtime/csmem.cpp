@@ -4,6 +4,7 @@
 //
 #include "any.h"
 #include "gc.h"
+#include "header.h"
 #include "heap_obj.h"
 #include "obj.h"
 #include <iostream>
@@ -44,7 +45,7 @@ int64_t cs_chunkmem()
 }
 
 
-//----------- free lists store freed Heap_objects ----------
+//----------- free lists store freed Heap objects ----------
 #define LOG2_MAX_LINEAR_BYTES 9 // up to (512 - 16) byte chunks
 #define MAX_LINEAR_BYTES (1 << LOG2_MAX_LINEAR_BYTES)
 #define LOG2_MAX_EXPONENTIAL_BYTES 25 // up to 16MB = 2^24
@@ -53,10 +54,10 @@ int64_t cs_chunkmem()
 #define MEM_QUANTUM (1 << LOG2_MEM_QUANTUM)
 
 // blocks from size 16 to 512-16 in steps of 16
-Heap_obj *linear_free[MAX_LINEAR_BYTES / MEM_QUANTUM - 1];
+Header *linear_free[MAX_LINEAR_BYTES / MEM_QUANTUM - 1];
 // blocks from size 512 to 16MB increasing by factors of 2
 // (index 0 -> 512, index 15-> 16MB)
-Heap_obj *exponential_free[LOG2_MAX_EXPONENTIAL_BYTES - LOG2_MAX_LINEAR_BYTES];
+Header *exponential_free[LOG2_MAX_EXPONENTIAL_BYTES - LOG2_MAX_LINEAR_BYTES];
 
 
 void csmem_init()
@@ -81,7 +82,7 @@ static int power_of_2_block_size(size_t size)
 
 // find head of free list for this size object.
 // Sets *size to the actual object size, which is >= requested size
-static Heap_obj **head_ptr_for_size(size_t *size)
+static Header **head_ptr_for_size(size_t *size)
 {
     // index to linear_free: shift to divide by MEM_QUANTUM. We want to
     // round up to next multiple of MEM_QUANTUM, so we want something like
@@ -114,11 +115,23 @@ void *csmalloc(size_t size)
     // actual slot count stored in the first slot location, so we have no
     // way to encode 0 slots.
     assert(size >= 16);
+
+    // run gc_poll() only if garbage collector has been enabled. We run
+    // *before* any allocation because this is usually the first step in
+    // constructing an object, so if we allocate and then gc_poll(), we
+    // risk encountering this new allocation in the heap before the header
+    // and class information are accurate and complete.
+    if (gc_enabled) {
+        gc_poll();
+    }
+
+    // slots includes the vtable pointer if there is one since that is
+    // included in size.
     int64_t slots = (size - 1) >> 3;  // 8 bytes per slot, not counting
     // header, so if there are 2 slots, the object size is 24, and 23 / 8 = 2.
 
     // next, size might be rounded up to a preallocated block size in heap:
-    Heap_obj **head = head_ptr_for_size(&size);
+    Header **head = head_ptr_for_size(&size);
     // now size is the actual allocation size, not the object size
     cs_current_bytes_allocated += (slots + 1) << 3;  // allocated includes
             // unused bytes, if there is fragmentation (e.g.
@@ -175,34 +188,32 @@ got_it:  // set header and return object
     // rewrite slots because each size category supports at least 2
     // different slot counts, e.g. it could be 2 or 3 and be on the
     // same free list:
-    Heap_obj *obj = (Heap_obj *) result;
+    Header *hdr = (Header *) result;
     if (slots >= (1 << 12)) {
-        obj->slots[0].integer = slots;
+        // must be a Heap_obj:
+        Heap_obj *hobj = (Heap_obj *) (hdr + 1);
+        hobj->slots[0].integer = slots;
         slots = 0;
     }
-    obj->header = (((int64_t) tag_object) << 59) +
-                  (((int64_t) gc_initial_color) << 57) + (slots << 45);
+    hdr->initialize(tag_object, gc_initial_color, slots);
     if (gc_initial_color == GC_GRAY) {
-        obj->set_next(gc_gray_list);
-        gc_gray_list = obj;
+        hdr->set_next(gc_gray_list);
+        gc_gray_list = hdr;
     }
-    assert(obj->get_size() <= size);
-    assert(obj->get_size() == (slots + 1) * 8);
+    // might allocate something a little larger than requested:
+    assert((hdr->get_size() == (slots + 1) * 8) ||
+           (hdr->get_size() == (slots + 2) * 8));
     cs_current_object_count++;
     cs_allocations++;
-    gc_trace(obj, "allocated");
-
-    // run gc_poll() only if garbage collector has been enabled
-    if (gc_enabled) {
-        gc_poll();
-    }
+    gc_trace(hdr, "allocated");
+    // printf("csmalloc returns %p\n", result);
     return result;
 }
 
 
 #ifdef SUMMARY
 
-long list_len(Heap_obj *head) {
+long list_len(Header *head) {
     long len = 0;
     while (head) {
         len++;
@@ -242,24 +253,24 @@ void cssummary()
 #endif
 
 
-void csfree(void *object)
+void csfree(Header *hdr)
 {
-    // can only free Heap_obj objects
-    Heap_obj *obj = (Heap_obj *) object;
+    // can only free Header objects (and their following Heap_obj or
+    // Object data)
     
     // check for plausible pointer
-    assert(((int64_t) obj) > 0x100000000);
+    assert(((int64_t) hdr) > 0x100000000);
     
-    gc_trace(obj, "freed");
-    size_t size = (size_t) (obj->get_size());
+    gc_trace(hdr, "freed");
+    size_t size = (size_t) (hdr->get_size());
     cs_current_bytes_allocated -= size;
 
-    Heap_obj **head = head_ptr_for_size(&size);
+    Header **head = head_ptr_for_size(&size);
     assert(head);
-    obj->set_next(*head);
-    obj->set_tag(tag_free);
-    obj->set_color(GC_FREE);
-    *head = obj;
+    hdr->set_next(*head);
+    hdr->set_tag(tag_free);
+    hdr->set_color(GC_FREE);
+    *head = hdr;
     cs_current_object_count--;
     // printf("pointer to obj size %lld at %p -> %p\n",
     //       obj->get_size(), head, obj);

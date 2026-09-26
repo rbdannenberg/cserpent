@@ -8,27 +8,27 @@ require "utils"
 
 
 def parse_ast(path):
-    file = load_from_path(path)
-    if file == nil:
-        return err_res("file " + path + " cannot be opened", nil)
+    file = SourceFile(path)
+    if file.stream == nil:
+        print "ERROR: file "; path; " cannot be opened."
+        return nil
     
-    display "parse_ast", path, file, "<<<" + file.source + ">>>"
-    tokens = tokenize(file)
+    display "parse_ast", path
+    tokenizer = Tokenizer(file)
 
-    print "TOKENS:"
-    pretty_print_tokenize_result(tokens)
+// TEST TOKENIZER: SHOWS LINE INPUT AND TOKEN OUTPUT
+//    var token = tokenizer.next()
+//    while token.tk_type != TK_EOF:
+//        print "Token:", token
+//        token = tokenizer.next()
+//    print "got", token, "exiting now"
+//    exit(1)
 
-    if not tokens.ok:
-        print "lex error:", file.get_formatted_pos(tokens.error.range.start)
-        return tokens
-
-    ctx = ParseContext(tokens.result)
-    if not parse_global_decls(ctx):
-        print "parse error:", file.get_formatted_pos(ctx.error.range.start)
-        return Result(false, ctx.error)
-
-    var ast = ctx.pop_result()
-    return res(ast)
+    ctx = ParseContext(tokenizer)
+    var ast = parse_global_decls(ctx)
+    if isnull(ast):
+        print "********* parse error ************"
+    return ast
 
 
 # Looks for file (which could be in a subfolder) in the given load path or
@@ -92,6 +92,7 @@ class CompilationSession:
 
         return load_and_parse_file(file_path, [])
 
+
     # used internally
     # returns `nil` on success, or error if otherwise
     def load_and_parse_file(file_path, loaded_stack):
@@ -105,14 +106,14 @@ class CompilationSession:
             )
 
         var result = parse_ast(file_path)
-        if not result.ok:
-            return result.error
+        if isnull(result):
+            return result
 
-        files[file_path] = result.result
+        files[file_path] = result
         loaded_stack.append(file_path)
 
         deps[file_path] = []
-        for dep in result.result.deps:
+        for dep in result.deps:
             var dep_res = load_and_parse_file(find_file(dep, load_path),
                                               loaded_stack)
             var dep_trimmed = change_file_suffix(file_from_path(dep), nil)
@@ -126,7 +127,8 @@ class CompilationSession:
         if file_path not in top_order:
             top_order.append(file_path)
             
-        return nil
+        return true
+
 
     def get_topological_ordering():
         return top_order

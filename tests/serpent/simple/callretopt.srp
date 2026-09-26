@@ -1,0 +1,6 @@
+# callretopt.srp -- another test for function call
+
+def real adder(int a, optional real b = 6.1):
+    return a + b
+
+print adder(4) + adder(5, 7)

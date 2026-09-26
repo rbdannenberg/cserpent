@@ -16,6 +16,7 @@
 #include <sstream>
 #include "any.h"
 #include "gc.h"
+#include "header.h"
 #include "heap_obj.h"
 #include "obj.h"
 #include "runtime.h"
@@ -32,7 +33,7 @@ Any DICT_DELETED;
 Dict::Dict(Dict *d)
 {
     set_tag(tag_dict);
-    get_vector()->resize(len(), DICT_EMPTY);
+    get_vector()->resize(d->len(), DICT_EMPTY);
     used = d->used;
     non_empty = d->non_empty;
     for (int i = 0; i < len(); i++) {
@@ -153,6 +154,9 @@ void Dict::remove(Any key)
 
 void Dict::clear()
 {
+    if (used == 0) {
+        return;
+    }
     used = 0;
     non_empty = 0;
     std::vector<Any> *array = get_vector();
@@ -211,7 +215,7 @@ int64_t Dict::expand(int64_t newlen)
 uint64_t Dict::compute_string_hash(Any s, const char **str, int64_t *len)
 {
     int64_t slen;
-    const char *sstr = get_c_str(&s, &slen);
+    const char *sstr = get_c_str(s, &slen);
     uint64_t hash = 0;
     int i = 0;
     for (i = 0; i < slen - 4; i += 4) {
@@ -344,7 +348,7 @@ int64_t Dict::find(Any key, bool inserting)
                 if (deleted_index < 0) deleted_index = index;
             } else if (is_str(entry_key)) {
                 int64_t len2;
-                const char *str2 = get_c_str(&entry_key);
+                const char *str2 = get_c_str(entry_key);
                 if (((len1 == len2) &&
                      (memcmp(str1, str2, (len1 + 3) & (~3))) == 0)) {
                     return index * 2;

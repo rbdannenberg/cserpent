@@ -6,6 +6,7 @@
 #include "any.h"
 #include "op_overload.h"
 #include "gc.h"
+#include "header.h"
 #include "heap_obj.h"
 #include "obj.h"
 #include "csstring.h"
@@ -13,6 +14,7 @@
 #include "dict.h"
 #include "symbol.h"
 #include "csmem.h"
+#include "runtime.h"
 
 
 #if GC_DEBUG
@@ -21,25 +23,25 @@ const char *tag_name[] = { "free", "symbol", "integer", "string",
                      "array", "dict", "object", "file" };
 
 
-void gc_trace(Heap_obj *obj, const char *msg)
+void gc_trace_2(Header *hdr, const char *msg, int index)
 {
-    gc_trace_2(obj, msg, -9999);
-}
-
-
-void gc_trace_2(Heap_obj *obj, const char *msg, int index)
-{
-    if (obj == (Heap_obj *) GC_TRACE_ADDR) {
-        Heap_obj *next = obj->get_next();
+    if ((((int64_t) hdr) & GC_TRACE_ADDR_MASK) == GC_TRACE_ADDR ||
+        (((int64_t) (hdr + 1)) & GC_TRACE_ADDR_MASK) == GC_TRACE_ADDR) {
+        Header *next = hdr->get_next();
         assert((uint64_t) next == 0 || (uint64_t) next > 0x100000000);
-        printf("gc_trace %p in %s,", obj, msg);
+        printf("gc_trace %p in %s,", hdr, msg);
         if (index != -9999) {
             printf(" %d", index);
         }
         printf(" tag %s (%d) color %s (%d) size %lld\n",
-               tag_name[obj->get_tag()], obj->get_tag(),
-               color_name[obj->get_color()], obj->get_color(), obj->get_size());
+               tag_name[hdr->get_tag()], hdr->get_tag(),
+               color_name[hdr->get_color()], hdr->get_color(), hdr->get_size());
     }
+}
+
+void gc_trace(Header *hdr, const char *msg)
+{
+    gc_trace_2(hdr, msg, -9999);
 }
 #endif
 
@@ -50,7 +52,7 @@ bool gc_write_block = false;
 bool gc_local_write_block = false;
 int64_t gc_cycles = 0;
 
-Heap_obj *gc_gray_list = nullptr;
+Header *gc_gray_list = nullptr;
 static Chunk *sweep_chunk = nullptr;
 static char *sweep_ptr = nullptr;
 Array *gc_array = nullptr;
@@ -68,18 +70,25 @@ static const int MARK_NODE_COST = 1;
 static const int WORK_PER_POLL = 1000;
 
 
+void make_heap_obj_gray(Heap_obj *heap_obj)
+{
+    MAKE_GRAY(heap_obj->get_header());
+}
+
+
+
 // the container of x is reachable, so if x is a heap object, the object
 // is also reachable, so make sure the object is known to the GC using
 // heap_obj_is_reachable.
 void if_node_make_gray(Any x) {
     GCT {
-        if (x.integer == GC_TRACE_ADDR) {
+        if ((x.integer  & GC_TRACE_ADDR_MASK) == GC_TRACE_ADDR) {
             printf("In if_node_make_gray: %llx found in gc_state %d\n",
                    x.integer, gc_state);
         }
     }
-    if (is_heap_obj(x)) {
-        heap_obj_is_reachable(to_heap_obj(x));
+    if (is_in_heap(x)) {
+        heap_obj_is_reachable((Heap_obj *) (x.integer & ~TAG_MASK));
     }
     // in the case of String and Symbol, each is either self-contained
     // as a short string or a pointer to a std::string, so there is
@@ -87,8 +96,15 @@ void if_node_make_gray(Any x) {
 }
 
 
-void heap_obj_is_reachable(Heap_obj *obj) {
-    HEAP_OBJ_IS_REACHABLE(obj);
+void heap_obj_is_reachable(Heap_obj *obj)
+{
+    HEAP_ITEM_IS_REACHABLE(obj);
+}
+
+
+void object_is_reachable(Obj *obj)
+{
+    HEAP_ITEM_IS_REACHABLE(obj);
 }
 
 
@@ -96,7 +112,7 @@ void heap_obj_is_reachable(Heap_obj *obj) {
 void gc_poll()
 {
     int64_t work_done = 0;
-    Heap_obj *obj;
+    Header *hdr;
     char *ptr;
     while (work_done < WORK_PER_POLL) {
         GCS printf("gc_poll (top loop) state %d\n", gc_state);
@@ -105,53 +121,72 @@ void gc_poll()
             // printf("*** Starting GC cycle ***\n");
             gc_initial_color = GC_WHITE;
             gc_write_block = true;
-//            heap_obj_make_gray(cs_symbols); I think this is no longer
-//            necessary because the symbol table is in
-//            global memory, not on either heap. [RBD:] But then we need
-//            to mark everything referenced by globals. Isn't it better to
-//            use a cserpent dictionary as a symbol table? GC_START should
-//            take (small) constant time.
-            gc_mark_roots(); // mark objects accessible through globals
+            runtime_mark_roots();
+            gc_mark_roots(); // mark objects accessible through strings/globals
             gc_state = GC_MARK;
             break;
         case GC_MARKB:
         case GC_MARK:
             while (work_done < WORK_PER_POLL) {
-                obj = gc_gray_list;
-                GCT gc_trace(obj, "GC_MARK gray list");
-                if (!obj) {
+                hdr = gc_gray_list;
+                GCT gc_trace(hdr, "GC_MARK gray list");
+                if (!hdr) {
                     gc_state = (gc_state == GC_MARK ? GC_MARK2 : GC_MARK3);
                     break;
                 }
                 gc_gray_list = gc_gray_list->get_next();
-                obj->set_white();
+                hdr->set_white();
                 
-                switch (obj->get_tag()) {
+                switch (hdr->get_tag()) {
                 case tag_free:
                     break;
-                case tag_symbol:
-                    // since this is a Symbol, we know the 3 slots are pointers
+                case tag_symbol: {
+                    // since this is a Symbol, we know some slots are pointers
                     // or nil, so we don't have to decode Any to see if it is
-                    // a Heap_obj, and we can call heap_obj_is_reachable
-                    // directly. Call the function form to avoid evaluating the
-                    // expression 3 times in the macro (but maybe compiler would
-                    // optimize that out?):
-                    heap_obj_is_reachable((Heap_obj *)
-                                       (obj->slots[0].integer));  // name
-                    if_node_make_gray(Any(obj->slots[1]));  // value
-                    heap_obj_is_reachable((Heap_obj *)
-                                          (obj->slots[2].integer));  // function
-                    heap_obj_is_reachable((Heap_obj *)
-                                          (obj->slots[4].integer));  // Cs_class
+                    // a Heap_obj. The value must be interpreted according to
+                    // the stype field.
+                    // slots are symbol name, symbol value, function value,
+                    //           stype, cs_class
+                    Symbol *sym = (Symbol *) (hdr + 1);
+                    if_node_make_gray(sym->slots[0]);  // name
+                    // value is a pointer to a global. Use type to see if
+                    // it needs to be marked
+                    Any_type stype = sym->symbol_type();
+                    switch (stype) {
+                      case Any_type::INT:
+                      case Any_type::REAL:
+                      case Any_type::SHORT:
+                      case Any_type::BOOL:
+                        break;
+                      case Any_type::STRING:
+                      case Any_type::SYMBOL:
+                      case Any_type::ARRAY:
+                      case Any_type::DICT:
+                      case Any_type::OBJ:
+                      case Any_type::NIL:
+                      case Any_type::ANY:
+                        if_node_make_gray(*((Any *) (sym->value())));
+                        break;
+                      case Any_type::DIRECT:
+                        // value is not a pointer to Any, it IS the Any value:
+                        if_node_make_gray((Any) (sym->value()));
+                        break;
+                      default:
+                        assert(false);
+                        break;
+                    }
+                    HEAP_ITEM_IS_REACHABLE(sym->slots[4].heap_obj);  // Cs_class
                     work_done += 5 * MARK_NODE_COST;
                     break;
+                }
                 case tag_string:
                     work_done += MARK_NODE_COST;
                     break;
-                case tag_array: 
+                case tag_array:
                 case tag_dict: {
-                    Array *array = (Array *) obj;
-                    std::vector<Any> *data = (std::vector<Any> *) obj->slots;
+                    Array *array = (Array *) (hdr + 1);
+                    std::vector<Any> *data = 
+                            (std::vector<Any> *) (array->slots);
                     // if the array is big, we want to mark the array
                     // incrementally to avoid a long pause. First, calculate
                     // work to do:
@@ -172,9 +207,18 @@ void gc_poll()
                     }
                     break;
                 }
+                case tag_class: {
+                    Obj *o = (Obj *) (hdr + 1);
+                    // superclass:
+                    HEAP_ITEM_IS_REACHABLE(o->slots[0].heap_obj);
+                    // name ins slots[1] is symbol which is in symbol table
+                    // MemberTable
+                    HEAP_ITEM_IS_REACHABLE(o->slots[4].heap_obj);
+                    break;
+                }
                 case tag_object:
                 case tag_file: {
-                    Obj *o = (Obj *) obj;
+                    Obj *o = (Obj *) (hdr + 1);
                     int64_t slots = o->get_slot_count();
                     uint64_t anyslots = o->get_any_slots();  // returns bit set
                     for (int64_t i = 0; i < slots; i++) {
@@ -231,6 +275,8 @@ void gc_poll()
                     }
                     work_done += n * MARK_NODE_COST;
                 }
+                gc_frame_ptr = (Gc_frame *) ((gc_frame_ptr->header &
+                                              ~0xFFFFE00000000000uLL) << 3);
             }
             if (!gc_frame_ptr) {
                 gc_state = GC_MARKB;  // mark gray list again
@@ -250,42 +296,48 @@ void gc_poll()
             GCS printf("gc_poll state %d\n", gc_state);
         case GC_SWEEP: {  // free black nodes, oh sweet jesus this sounds
             // so racist; I'd switch to RED/GREEN right now, but I'm a member
-            // of the Cherokee nation.
+            // of the Cherokee nation. Seriously.
             // In all seriousness, PLEASE suggest better terminology if you
             // find these WHITE/GRAY/BLACK labels inappropriate or insensitive.
             // Maybe HOT, WARM, COLD?
             while (work_done < WORK_PER_POLL) {
                 GCS printf("    sweep_ptr %p sweep_chunk %p work_done %lld\n",
                            sweep_ptr, sweep_chunk, work_done);
-                Heap_obj *obj = (Heap_obj *) sweep_ptr;
-                GCT gc_trace(obj, "GC_SWEEP");
-                int64_t sz = obj->get_size();
+                Header *hdr = (Header *) sweep_ptr;
+                GCT gc_trace(hdr, "GC_SWEEP");
+                int64_t sz = hdr->get_size();
                 // printf("sweep_ptr %p, color %d, obj size %lld\n", sweep_ptr,
                 //        obj->get_color(), sz);
-                if (obj->get_color() == GC_BLACK) {
-                    if (obj->has_tag(tag_string)) {
-                        delete (reinterpret_cast<std::string *>(
-                                                    obj->slots[0].integer));
+                if (hdr->get_color() == GC_BLACK) {
+                    if (hdr->has_tag(tag_string)) {
+                        Heap_obj *obj = (Heap_obj *) (hdr + 1);
+                        // serious voodoo: since we are forcing a string into
+                        // memory starting at &slots[0], we cannot just free
+                        // a typed pointer, but C++ implements destroy_at to
+                        // free whatever we tell it. This is necessary to free
+                        // the actual string data pointed to by the string.
+                        std::string *str_ptr = (std::string *) &(obj->slots[0]);
+                        std::destroy_at(str_ptr);
                         work_done += MARK_NODE_COST;
-                        CSFREE(obj);
-                    } else if (obj->has_tag(tag_file)) {
+                        CSFREE(hdr);
+                    } else if (hdr->has_tag(tag_file)) {
                         /* TODO: implement Cs_file
-                        Cs_file *csfile = (Cs_file *) obj;
+                        Cs_file *csfile = (Cs_file *) (hdr + 1);
                         if (csfile->get_file()) {
                             csfile->get_file()->close();
                         }
                         csfile->set_file(NULL);
                          */
                     }
-                    if (!obj->has_tag(tag_free)) {
-                        CSFREE(obj);
+                    if (!hdr->has_tag(tag_free)) {
+                        CSFREE(hdr);
                         work_done += FREE_NODE_COST;
                     }
-                } else if (obj->get_color() == GC_FREE) {
+                } else if (hdr->get_color() == GC_FREE) {
                     work_done += SWEEP_NODE_COST;
-                } else if (obj->get_color() == GC_WHITE) {
-                    GCT gc_trace(obj, "GC_SWEEP, changing white to black");
-                    obj->set_color(GC_BLACK);
+                } else if (hdr->get_color() == GC_WHITE) {
+                    GCT gc_trace(hdr, "GC_SWEEP, changing white to black");
+                    hdr->set_color(GC_BLACK);
                     work_done += COLOR_NODE_COST;
                 }
                 sweep_ptr += ((sz + 7) & ~7);  // round up to 8-byte alignment
@@ -325,10 +377,10 @@ void gc_poll()
             // in this phase, we take gray objects that were created during
             // GC_SWEEP and make them black
             while (work_done < WORK_PER_POLL && gc_gray_list) {
-                obj = gc_gray_list;
+                hdr = gc_gray_list;
                 gc_gray_list = gc_gray_list->get_next();
-                GCT gc_trace(obj, "GC_SWEEP2, off gc_gray_list, set black");
-                obj->set_color(GC_BLACK);
+                GCT gc_trace(hdr, "GC_SWEEP2, off gc_gray_list, set black");
+                hdr->set_color(GC_BLACK);
                 work_done += COLOR_NODE_COST;
             }
             if (!gc_gray_list) {
@@ -378,12 +430,9 @@ void gc_alter_array(Array *a)
 }
 
 #if GC_DEBUG
-void list_check(Heap_obj *head, long slots) {
-    extern Cs_class *cs_obj_class;  // defined in gc_test
+void list_check(Header *head, long slots) {
     while (head) {
         // printf("list_check for %ld slots: %p\n", slots, head);
-        assert(head != cs_class_class);
-        assert(head != cs_obj_class);
         int64_t actual = head->get_slot_count();
         assert(actual == slots);
         assert(head->get_color() == GC_FREE);
@@ -400,9 +449,9 @@ void list_check(Heap_obj *head, long slots) {
 #define LOG2_MAX_EXPONENTIAL_BYTES 25 // up to 16MB = 2^24
 #define LOG2_MEM_QUANTUM 4  // linear sizes increment by this
 #define MEM_QUANTUM (1 << LOG2_MEM_QUANTUM)
-extern Heap_obj *linear_free[MAX_LINEAR_BYTES / MEM_QUANTUM - 1];
-extern Heap_obj *exponential_free[LOG2_MAX_EXPONENTIAL_BYTES -
-                                   LOG2_MAX_LINEAR_BYTES];
+extern Header *linear_free[MAX_LINEAR_BYTES / MEM_QUANTUM - 1];
+extern Header *exponential_free[LOG2_MAX_EXPONENTIAL_BYTES -
+                                LOG2_MAX_LINEAR_BYTES];
 //
 // controls for what heap_scan does:
 constexpr int heap_check = 0;  // expensive scan heap and make tests
@@ -413,25 +462,26 @@ static void heap_scan(int fn)
 {
     Chunk *chunk = cs_chunk_list;
     char *ptr = chunk->chunk;  // iterates over objects
-    Heap_obj *obj = nullptr;
-    Heap_obj *prev = nullptr;
+    Header *obj = nullptr;
+    Header *prev = nullptr;
     int64_t sz = 0;
     
     while (true) {
         prev = obj;
         int64_t prev_size = sz;
         
-        obj = (Heap_obj *) ptr;  // iterates over objects
-        sz = obj->get_size();
-        obj->get_next();  // checks reasonable next field
-        if (obj->has_tag(tag_object)) {
+        Header *hdr = (Header *) ptr;  // iterates over objects
+        sz = hdr->get_size();
+        hdr->get_next();  // checks reasonable next field
+        if (hdr->has_tag(tag_object)) {
+            Obj *obj = (Obj *) (hdr + 1);
             assert(obj->slots[0].integer > 0x100000000);
         }
-        if (fn == heap_print && obj->has_tag(tag_object)) {
-            printf("obj on heap: %p\n", obj);
+        if (fn == heap_print && hdr->has_tag(tag_object)) {
+            printf("hdr on heap: %p\n", hdr);
         }
-        if (fn == gray_check && obj->get_color() == GC_GRAY) {
-            printf("found gray object: %p\n", obj);
+        if (fn == gray_check && hdr->get_color() == GC_GRAY) {
+            printf("found gray object: header at %p\n", hdr);
             assert(false);
         }
         ptr += ((sz + 7) & ~7);  // round up to 8-byte alignment

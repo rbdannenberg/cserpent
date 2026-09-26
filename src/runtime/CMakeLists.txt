@@ -25,6 +25,7 @@ add_library(runtime STATIC
         csstring.cpp csstring.h
         ${CMAKE_CURRENT_SOURCE_DIR}/../gc/gc.h
         ${CMAKE_CURRENT_SOURCE_DIR}/../gc/gc.cpp
+        header.cpp header.h
         heap_obj.cpp heap_obj.h
         symbol.cpp symbol.h 
         symbol_table.cpp symbol_table.h 

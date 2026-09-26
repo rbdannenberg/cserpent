@@ -1,12 +1,22 @@
+// header.h -- heap object info
 //
-// Created by anthony on 7/5/24.
-//
-#pragma once
-#include <cstdint>
+union Any;
+
+enum Tag {
+    tag_free,
+    tag_symbol,
+    tag_integer,
+    tag_string,
+    tag_array,
+    tag_dict,
+    tag_object,
+    tag_class,
+    tag_file,
+    tag_frame };
 
 // all garbage-collected objects inherit this base class
 //
-class Heap_obj {
+class Header {
 public:    
     /* fields in header:
      *
@@ -19,7 +29,7 @@ public:
      * It is shifted right 3 bits because the low-order bits
      * are zero. To use the pointer, shift it left 3 bits.
      */
-    Any slots[1];  // can actually be any number of slots
+    uint64_t header;   // contains type info, GC color, size
 
     // on return, Heap_obj header will have #SLOTS initialized.  If
     // #SLOTS is zero, then slots[0] will be an unencoded integer slot
@@ -44,40 +54,60 @@ public:
     // If TAG is not tag_object, the layout is fixed, and this
     // Heap_obj is sub-classed. E.g. Array inherits from Heap_obj
     // and has tag==tag_array.
-
-    void *operator new(size_t size);
-
-    void operator delete(void *p) { assert(false);  /* use GC instead */ };
     
-    // Note: since Heap_obj has variable size, the real constructor
-    // is csmalloc, which sets the header and possibly puts large
-    // sizes in slot[0]:
-    Heap_obj() { }
-    
-    Header *get_header() { return ((Header *) this) - 1; }
+    void initialize(Tag tag, Gc_color color, int64_t slots) {
+        header = (((uint64_t) tag) << 59) + (((int64_t) color) << 57) +
+                 (slots << 45);
+    }
 
-    // Declaring a virtual member will allocate a vtable and point to it,
-    // adding 8 bytes to the size of every object for no reason.
-    // virtual ~Heap_obj() = default;
+    Tag get_tag() { return (Tag) ((header >> 59) & 0x1F); }
 
-    Tag get_tag() { return get_header()->get_tag(); }
-    void set_tag(Tag t) { get_header()->set_tag(t); }
+    void set_tag(Tag tag) { header = (header & ~0xF800000000000000uLL) |
+                                   (static_cast<uint64_t>(tag) << 59); }
+
     bool has_tag(int tag) { return tag == get_tag(); }
 
-    Gc_color get_color() { return get_header()->get_color(); }
-    void set_color(Gc_color c) { get_header()->set_color(c); }
+    Gc_color get_color() { return (Gc_color) ((header >> 57) & 0x03); }
+
+    void set_color(Gc_color c) {
+        // if already gray and being set to gray, something is wrong:
+        assert(get_color() != GC_GRAY || c != GC_GRAY);
+        header = (header & ~0x0600000000000000uLL) |
+                 (static_cast<uint64_t>(c) << 57);
+    }
 
     // for use by GC: sets a gray-listed object to white and sets the
     // next pointer to NULL since object is no longer on any list.
     // Preserves the type tag and slot count in the header.
-    void set_white() { get_header()->set_white(); }
+    void set_white() {
+        assert(get_color() == GC_GRAY);
+        header = (header & 0xF9FFE00000000000uLL) | 0x0600000000000000uLL;
+    }
 
-    Header *get_next() { return get_header()->get_next(); }
-    void set_next(Header *ptr) { get_header()->set_next(ptr); }
+    Header *get_next() {
+        assert((uint64_t)((header  & ~0xFFFFE00000000000uLL) << 3) == 0 ||
+               (uint64_t)((header  & ~0xFFFFE00000000000uLL) << 3) >
+               0x100000000);
+        return (Header *) ((header & ~0xFFFFE00000000000uLL) << 3);
+    }
 
-    // get_size() returns the full allocation size including the Header
-    int64_t get_size() { return get_header()->get_size(); }
+    void set_next(Header *ptr) {
+        assert(!ptr || (int64_t) ptr > 0x100000000);
+        header = (header & ~0x00001FFFFFFFFFFFuLL) |
+                 (((uint64_t) ptr) >> 3);
+    }
 
+    // get_slot_count only returns the in-header count. If zero,
+    // the true object slot count is in slots[0], which is only
+    // possible for Heap_obj objects since Object objects are
+    // limited to 64 slots.  The slot count for Objects includes
+    // the vtable pointer.
+    int64_t get_slot_count();
+
+    // get_size() returns the full allocation size including this Header
+    int64_t get_size() { return sizeof(Header) +
+                                (get_slot_count() * sizeof(Any)); }
+        
     // get_slot_count() returns the number of slots allocated. This may
     // be larger than the number of slots requested, needed, or used.
     // There may be "extra" slots at the end of the object. It is the
@@ -88,10 +118,8 @@ public:
     // slots will not cause problems. For other Heap_obj's such as
     // Array data, there is an array length pointer to tell GC which
     // slots are valid Any data and which are "extra" to ignore.
-    int64_t get_slot_count() { return get_header()->get_slot_count(); }
-
-    void set_slot(int i, Any x);
-    void set_slot(int i, int64_t x) { slots[i] = Any{x}; }
-    void set_slot(int i, double x) { slots[i] = Any{x}; }
-    void set_slot(int i, bool x) { slots[i] = Any{x}; }
 };
+
+
+// get the size of a Heap_obj in bytes as a function of the slot count:
+int64_t slot_count_to_size(int64_t n);

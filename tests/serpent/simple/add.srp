@@ -1,0 +1,94 @@
+# add.srp -- test add()
+#
+# tests op_add, op_minus, op_inc, op_dec
+#
+
+if 3 + 4 != 7
+    print "ADD FAILED ON 3 + 4"
+    exit()
+
+if 5.67 + 3 != 8.67
+    print "ADD FAILED ON 5.67 + 3"
+    exit()
+
+if 512 + 3.45 != 515.45
+    print "ADD FAILED ON 512 + 3.45"
+    exit()
+
+if -100 + 100 != 0
+    print "ADD FAILED ON -100 + 100"
+    exit()
+
+if 5.625 + 10.625 != 16.25
+    print "ADD FAILED ON 5.625 + 10.625"
+    exit()
+
+// test inc and dec
+if 5 + 1 != 6
+    print "INC FAILED ON 5"
+    exit()
+
+if 5.5 + 1 != 6.5
+    print "INC FAILED ON 5.5"
+    exit()
+
+a = 10
+if a + 1 != 11:
+    print "INC FAILED ON VARIABLE"
+    exit()
+
+if 5 - 1 != 4
+    print "DEC FAILED ON 5"
+    exit()
+
+if 5.5 - 1 != 4.5
+    print "DEC FAILED ON 5.5"
+    exit()
+
+if a - 1 != 9:
+    print "DEC FAILED ON VARIABLE"
+    exit()
+
+if 6 + -1 != 5:
+    print "UNARY MINUS ONE TO DEC FAILED"
+    exit()
+
+if 6 + +1 != 7:
+    print "UNARY PLUS ONE TO INC FAILED"
+    exit()
+
+if 6 + --1 != 7:
+    print "DOUBLE UNARY MINUS ONE TO INC FAILED"
+    exit()
+
+if [1, 2, 3] + [4, 5, 6] != [1, 2, 3, 4, 5, 6]
+    print "ADD FAILED ON ARRAYS"
+    exit()
+
+if "abcdefg" + "hijklmnopqrst" != "abcdefghijklmnopqrst"
+    print "ADD FAILED ON LONG STRINGS"
+    exit()
+
+if "ab" + "c" != "abc"
+    print "ADD FAILED ON SHORT STRINGS"
+    exit()
+
+if "ab" + "cdefghijklmn" != "abcdefghijklmn"
+    print "ADD FAILED ON SHORT/LONG STRINGS"
+    exit()
+
+if "abcdefghijklmn" + "opq" != "abcdefghijklmnopq"
+    print "ADD FAILED ON LONG/SHORT STRINGS"
+    exit()
+
+avar = 5
+if -avar != -5
+    print "ADD FAILED ON MINUS INT"
+    exit()
+
+bvar = 17.78
+if -bvar != -17.78
+    print "ADD FAILED ON MINUS REAL"
+    exit()
+    
+print "ADD COMPLETED WITH SUCCESS"

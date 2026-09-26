@@ -14,41 +14,53 @@ class ParsedFile:
 class SourceFile:
 
     var file_path
-    var source
+    var stream
+    var line
     var source_map  // list of starting position of each line
+    var offset  // character offset of current (unread) file position
 
-    def init(file_path_, source_):
+    def init(file_path_):
         file_path = file_path_
-        source = source_
+        stream = open(file_path, "r")
+        offset = 0
         source_map = [0]
 
-        for pos = 0 to len(source):
-            if source[pos] == "\n":
-                source_map.append(pos + 1)
 
-        source_map.append(len(source) + 1)
+    def close():
+        stream.close()
+
+
+    def readline():
+    # returns "" at eof
+        if line == "":
+            print "WARNING: readline after EOF encountered"
+            return ""
+        line = stream.readline()
+        if isnull(line):
+            line = ""
+        elif len(line) == 0:
+            print "WARNING: File does not end in newline"
+            line = line + "\n"
+        var length = len(line)
+        offset = offset + length
+        if length > 0:
+            source_map.append(offset)
+        return line
+
 
     def get_range(start, end):
         return Range(file_path, start, end)
 
-    def get_formatted_pos(pos):
-        for line = 0 to len(source):
+
+    def get_formatted_line_col(pos):
+        for line = 0 to len(source_map):
             if source_map[line] > pos:
                 col = pos - source_map[line - 1]
-                return "(" + str(line) + ":" + str(col) + ")"
+                return str(line) + ":" + str(col)
+        return "EOF"
 
-        return -1
+
+    def get_formatted_pos(pos):
+        return file_path + ":" + get_formatted_line_col(pos)
 
         
-def load_from_path(path):
-# reads a source file, constructs a SourceFile object with the source
-# current file size limit is 65536 (TODO)
-    f = open(path, "r")
-    if f == nil:
-        return nil
-
-    # TODO: check if read size is appropriate
-    source = f.read(65536)
-    f.close()
-
-    return SourceFile(path, source)

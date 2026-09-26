@@ -1,0 +1,46 @@
+# append.srp -- test append
+#
+# tests op_append
+
+array123 = [1, 2, 3]
+x = array123.append(4)
+if len(array123) != 4 or array123[0] != 1 or
+   array123[1] != 2 or array123[2] != 3 or array123[3] != 4
+    print "FAILURE TO APPEND TO AN ARRAY"
+    exit()
+
+x = array123.append(not true)
+if len(array123) != 5 or array123[0] != 1 or
+   array123[1] != 2 or array123[2] != 3 or array123[3] != 4 or
+   array123[4] != nil
+    print "FAILURE TO APPEND NOT TRUE TO AN ARRAY"
+    exit()
+
+class Append
+    var x
+    def init()
+        x = 10
+    def myappend(a)
+        return a
+
+ap = Append()
+y = ap.myappend(7)
+if y != 7
+    print "FAILURE TO INVOKE APPEND ON AN OBJECT"
+    exit()
+
+// strings: test append() of short/long string to short/long string
+def string_append(s1, s2, rslt)
+    var both = s1.append(s2)
+    if both != rslt
+        print "FAILURE TO APPEND STRINGS", s1, s2
+        exit()
+    return
+
+string_append("a", "b", "ab") // result is small
+string_append("ab", "cde", "abcde") // result is small
+string_append("abc", "defg", "abcdefg") // result is large
+string_append("a", "bcdefghijklmn", "abcdefghijklmn")
+string_append("bcdefghijklmn", "a", "bcdefghijklmna")
+
+print "APPEND COMPLETED WITH SUCCESS"

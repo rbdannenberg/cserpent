@@ -1,0 +1,16 @@
+# primitives.srp -- signatures for built-in functions
+
+ARGNAMES = ["x", "y", "z", "u", "v", "w"]
+
+def psig(ftype, rest req_types):
+    var req = []
+    for r at i in req_types:
+        req.append(r)
+        req.append(ARGNAMES[i])
+    return [req, nil, nil, nil, nil, ftype]
+
+
+PRIMITIVES = {
+    # "abs": psig("real", REAL)
+    "log": psig("real", REAL)
+}

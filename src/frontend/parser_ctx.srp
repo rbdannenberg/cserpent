@@ -3,6 +3,11 @@ require "utils"
 
 def match(token, predicate):
 # test if token (Token class) matches specification in predicate
+# predicate is:
+#    string: token must match the string
+#    symbol: token's tk_type must match the symbol
+#    array: token must match any string or token type must match any symbol
+#
     if isarray(predicate):
         return token.tk_type in predicate or token.content in predicate
     # else token is a string (for exact match) or symbol (for tk_type match)
@@ -13,11 +18,9 @@ def match(token, predicate):
 // Mutable context object passed along when `Parser` is run on an input.
 class ParseContext:
 
-    var input    // array of Token to be parsed.
+    var tokenizer  // Tokenizer object: source of tokens
     var pos      // 1-D position of the context, i.e., current character pointer
     var error    // Error message.
-    var res      // An AST holder used for return type.
-    var partial  // Partial result store (array of tokens).
     var should_ignore_whitespace
     var in_function  // boolean: true if we are parsing a function (where a
                      //          variable declaration is local)
@@ -28,84 +31,73 @@ class ParseContext:
 
     ### SETUPS ###
 
-    def init(input_):
+
+    def init(tokenizer_):
         pos = 0
-        input = input_
+        tokenizer = tokenizer_
         error = nil
-        res = nil
-        partial = []
         should_ignore_whitespace = false
 
         types = []
         deps = []
 
+
     def at_eof():
     # have we reached the end of the file
-        return pos >= len(input)
+        var tok = tokenizer.peek()
+        // display "$$ at_eof()", tok
+        return tok.tk_type == TK_EOF
 
 
     ### SHORTHANDS FOR PARSING ###
 
-    def peek():
-        return input[pos]
-
-    def get(predicate, optional should_err = true):
+    def peek_token(optional predicate, optional should_err = true):
+    # get the next token that matches predicate, which is a
+    # string to match token exactly, a symbol to match the token type,
+    # or an array to give a list of string or symbol alternatives
+    # If should_err, failure to match causes error report.
         if should_ignore_whitespace:
             before_whitespace = skip_whitespace()
 
-        if at_eof():
-            if should_err:
-                error_eof_with(predicate)
-            if should_ignore_whitespace:
-                pos = before_whitespace
-            return nil
+//        if at_eof():
+//            if should_err:
+//                error("looking for " + str(predicate) + ", got EOF")
         
-        var tok = peek()
-        if not match(tok, predicate):
+        var tok = tokenizer.peek()
+
+        if predicate and not match(tok, predicate):
             if should_err:
                 err_expect(tok, predicate)
             if should_ignore_whitespace:
                 pos = before_whitespace
+            // display "peek_token returns", nil
             return nil
 
-        return tok
-
-    def skip(predicate, optional should_err = true):
-        if get(predicate, should_err) == nil:
-            return false
-
-        pos = pos + 1
-        return true
-
-
-    def next():
-    # return the next token
-        var tok = peek()
-        pos = pos + 1
+        // display "peek_token returns", tok
         return tok
 
 
-    def skip_store(predicate, optional should_err = true):
-    # get a token and append it to partial
-        if len(partial) != 0:
-            runtime_exception("DUP", frame_get())
+    def get_token(optional predicate, optional should_err = true):
+        var rslt = peek_token(predicate, should_err)
+        if rslt:
+            // display "get_token in parser_ctx: success", rslt
+            return tokenizer.next()
+        return nil
 
-        tok = get(predicate, should_err)
-        if tok == nil:
-            return false
 
-        partial.append(tok)
-        pos = pos + 1
-        return true
+    def unget_token(token)
+        tokenizer.undo_next(token)
+
 
     def indent():
-        return skip(TK_INDENT)
+        return get_token(TK_INDENT)
+
 
     def dedent():
-        return skip(TK_DEDENT)
+        return get_token(TK_DEDENT)
 
     def br():
-        return skip(TK_BREAK)
+        return get_token(TK_NEWLINE)
 
 
     ### ERROR EMISSION AND HANDLING ###
@@ -129,15 +121,18 @@ class ParseContext:
         if at_eof():
             err_eof_with(predicate)
 
-        err_expect(peek(), predicate)
+        err_expect(peek_token(), predicate)
 
     
     ### INDENTATION CONTEXT ###
 
+    def possible_linewrap():
+        tokenizer.linewrap_flag = true
+
     def skip_whitespace():
         var curr_pos = pos
         for i = pos to len(input):
-            if not match(input[i], [TK_INDENT, TK_DEDENT, TK_BREAK]):
+            if not match(input[i], [TK_INDENT, TK_DEDENT, TK_NEWLINE]):
                 pos = i
                 return curr_pos
         
@@ -145,10 +140,7 @@ class ParseContext:
 
 
     def skip_eol():
-        if pos == len(input):
-            return true
-        
-        return skip([TK_BREAK, ";"])
+        return get_token([TK_NEWLINE, ";"])
 
     
     ### MISC CONTEXT ###
@@ -168,20 +160,9 @@ class ParseContext:
         return prev
 
 
-    ### RESULT MANIPULATION ###
-    
-    def set_result(ast):
-        res = ast
-
-    def pop_result():
-        out = res
-        if out == nil:
-            print "DEBUG ERROR: POPPING FROM EMPTY RESULT"
-        res = nil
-        return out
-
     def get_partial(idx):
         return partial[idx]
+
 
     def pop_partial():
         if len(partial) != 1:

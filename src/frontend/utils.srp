@@ -46,6 +46,12 @@ class Error:
     def init(range_, msg_):
         range = range_
         msg = msg_
+        print "################ Error.init #################"
+        if range:
+            print "ERROR at " + range.file.get_formatted_line_col(range.start) +
+                  "\n    " + msg
+        stacktrace()
+
 
 
 class Result:
@@ -68,12 +74,12 @@ class Result:
         return Result(false, error)
 
 
-def res(val):
-    return Result(true, val)
+// def res(val):
+//     return Result(true, val)
 
 
-def err_res(err, range):
-    return Result(false, Error(range, err))
+// def err_res(err, range):
+//     return Result(false, Error(range, err))
 
 
 def format_error(err):

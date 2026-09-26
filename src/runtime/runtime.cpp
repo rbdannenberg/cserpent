@@ -4,33 +4,33 @@
 // Sep 2024
 
 #include <assert.h>
-#include "csmem.h"
 #include "any.h"
 #include "op_overload.h"
 #include "gc.h"
+#include "header.h"
 #include "heap_obj.h"
+#include "csmem.h"
 #include "obj.h"
 #include "array.h"
 #include "dict.h"
 #include "symbol.h"
 #include "runtime.h"
+#include "obj.h"
 
-Cs_class *cs_obj_class = nullptr;
-
-Any css_append;
-Any css_last;
-Any css_insert;
-Any css_unappend;
-Any css_uninsert;
-Any css_reverse;
-Any css_copy;
-Any css_set_len;
-Any css_get_name;
-Any css_get_inst_slot_count;
-Any css_get_inst_any_slots;
-Any css_get_member_table;
-Any css_Class;
-Any css_Obj;
+Symbol *css_append;
+Symbol *css_last;
+Symbol *css_insert;
+Symbol *css_unappend;
+Symbol *css_uninsert;
+Symbol *css_reverse;
+Symbol *css_copy;
+Symbol *css_set_len;
+Symbol *css_get_name;
+Symbol *css_get_inst_slot_count;
+Symbol *css_get_inst_any_slots;
+Symbol *css_get_member_table;
+Symbol *css_Class;
+Symbol *css_Obj;
 
 bool gc_enabled = false;
 
@@ -43,35 +43,23 @@ void runtime_init()
     DICT_EMPTY.integer = SHORT_TAG + 0x010101010101;
     DICT_DELETED.integer = SHORT_TAG + 0x020202020202;
 
+    pparms = new Array();
+    kparms = new Dict();
     cs_symbol_table = new Dict();
-    css_t = new Symbol("t", nil, nil);
-    *(css_t->value()) = css_t;  // 't' evaluates to itself
-    
-    // note: cs_obj_class is the top-most class, no superclass
-    // cs_class_class inherits from cs_obj_class
-    // Every class is an instance of cs_class_class, including
-    // cs_obj_class and cs_class_class itself.
-    css_Obj = new Symbol("Obj", nil, nil);
-    cs_obj_class = new Cs_class { to_symbol(css_Obj), 1, 0b1,
-                                  &cs_class_table };
-
-    css_Class = new Symbol("Class", nil, nil);
-    cs_class_class = new Cs_class { to_symbol(css_Class), 5, 0b1,
-                                    &cs_class_table, cs_obj_class };
-
-    css_append = new Symbol("append", nil, nil);
-    css_last = new Symbol("last", nil, nil);
-    css_insert = new Symbol("insert", nil, nil);
-    css_unappend = new Symbol("unappend", nil, nil);
-    css_uninsert = new Symbol("uninsert", nil, nil);
-    css_reverse = new Symbol("reverse", nil, nil);
-    css_copy = new Symbol("copy", nil, nil);
-    css_set_len = new Symbol("set_len", nil, nil);
-    css_get_name = new Symbol("get_name", nil, nil);
-    css_get_inst_slot_count = new Symbol("get_inst_slot_count", nil, nil);
-    css_get_inst_any_slots = new Symbol("get_inst_any_slots", nil, nil);
-    css_get_member_table = new Symbol("get_member_table", nil, nil);
-
+    css_t = new Symbol("t", (uint64_t) &css_t, nil, Any_type::SYMBOL);
+    // 't' evaluates to itself
+    css_append = new Symbol("append");
+    css_last = new Symbol("last");
+    css_insert = new Symbol("insert");
+    css_unappend = new Symbol("unappend");
+    css_uninsert = new Symbol("uninsert");
+    css_reverse = new Symbol("reverse");
+    css_copy = new Symbol("copy");
+    css_set_len = new Symbol("set_len");
+    css_get_name = new Symbol("get_name");
+    css_get_inst_slot_count = new Symbol("get_inst_slot_count");
+    css_get_inst_any_slots = new Symbol("get_inst_any_slots");
+    css_get_member_table = new Symbol("get_member_table");
     gc_stack_top = NULL;
     gc_enabled = true;
 }
@@ -79,6 +67,8 @@ void runtime_init()
 
 void runtime_mark_roots()
 {
-    MAKE_GRAY(cs_obj_class);
-    MAKE_GRAY(cs_symbol_table);
+    make_heap_obj_gray(cs_symbol_table);
+    make_heap_obj_gray(kparms);
+    make_heap_obj_gray(pparms);
+    cs_global_mark();
 }

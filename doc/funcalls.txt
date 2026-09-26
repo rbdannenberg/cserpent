@@ -54,41 +54,68 @@ express in C++ if we have work to do to prepare
 parameters.) So a call like this in Serpent:
     foo(x, y, kw1 = true, kw2 = false)
 would compile to something like this in C++:
-    pparms.clear().append(x).append(y);
-    kparms.clear();
-    kparms[kw1_sym] = true;
-    kparms[kw2_sym] = false;
-    call(foo_sym);
+    PPARMS.clear();
+    PPARMS.append(x);
+    PPARMS.append(y);
+    KPARMS.clear();
+    KPARMS[css_kw1] = true;
+    KPARMS[css_kw2] = false;
+    funcall(css_foo->func()); // calls dynamic_foo
+
+Parameters are passed in globals *pparms and *kparms,
+which are accessed as PPARMS and KPARMS to avoid awkward
+looking code like "(*pparms)[i]".
+
 Whether foo is a function or method, it has to
 have some code to check the parameters and
-invoke the compiled C++ function corresponding to foo_sym:
-    assert(pparms.size() == 2);  // no extra parameters
-    double x = pparms[0];  // assume x declared double
-    int64_t y = pparms[1];  // assume y declared int
-    Any kw1 = kparms[kw1_sym];
-     Any kw2 = kparms[kw2_sym];
-    // in this implementation, extra keyword parameters
-    // are permitted and ignored
+invoke the compiled C++ function corresponding to css_foo:
+    check_dispatch(css_foo, 2);  // no extra parameters
+    double x = as_real(PPARMS[0]);  // assume x declared double
+    int64_t y = as_int(PPARMS[1]);  // assume y declared int
+    Any kw1 = KPARMS[kw1_sym]; 
+    Any kw2 = KPARMS[kw2_sym]; 
     foo(x, y, kw1, kw2);
 If foo is declared so that y is an optional parameter,
-then y must be of type Any or type Obj. If it is an Obj,
-the code could look like this:
-    assert(pparms.size() >= 1 && pparms.size() < 3);
-    double x = pparms[0];  // assume x declared double
-    Any y = nullptr; 
-    if (pparms.size() >= 2) {
-        Any &tmp = &pparms[1];
-        assert(is_object(tmp));
-        y = tmp;
-    }
-    Any kw1 = kparms[kw1_sym];
-    Any kw2 = kparms[kw2_sym];
-    // in this implementation, extra keyword parameters
-    // are permitted and ignored
-    foo(x, y, kw1, kw2);
-Note: maybe the check that y is an object should happen
-in the function foo. Otherwise, every call to foo must
-do the check. On the other hand, some of these could be
-at compile time, so in those cases checking inside foo
-at runtime adds overhead.
+then the actual parameter y is obtained by checking the
+length of PPARMS. If the length indicates no y was provided,
+then the code for the default value is used in something like
+    (PPARMS.len() >= 2 ? as_int(PPARMS[1]) : <defaultvalue>)
 
+Extra PPARMS are copied into a new array and passed to the
+"rest" argument of foo.
+
+Keyword parameters are trickier because they are unordered.
+We want to extract expected values as shown above. When the
+value is not in KPARMS, we need to substitute the default
+value. The tricky part is detecting extras. For each key in
+KPARMS, we should test if it is expected. If not either it
+goes into a "dictionary" parameter or an error is raised.
+Since we have to scan for matches, we might as well make
+KPARMS an array, and rather than
+    Any kw1 = KPARMS[kw1_sym]; 
+    Any kw2 = KPARMS[kw2_sym]; 
+we can do something like
+    Any kw1 = uninitialized;
+    Any kw2 = uninitialized;
+    for kw in even locations of KPARMS:
+        if (kw == css_kw1) {
+            kw1 = the value stored after kw in KPARMS 
+        } else if (kw == css_kw2) {
+            kw2 = the value stored after kw in KPARMS 
+        } else {
+            deal with the unexpected kw
+        }
+    }
+    if (kw1 == initialized) {
+        kw1 = default value for kw1
+    }
+    if (kw2 == initialized) {
+        kw2 = default value for kw2
+    }
+That's a lot of processing for keyword parameters, but it is only
+used for funcall() and apply() for functions. For methods, it will
+be needed when the type of object is unknown, which will be common.
+However, this code mostly disappears when there are no keyword
+or dictionary parameters, and the linear search for kw1, kw2, etc.,
+is only linear in the number of keyword parameters, which is typically
+small.
