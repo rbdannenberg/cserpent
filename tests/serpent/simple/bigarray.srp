@@ -1,0 +1,9 @@
+# bigarray.srp -- test arrays up to 1M in size
+#
+
+ar = []
+for i = 0 to 1000000
+    ar.append(i)
+
+print "BIGARRAY COMPLETED WITH SUCCESS"
+

@@ -174,8 +174,7 @@ Array *subseq(Array *arr, int64_t start, int64_t end) {
         Any result;
     } L;
     constexpr int sl_result = 0;
-    memset(&L, 0, sizeof(L));
-    CS_FUNCTION_ENTRY(L, 1);
+    CS_FUNCTION_ENTRY(1);
     int64_t arr_len = arr->len();
     if (end == std::numeric_limits<int64_t>::max()) {
         end = arr_len;
@@ -191,11 +190,11 @@ Array *subseq(Array *arr, int64_t start, int64_t end) {
         throw std::out_of_range("subseq: out of range");
     }
     Array *result = new Array {};
-    L.set(sl_result, Any{result});
+    LSET(sl_result, Any{result});
     for (int64_t i = start; i < end; i++) {
         result->append((*arr)[i]);
     }
-    CS_FUNCTION_EXIT(L, result);
+    CS_FUNCTION_EXIT(result);
 }
 
 bool is_equal(Array *lhs, Array *rhs) {

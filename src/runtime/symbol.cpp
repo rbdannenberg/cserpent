@@ -37,11 +37,10 @@ Symbol::Symbol(Any name, Any *value, Any func,
     constexpr int sl_name = 0;
     constexpr int sl_value = 1;
     constexpr int sl_func = 2;
-    memset(&L, 0, sizeof(L));
-    CS_FUNCTION_ENTRY(L, 1);
-    L.set(sl_name, name);
+    CS_FUNCTION_ENTRY(1);
+    LSET(sl_name, name);
     if (is_in_heap(*value)) {
-        L.set(sl_value, *value);
+        LSET(sl_value, *value);
     }
     
     set_tag(tag_symbol);
@@ -52,7 +51,7 @@ Symbol::Symbol(Any name, Any *value, Any func,
     set_slot(4, Any{cs_class});
     Any symbol(this);  // nan-box this into an Any to place in cs_symbol_table
     cs_symbol_table->insert(name, symbol);
-    CS_FUNCTION_EXIT(L, 0);
+    CS_FUNCTION_EXIT(0);
 }
 */
 
@@ -75,9 +74,8 @@ Symbol::Symbol(const char *name_string, uint64_t value, Any func,
         Any result;  // this
     } L;
     constexpr int sl_result = 0;
-    memset(&L, 0, sizeof(L));
-    CS_FUNCTION_ENTRY(L, 1);
-    L.set(sl_result, Any(this));
+    CS_FUNCTION_ENTRY(1);
+    LSET(sl_result, Any(this));
     set_tag(tag_symbol);
     set_slot(0, Any{name_string});
     slots[1].integer = value;
@@ -85,7 +83,7 @@ Symbol::Symbol(const char *name_string, uint64_t value, Any func,
     slots[3].integer = (uint64_t) stype;
     slots[4].integer = (uint64_t) cs_class;
     cs_symbol_table->insert(name(), L.result);
-    CS_FUNCTION_EXIT(L, 0);
+    CS_FUNCTION_EXIT(0);
 }
 
 

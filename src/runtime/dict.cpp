@@ -61,15 +61,14 @@ Array *Dict::get_keys()
         Any result;
     } L;
     constexpr int sl_result = 0;
-    memset(&L, 0, sizeof(L));
-    CS_FUNCTION_ENTRY(L, 1);
+    CS_FUNCTION_ENTRY(1);
     std::vector<Any> *array = get_vector();
     // len is number of entries * 2
     int64_t slots = array->size() & ~1;  // make it even, round down
     // slots is now how many slots to scan for keys
     Array *result = new Array(used / 2, nil);
     assert(result);
-    L.set(sl_result, Any(result));  // save as local to avoid GC
+    LSET(sl_result, Any(result));  // save as local to avoid GC
     int j = 0; // where to put key
     for (int i = 0; i < slots; i += 2) {
         Any key = (*array)[i];
@@ -81,7 +80,7 @@ Array *Dict::get_keys()
         }
     }
     assert(j * 2 == used);
-    CS_FUNCTION_EXIT(L, result);
+    CS_FUNCTION_EXIT(result);
 }
 
 #ifdef DO_WE_NEED_THIS_FUNCTION
@@ -116,13 +115,12 @@ Array *Dict::get_values()
         Any result;
     } L;
     constexpr int sl_result = 0;
-    memset(&L, 0, sizeof(L));
-    CS_FUNCTION_ENTRY(L, 1);
+    CS_FUNCTION_ENTRY(1);
     std::vector<Any> *array = get_vector();
     int64_t slots = array->size() & ~1;  // make it even, round down
     Array *result = new Array(used / 2, nil);
     assert(result);
-    L.set(sl_result, Any(result));  // save as local to avoid GC
+    LSET(sl_result, Any(result));  // save as local to avoid GC
     int j = 0; // where to put the value
     for (int i = 0; i < slots; i += 2) {
         Any key = (*array)[i];
@@ -135,7 +133,7 @@ Array *Dict::get_values()
         }
     }
     assert(j == used / 2);
-    CS_FUNCTION_EXIT(L, result);
+    CS_FUNCTION_EXIT(result);
 }
 
 
@@ -348,9 +346,11 @@ int64_t Dict::find(Any key, bool inserting)
                 if (deleted_index < 0) deleted_index = index;
             } else if (is_str(entry_key)) {
                 int64_t len2;
-                const char *str2 = get_c_str(entry_key);
+                const char *str2 = get_c_str(entry_key, &len2);
+                // Big_string storage is not padded, so compare only
+                // the actual length rather than rounding up.
                 if (((len1 == len2) &&
-                     (memcmp(str1, str2, (len1 + 3) & (~3))) == 0)) {
+                     (memcmp(str1, str2, len1) == 0))) {
                     return index * 2;
                 }
             }

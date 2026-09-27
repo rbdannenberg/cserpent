@@ -508,7 +508,7 @@ class CodegenVisitor(ASTVisitor):
     def visitArray(array_node):        # array literal
         var temp = allocate_temp(ARRAY)
         display "visitArray", temp
-        add_to_code("L.set(SL_" + temp + ", Any {new Array(" +
+        add_to_code("LSET(SL_" + temp + ", Any {new Array(" +
                    str(len(array_node.elements)) + ", nil)});")
         for element at i in array_node.elements:
             add_to_code("L." + temp + "->set(" + str(i) + ", " +
@@ -518,7 +518,7 @@ class CodegenVisitor(ASTVisitor):
 
     def visitDictionary(dictionary_node):
         var temp = allocate_temp(DICT)
-        add_to_code("L.set(SL_" + temp + ", Any {new Dict()});")
+        add_to_code("LSET(SL_" + temp + ", Any {new Dict()});")
         for pair at i in dictionary.pairs:
             add_to_code("L." + temp + "->set(" + pair[0].accept(this).cpp +
                        ", " + pair[1].accept(this).cpp + ");")
@@ -576,7 +576,7 @@ class CodegenVisitor(ASTVisitor):
         if sig and sig[3] and len(arg_list) > n_reqs + n_opts
             var n_rest = len(arg_list) - (n_reqs + n_opts)
             var temp = allocate_temp(ARRAY)
-            add_to_code("L.set(SL_" + temp + ", Any{new Array(" + str(n_rest) +
+            add_to_code("LSET(SL_" + temp + ", Any{new Array(" + str(n_rest) +
                        ", nil)});")
             for i = n_reqs + n_opts to len(arg_list):
                 add_to_code("L." + temp + "->set(" + str(i) + ", " +
@@ -771,7 +771,7 @@ class CodegenVisitor(ASTVisitor):
                 add_to_code(name + " = " +
                            value.to_type(Type(function_locals[name]))) + ";"
             else:
-                add_to_code("L.set(SL_" + name + ", " + value.cpp + ");")
+                add_to_code("LSET(SL_" + name + ", " + value.cpp + ");")
         else: // it's global
             if isinstance(ident, Identifier) and current_class == nil:
                global_variables[ident.cpp_for_global()] = ANY
@@ -810,7 +810,7 @@ class CodegenVisitor(ASTVisitor):
             if d_and_a.declared_type in ['int', 'real', 'bool']:
                 code_line = dtype.c_type() + name + " = ("
             else:
-                code_line = "L.set(SL_" + name + ", "
+                code_line = "LSET(SL_" + name + ", "
             add_to_code(code_line +
                        d_and_a.expression.accept(this).to_type(dtype) + ");")
         else:  // this is a global declaration
@@ -827,7 +827,7 @@ class CodegenVisitor(ASTVisitor):
 
 
     def visitReturnStatement(return_statement):
-        add_to_code("CS_FUNCTION_EXIT(L, " +
+        add_to_code("CS_FUNCTION_EXIT(" +
                    return_statement.expression.accept(this).cpp + ");")
         if code_indent_level == 1:
             last_statement_is_return = true
@@ -979,7 +979,7 @@ class CodegenVisitor(ASTVisitor):
 //        cpp_indent_level = cpp_indent_level + 1
         // move parameters to "protected" locals
         // for pname in ptr_type_params:
-        //    add_to_code("L.set(SL_" + pname + ", csl_" + pname + ");")
+        //    add_to_code("LSET(SL_" + pname + ", csl_" + pname + ");")
 
         # make corrections to the block
         var last_statement = function.block.statements.last()
@@ -1008,8 +1008,8 @@ class CodegenVisitor(ASTVisitor):
 
             code_indent_level = code_indent_level + 1
             display "Constructing return", sig[5]
-            var call = "CS_FUNCTION_EXIT(L, " + ("" if sig[5] == "var"
-                                                 else "Any{")
+            var call = "CS_FUNCTION_EXIT(" + ("" if sig[5] == "var"
+                                              else "Any{")
             call = call + function.name + "("
             sig = function.signature
             if not sig:
@@ -1064,7 +1064,7 @@ class CodegenVisitor(ASTVisitor):
                 display "optional actual loop", otype, oname, odefault
                 function_locals[oname] = otype
                 if otype.on_heap():
-                    add_to_code("L.set(SL_" + oname + " = (PPARMS.len() > " +
+                    add_to_code("LSET(SL_" + oname + " = (PPARMS.len() > " +
                                argi + " ? " + arg + " : " + oexpr + ");")
                     local_var = "L." + oname
                 else:
@@ -1390,14 +1390,11 @@ class CodegenVisitor(ASTVisitor):
                 ld.append("    constexpr int SL_" + name + " = " +
                            str(i) + ";\n")
                 i = i + 1
-        if i > 0:
-            ld.append("    memset(&L, 0, sizeof(L));\n")
-        
-        ld.append("    CS_FUNCTION_ENTRY(L, " + str(i) + ");\n")
+        ld.append("    CS_FUNCTION_ENTRY(" + str(i) + ");\n")
         for name in names:
             typ = function_locals[name]
             if typ.on_heap() and typ.parameter and context != 'dynamic':
-                ld.append("    L.set(SL_" + name + ", csl_" + name + ");\n")
+                ld.append("    LSET(SL_" + name + ", csl_" + name + ");\n")
 
 
     def generate_code(filename, ast, deps):
@@ -1417,7 +1414,7 @@ class CodegenVisitor(ASTVisitor):
         in_function = false
         display "generate_code sets", in_function
         if not last_statement_is_return:  // need a final return statement
-            add_line(FOR_MAIN, "CS_FUNCTION_EXIT(L, 0);")
+            add_line(FOR_MAIN, "CS_FUNCTION_EXIT(0);")
         main_indent_level = 0
         code_indent_level = 0
         add_line(FOR_MAIN, "}")
@@ -1523,7 +1520,7 @@ class CodegenVisitor(ASTVisitor):
                 global_cpp_file.write("    s->set_value((Any *) &" + 
                                       gv + ", " + typ.type_code() + ");\n")
         global_vars_file.write("int cs_global_init();\n")
-//        global_cpp_file.write("    CS_FUNCTION_EXIT(L, 0);\n")
+//        global_cpp_file.write("    CS_FUNCTION_EXIT(0);\n")
         global_cpp_file.write("}\n\n\nvoid cs_global_mark()\n{\n")
         for gv in global_variables.keys():
             typ = global_variables[gv]

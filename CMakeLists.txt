@@ -2,7 +2,8 @@ cmake_minimum_required(VERSION 3.29)
 project(cserpent)
 
 set(CMAKE_CXX_STANDARD 17)
-add_compile_options(-Wno-return-type -Wplacement-new=0) # suppress warnings about type_error (NOT A FULL SOLUTION)
+ # suppress warnings about type_error (NOT A FULL SOLUTION)
+add_compile_options(-Wno-return-type -Wplacement-new=0 -fno-strict-aliasing) 
 set(CMAKE_INTERPROCEDURAL_OPTIMIZATION_RELEASE TRUE)
 
 # normal set of include paths:

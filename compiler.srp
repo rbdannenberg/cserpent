@@ -1,9 +1,11 @@
-# usage: serpent64 compiler.srp [-d] <file-to-compile>.srp [-o <output-folder>] [-c]
+# usage: serpent64 compiler.srp <src>.srp [-o <output-folder>] [-d] [-c]
+#        [-release] [-debug]
 # diff <(serpent64 compiler.srp benchmarks/srp/binary-trees.srp -o output) <(echo "exit()" | serpent64 benchmarks/srp/binary-trees.srp)
 
 require "src/frontend/compile"
 require "src/backend/codegen_visitor"
 require "src/backend/semcheck_visitor"
+require "cmdline"
 
 require "utils"
 load "debug"
@@ -14,34 +16,37 @@ load "debug"
 
 debug = false
 compile = false
-output_folder = "output"
+cmdline = Cmdline()
 # parsing command line options
-i = 1
-while i < len(command_line_arguments):
-    if command_line_arguments[i] == "-d":
-        debug = true
-        command_line_arguments.uninsert(i)
-    elif command_line_arguments[i] == "-c":
-        compile = true
-        command_line_arguments.uninsert(i)
-    elif command_line_arguments[i] == "-o":
-        if i + 1 >= len(command_line_arguments):
-            print "Needs output folder"
-            exit()
-        output_folder = command_line_arguments[i + 1]
-        command_line_arguments.uninsert(i)
-        command_line_arguments.uninsert(i)
-    else:
-        i = i + 1
-if len(command_line_arguments) != 2:
-    print "Incorrect number of arguments"
+DEBUG = cmdline.get_option("-d")
+COMPILE = cmdline.get_option("-c")
+RELEASEBUILD = cmdline.get_option("-release")
+DEBUGBUILD = cmdline.get_option("-debug")
+output_folder = cmdline.get_named("-o", "output")
+output_folder = file_change_suffix(output_folder, nil)
+CONFIG = "Debug" if DEBUGBUILD else "Release"
+original_target_file = cmdline.get_posn(1)
+program_name = file_base(file_name_from_path(original_target_file))
+
+if not original_target_file:
+    print "Command line needs at least source path."
+    print "Usage: serpent64 compiler [-d] [-c] [-release] [-debug] ";
+    print     "[-o <output>] <src>.srp"
+    print "    -d to print parse tree"
+    print "    -c to compile and run the generated code"
+    print "    -release to set CMAKE_BUILD_TYPE=Release"
+    print "    -debug to set CMAKE_BUILD_TYPE=Debug"
+    print "    -o <output> selects directory for compiler outputs"
+    print "    <src>.srp is the root Serpent source file"
     print command_line_arguments
     exit()
 
-# relative path, has .srp suffix:
-original_target_file = command_line_arguments[1] 
-output_folder = file_change_suffix(output_folder, nil)
-program_name = file_base(file_name_from_path(original_target_file))
+if DEBUGBUILD and RELEASEBUILD:
+    print "Error: both -release and -debug were specified on command line"
+    exit(1)
+if not DEBUGBUILD and not RELEASEBUILD:
+    print "Using CMAKE_BUILD_TYPE=Release. Specify -debug for Debug."
+
 // system("rm -r " + output_folder)
 mkdir(output_folder)
 
@@ -56,7 +61,7 @@ cmake_files = []
 for target_file in session.get_topological_ordering():
     var ast = session.files[target_file]
 
-    if debug:
+    if DEBUG:
         print "----- AST from", target_file, "-----"
         print_ast(ast)
 
@@ -88,15 +93,15 @@ main_file.close()
 visitor.generate_globals()
 
 
-if compile:
+if COMPILE:
     # write CMakeLists.txt
     output_folder = output_folder + "/"
     cmake_lists = open(output_folder + "CMakeLists.txt", "w")
     cmake_lists.write("cmake_minimum_required(VERSION 3.29)\n")
     cmake_lists.write("project(" + program_name + ")\n")
     cmake_lists.write("set(CMAKE_CXX_STANDARD 17)\n")
-    cmake_lists.write(
-            "add_compile_options(-Wno-return-type -Wplacement-new=0)\n")
+    cmake_lists.write("add_compile_options(-Wno-return-type -Wplacement-new=0" +
+                      " -fno-strict-aliasing)\n")
     cmake_lists.write("set(CMAKE_INTERPROCEDURAL_OPTIMIZATION_RELEASE TRUE)\n")
     cmake_lists.write("\n")
     cmake_lists.write("# normal set of include paths:\n")
@@ -126,37 +131,37 @@ if compile:
     cmake_lists.write("target_include_directories(" + program_name +
                       " PUBLIC " + "../src/runtime ../src/gc)\n")
     cmake_lists.close()
-    if debug:
+    if DEBUG:
         print "--------------- wrote", output_folder + "CMakeLists.txt",
         print         "----------------"
     # compile code
-    cmake_configure = "cmake -DCMAKE_BUILD_TYPE=Debug -S " + output_folder +
-                      " -B " + output_folder + "build" // +  " --fresh"
+    cmake_configure = "cmake -DCMAKE_BUILD_TYPE=" + CONFIG + " -S " +
+            output_folder + " -B " + output_folder + "build" // +  " --fresh"
     cmake_build = "cmake --build " + output_folder + "build"
-    if not debug:
+    if not DEBUG:
         cmake_configure = cmake_configure + " > /dev/null"
         cmake_build = cmake_build + " > /dev/null"
     else:
         print "--------------- running cmake configure step ----------------"
         print "-->", cmake_configure
     display "run", system(cmake_configure)
-    if debug:
+    if DEBUG:
         print "--------------- finished cmake configure step ---------------"
         print "--------------- running cmake build step --------------------"
         print "-->", cmake_build
     var build_error = system(cmake_build)
     print "run: system(cmake_build) =", build_error
     if isinteger(build_error):
-        if debug:
+        if DEBUG:
             print "--------------- error", build_error, "in cmake build step --"
         exit(1)
-    if debug:
+    if DEBUG:
         print "--------------- finished cmake build step -------------------"
         print "--------------- running compiled program --------------------"
         print "-->", "./" + output_folder + "build/" + program_name
     var cmd = output_folder + "build/" + program_name
     var run_error = system(cmd)
-    if debug:
+    if DEBUG:
         print "--------------- compiled program finished -------------------"
         print "run system(\""; cmd; "\") = "; run_error
         print "--- to run it again, use this command:"
