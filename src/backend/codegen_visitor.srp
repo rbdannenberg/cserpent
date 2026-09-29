@@ -76,7 +76,7 @@ TYPE_TO_TYPE_CODE = {
 
 
 TYPE_TO_CPP_TYPE = {
-    'int': "int ",
+    'int': "int64_t ",
     'real': "double ",
     'bool': "bool ",
     'any': "Any ",
@@ -508,7 +508,7 @@ class CodegenVisitor(ASTVisitor):
     def visitArray(array_node):        # array literal
         var temp = allocate_temp(ARRAY)
         display "visitArray", temp
-        add_to_code("LSET(SL_" + temp + ", Any {new Array(" +
+        add_to_code("LSET(SL_" + temp + ", Any{new Array(" +
                    str(len(array_node.elements)) + ", nil)});")
         for element at i in array_node.elements:
             add_to_code("L." + temp + "->set(" + str(i) + ", " +
@@ -518,7 +518,7 @@ class CodegenVisitor(ASTVisitor):
 
     def visitDictionary(dictionary_node):
         var temp = allocate_temp(DICT)
-        add_to_code("LSET(SL_" + temp + ", Any {new Dict()});")
+        add_to_code("LSET(SL_" + temp + ", Any{new Dict()});")
         for pair at i in dictionary.pairs:
             add_to_code("L." + temp + "->set(" + pair[0].accept(this).cpp +
                        ", " + pair[1].accept(this).cpp + ");")
@@ -1424,7 +1424,7 @@ class CodegenVisitor(ASTVisitor):
         for name in function_locals.keys():
             typ = function_locals[name]
             if typ.not_on_heap():
-                mld.append("    " + str(typ.typ) + " csl_" + name + ";\n")
+                mld.append("    " + typ.c_type() + " csl_" + name + ";\n")
 
         var cpp_file_name = output_folder + "/" + filename + ".cpp"
         var cpp_file = open(cpp_file_name, "w")

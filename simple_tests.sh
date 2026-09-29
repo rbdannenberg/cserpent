@@ -24,6 +24,7 @@ BUILD_OUT="tsttmp"
 
 # ---- list of tests: just the base name (no .srp) ----
 TESTS=(
+    bigarray
     append
     aref
     abs
